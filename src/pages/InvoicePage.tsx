@@ -56,78 +56,115 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
   };
 
   const downloadPDF = () => {
-    if (!order) return;
-
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 20;
-
-    doc.setFontSize(18);
-    doc.text('Kopi Pendekar', pageWidth / 2, y, { align: 'center' });
-    y += 10;
-
-    doc.setFontSize(10);
-    doc.text('Invoice / Struk Pesanan', pageWidth / 2, y, { align: 'center' });
-    y += 15;
-
-    doc.setFontSize(12);
-    doc.text(`Order Code: ${order.order_code}`, 20, y);
-    y += 8;
-    doc.setFontSize(10);
-    doc.text(`Tanggal: ${formatDateTime(order.created_at)}`, 20, y);
-    y += 6;
-    doc.text(`Nama: ${order.customer_name}`, 20, y);
-    y += 6;
-    doc.text(`HP: ${order.phone}`, 20, y);
-    y += 6;
-    doc.text(`Tanggal Ambil: ${order.pickup_date}`, 20, y);
-    y += 12;
-
-    doc.setFontSize(11);
-    doc.text('Item Pesanan:', 20, y);
-    y += 8;
-
-    doc.setFontSize(9);
-    items.forEach((item) => {
-      const line = `${item.name_snapshot} x${item.qty} - ${formatRupiah(item.line_total)}`;
-      doc.text(line, 25, y);
-      y += 6;
-    });
-
-    y += 6;
-    doc.line(20, y, pageWidth - 20, y);
-    y += 8;
-
-    doc.setFontSize(10);
-    doc.text(`Subtotal: ${formatRupiah(order.subtotal)}`, 20, y);
-    y += 6;
-    if (order.discount > 0) {
-      doc.text(`Diskon: -${formatRupiah(order.discount)}`, 20, y);
-      y += 6;
-    }
-    if (order.service_fee > 0) {
-      doc.text(`Biaya Layanan: ${formatRupiah(order.service_fee)}`, 20, y);
-      y += 6;
+    if (!order) {
+      alert('Data invoice tidak tersedia');
+      return;
     }
 
-    doc.setFontSize(12);
-    doc.text(`TOTAL: ${formatRupiah(order.total)}`, 20, y);
-    y += 10;
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      let y = 20;
 
-    doc.setFontSize(9);
-    doc.text(`Metode: ${order.payment_method}`, 20, y);
-    y += 6;
-    doc.text(`Status: ${order.status}`, 20, y);
-    y += 10;
+      // Header
+      doc.setFontSize(18);
+      doc.text('Kopi Pendekar', pageWidth / 2, y, { align: 'center' });
+      y += 10;
 
-    const paymentInfo = import.meta.env.VITE_PAYMENT_INFO_TEXT || '';
-    if (paymentInfo) {
+      doc.setFontSize(10);
+      doc.text('Invoice / Struk Pesanan', pageWidth / 2, y, { align: 'center' });
+      y += 15;
+
+      // Order details
+      doc.setFontSize(12);
+      doc.text(`Order Code: ${order.order_code}`, 20, y);
+      y += 8;
+      doc.setFontSize(10);
+      doc.text(`Tanggal: ${formatDateTime(order.created_at)}`, 20, y);
+      y += 6;
+      doc.text(`Nama: ${order.customer_name}`, 20, y);
+      y += 6;
+      doc.text(`HP: ${order.phone}`, 20, y);
+      y += 6;
+      doc.text(`Tanggal Ambil: ${order.pickup_date}`, 20, y);
+      y += 12;
+
+      // Items header
+      doc.setFontSize(11);
+      doc.text('Item Pesanan:', 20, y);
+      y += 8;
+
+      // Items list
       doc.setFontSize(9);
-      const lines = doc.splitTextToSize(paymentInfo, pageWidth - 40);
-      doc.text(lines, 20, y);
-    }
+      items.forEach((item) => {
+        if (y > pageHeight - 30) {
+          doc.addPage();
+          y = 20;
+        }
+        const line = `${item.name_snapshot} x${item.qty} - ${formatRupiah(item.line_total)}`;
+        doc.text(line, 25, y);
+        y += 6;
+      });
 
-    doc.save(`Invoice-${order.order_code}.pdf`);
+      y += 6;
+      if (y > pageHeight - 60) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.line(20, y, pageWidth - 20, y);
+      y += 8;
+
+      // Subtotal and total
+      doc.setFontSize(10);
+      doc.text(`Subtotal: ${formatRupiah(order.subtotal)}`, 20, y);
+      y += 6;
+      if (order.discount > 0) {
+        doc.text(`Diskon: -${formatRupiah(order.discount)}`, 20, y);
+        y += 6;
+      }
+      if (order.service_fee > 0) {
+        doc.text(`Biaya Layanan: ${formatRupiah(order.service_fee)}`, 20, y);
+        y += 6;
+      }
+
+      doc.setFontSize(12);
+      doc.text(`TOTAL: ${formatRupiah(order.total)}`, 20, y);
+      y += 10;
+
+      // Payment info
+      doc.setFontSize(9);
+      doc.text(`Metode: ${order.payment_method}`, 20, y);
+      y += 6;
+      doc.text(`Status: ${order.status}`, 20, y);
+      y += 10;
+
+      const paymentInfo = import.meta.env.VITE_PAYMENT_INFO_TEXT || '';
+      if (paymentInfo) {
+        doc.setFontSize(9);
+        const lines = doc.splitTextToSize(paymentInfo, pageWidth - 40);
+        doc.text(lines, 20, y);
+      }
+
+      // Save PDF
+      const fileName = `Invoice-${order.order_code}.pdf`;
+
+      // Alternative: Create blob and download link for better browser compatibility
+      const pdfBlob = doc.output('blob');
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('PDF downloaded successfully:', fileName);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Gagal membuat PDF. Silakan coba lagi.');
+    }
   };
 
   if (loading) {

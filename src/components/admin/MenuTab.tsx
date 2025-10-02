@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, CreditCard as Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { formatRupiah } from '../../lib/utils';
 import { Database } from '../../lib/database.types';
 import { MenuFormModal } from './MenuFormModal';
@@ -15,6 +16,11 @@ export function MenuTab() {
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; itemId: string | null; itemName: string }>({
+    isOpen: false,
+    itemId: null,
+    itemName: ''
+  });
   const { user } = useAuth();
 
   useEffect(() => {
@@ -52,8 +58,16 @@ export function MenuTab() {
     }
   };
 
-  const deleteItem = async (itemId: string) => {
-    if (!confirm('Hapus menu ini?')) return;
+  const deleteItem = (itemId: string, itemName: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      itemId,
+      itemName
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.itemId) return;
 
     try {
       // For admin users, we need to ensure proper authentication
@@ -62,7 +76,7 @@ export function MenuTab() {
       if (adminEmails.includes(user?.email || '')) {
         // Use service role key for admin operations if needed
         // Or ensure the user is properly authenticated in Supabase
-        const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
+        const { error } = await supabase.from('menu_items').delete().eq('id', deleteConfirm.itemId);
 
         if (error) {
           console.error('Delete error:', error);
@@ -70,7 +84,7 @@ export function MenuTab() {
         }
       } else {
         // For regular authenticated users
-        const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
+        const { error } = await supabase.from('menu_items').delete().eq('id', deleteConfirm.itemId);
         if (error) throw error;
       }
 
@@ -79,6 +93,8 @@ export function MenuTab() {
     } catch (error) {
       console.error('Error deleting item:', error);
       alert('Gagal menghapus menu. Pastikan Anda login sebagai admin.');
+    } finally {
+      setDeleteConfirm({ isOpen: false, itemId: null, itemName: '' });
     }
   };
 
@@ -175,7 +191,7 @@ export function MenuTab() {
                   </button>
 
                   <button
-                    onClick={() => deleteItem(item.id)}
+                    onClick={() => deleteItem(item.id, item.name)}
                     className="flex items-center justify-center px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -194,6 +210,17 @@ export function MenuTab() {
           onClose={handleFormClose}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, itemId: null, itemName: '' })}
+        onConfirm={handleDeleteConfirm}
+        title="Hapus Menu"
+        message={`Apakah Anda yakin ingin menghapus menu "${deleteConfirm.itemName}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        type="danger"
+      />
     </div>
   );
 }

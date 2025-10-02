@@ -52,15 +52,58 @@ CREATE TABLE IF NOT EXISTS order_items (
   line_total integer NOT NULL
 );
 
--- Create payment_proofs table
-CREATE TABLE IF NOT EXISTS payment_proofs (
+-- Create payment_methods table
+CREATE TABLE IF NOT EXISTS payment_methods (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_id uuid REFERENCES orders(id) ON DELETE CASCADE,
-  method text,
-  amount integer,
-  proof_url text,
-  created_at timestamptz DEFAULT now()
+  name text NOT NULL,
+  description text,
+  payment_type text CHECK (payment_type IN ('TRANSFER', 'QRIS', 'COD')) DEFAULT 'TRANSFER',
+  is_active boolean DEFAULT true,
+  sort_order integer DEFAULT 0,
+
+  -- Bank transfer details
+  bank_name text,
+  account_number text,
+  account_holder text,
+
+  -- QRIS details
+  qris_image_url text,
+
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
+
+-- Enable RLS on payment_methods table
+ALTER TABLE payment_methods ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for payment_methods
+CREATE POLICY "Payment methods are publicly readable"
+  ON payment_methods FOR SELECT
+  TO public
+  USING (is_active = true);
+
+CREATE POLICY "Authenticated users can view all payment methods"
+  ON payment_methods FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Authenticated users can manage payment methods"
+  ON payment_methods FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- Create index for better performance
+CREATE INDEX IF NOT EXISTS idx_payment_methods_active ON payment_methods(is_active);
+CREATE INDEX IF NOT EXISTS idx_payment_methods_sort_order ON payment_methods(sort_order);
+CREATE INDEX IF NOT EXISTS idx_payment_methods_type ON payment_methods(payment_type);
+
+-- Insert default payment methods
+INSERT INTO payment_methods (name, description, payment_type, sort_order, bank_name, account_number, account_holder) VALUES
+  ('Transfer Bank BCA', 'Transfer melalui rekening bank BCA', 'TRANSFER', 1, 'BCA', '1234567890', 'Kopi Pendekar'),
+  ('QRIS', 'Pembayaran melalui QRIS', 'QRIS', 2, NULL, NULL, NULL),
+  ('Cash on Delivery', 'Bayar di tempat (COD)', 'COD', 3, NULL, NULL, NULL)
+ON CONFLICT DO NOTHING;
 
 -- Enable RLS on all tables
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;

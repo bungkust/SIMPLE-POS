@@ -1,4 +1,4 @@
-import { Coffee, History, User } from 'lucide-react';
+import { Coffee, History, LogIn } from 'lucide-react';
 
 interface HeaderProps {
   onHistoryClick: () => void;
@@ -25,8 +25,8 @@ export function Header({ onHistoryClick, onAdminClick }: HeaderProps) {
             onClick={onAdminClick}
             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
           >
-            <User className="w-5 h-5 text-slate-600" />
-            <span className="text-sm font-medium text-slate-700 hidden sm:inline">Admin</span>
+            <LogIn className="w-5 h-5 text-slate-600" />
+            <span className="text-sm font-medium text-slate-700 hidden sm:inline">Login</span>
           </button>
         </div>
       </div>

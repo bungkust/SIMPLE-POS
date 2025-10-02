@@ -41,27 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const adminEmails = import.meta.env.VITE_ADMIN_EMAILS?.split(',') || [];
-
-    // If email is in admin list, create a mock authenticated state
-    if (adminEmails.includes(email)) {
-      // Set a mock user object for admin
-      setUser({
-        id: 'admin-user',
-        email: email,
-        created_at: new Date().toISOString(),
-        app_metadata: {},
-        user_metadata: {},
-        aud: 'authenticated',
-        role: 'authenticated'
-      } as any);
-      return;
-    }
-
-    // Otherwise, use normal Supabase authentication
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+  const signIn = async (_email: string, _password: string) => {
+    // Email login is no longer supported
+    throw new Error('Email login is disabled. Please use Google OAuth.');
   };
 
   const signInWithGoogle = async () => {
