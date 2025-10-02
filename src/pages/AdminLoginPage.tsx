@@ -15,7 +15,7 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'https://fheaayyooebdsppcymce.supabase.co/auth/v1/callback'
+          redirectTo: `${window.location.origin}/admin/dashboard`
         }
       });
 

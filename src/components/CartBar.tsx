@@ -1,12 +1,10 @@
+import { useNavigate } from 'react-router-dom';
 import { ShoppingCart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { formatRupiah } from '../lib/utils';
 
-interface CartBarProps {
-  onCheckout: () => void;
-}
-
-export function CartBar({ onCheckout }: CartBarProps) {
+export function CartBar() {
+  const navigate = useNavigate();
   const { totalItems, totalAmount } = useCart();
 
   if (totalItems === 0) return null;
@@ -15,7 +13,7 @@ export function CartBar({ onCheckout }: CartBarProps) {
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-40">
       <div className="max-w-7xl mx-auto px-4 py-3">
         <button
-          onClick={onCheckout}
+          onClick={() => navigate('/checkout')}
           className="w-full bg-green-500 text-white py-3 rounded-lg flex items-center justify-between px-4 hover:bg-green-600 transition-colors"
         >
           <div className="flex items-center gap-2">

@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { CartProvider } from './contexts/CartContext';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { Header } from './components/Header';
 import { MenuBrowser } from './components/MenuBrowser';
 import { CartBar } from './components/CartBar';
@@ -11,95 +10,96 @@ import { InvoicePage } from './pages/InvoicePage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { AuthProvider } from './contexts/AuthContext';
+import { ConfigProvider } from './contexts/ConfigContext';
+import { CartProvider } from './contexts/CartContext';
 
-type Page =
-  | { type: 'home' }
-  | { type: 'checkout' }
-  | { type: 'success'; orderCode: string }
-  | { type: 'invoice'; orderCode: string }
-  | { type: 'history' }
-  | { type: 'admin-login' }
-  | { type: 'admin-dashboard' };
-
-function AppContent() {
-  const [page, setPage] = useState<Page>({ type: 'home' });
-  const { isAdmin } = useAuth();
-
-  const handleCheckout = () => {
-    setPage({ type: 'checkout' });
-  };
-
-  const handleOrderSuccess = (orderCode: string) => {
-    setPage({ type: 'success', orderCode });
-  };
-
-  const handleViewInvoice = (orderCode: string) => {
-    setPage({ type: 'invoice', orderCode });
-  };
-
-  const handleBackToHome = () => {
-    setPage({ type: 'home' });
-  };
-
-  const handleHistoryClick = () => {
-    setPage({ type: 'history' });
-  };
-
-  const handleAdminClick = () => {
-    if (isAdmin) {
-      setPage({ type: 'admin-dashboard' });
-    } else {
-      setPage({ type: 'admin-login' });
-    }
-  };
-
-  if (page.type === 'checkout') {
-    return <CheckoutPage onBack={handleBackToHome} onSuccess={handleOrderSuccess} />;
-  }
-
-  if (page.type === 'success') {
-    return (
-      <OrderSuccessPage
-        orderCode={page.orderCode}
-        onViewInvoice={() => handleViewInvoice(page.orderCode)}
-        onBackToMenu={handleBackToHome}
-      />
-    );
-  }
-
-  if (page.type === 'invoice') {
-    return <InvoicePage orderCode={page.orderCode} onBack={handleBackToHome} />;
-  }
-
-  if (page.type === 'history') {
-    return <OrderHistoryPage onBack={handleBackToHome} onViewInvoice={handleViewInvoice} />;
-  }
-
-  if (page.type === 'admin-login') {
-    return <AdminLoginPage onBack={handleBackToHome} />;
-  }
-
-  if (page.type === 'admin-dashboard') {
-    return <AdminDashboard onBack={handleBackToHome} />;
-  }
-
+// Wrapper components to handle props
+function HomePage() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Header onHistoryClick={handleHistoryClick} onAdminClick={handleAdminClick} />
+    <>
+      <Header />
       <MenuBrowser />
-      <CartBar onCheckout={handleCheckout} />
-    </div>
+      <CartBar />
+    </>
   );
+}
+
+function CheckoutPageWrapper() {
+  const navigate = useNavigate();
+  return <CheckoutPage onBack={() => navigate('/')} onSuccess={(orderCode) => navigate(`/success/${orderCode}`)} />;
+}
+
+function OrderHistoryPageWrapper() {
+  const navigate = useNavigate();
+  return <OrderHistoryPage onBack={() => navigate('/')} onViewInvoice={(orderCode) => navigate(`/invoice/${orderCode}`)} />;
+}
+
+function InvoicePageWrapper() {
+  const { orderCode } = useParams<{ orderCode: string }>();
+  const navigate = useNavigate();
+  return <InvoicePage orderCode={orderCode!} onBack={() => navigate('/')} />;
+}
+
+function OrderSuccessPageWrapper() {
+  const { orderCode } = useParams<{ orderCode: string }>();
+  const navigate = useNavigate();
+  return (
+    <OrderSuccessPage
+      orderCode={orderCode!}
+      onViewInvoice={() => navigate(`/invoice/${orderCode}`)}
+      onBackToMenu={() => navigate('/')}
+    />
+  );
+}
+
+function AdminLoginPageWrapper() {
+  const navigate = useNavigate();
+  return <AdminLoginPage onBack={() => navigate('/')} />;
+}
+
+function AdminDashboardWrapper() {
+  const navigate = useNavigate();
+  return <AdminDashboard onBack={() => navigate('/')} />;
 }
 
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <CartProvider>
-          <AppContent />
-        </CartProvider>
-      </AuthProvider>
+      <Router>
+        <ConfigProvider>
+          <AuthProvider>
+            <CartProvider>
+              <div className="min-h-screen bg-slate-50">
+                <Routes>
+                  {/* Public Routes - Regular Users */}
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/checkout" element={<CheckoutPageWrapper />} />
+                  <Route path="/orders" element={<OrderHistoryPageWrapper />} />
+                  <Route path="/invoice/:orderCode" element={<InvoicePageWrapper />} />
+                  <Route path="/success/:orderCode" element={<OrderSuccessPageWrapper />} />
+
+                  {/* Admin Routes - Protected */}
+                  <Route path="/admin/login" element={
+                    <ProtectedRoute requireAuth={true}>
+                      <AdminLoginPageWrapper />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/admin/dashboard" element={
+                    <ProtectedRoute requireAdmin={true}>
+                      <AdminDashboardWrapper />
+                    </ProtectedRoute>
+                  } />
+
+                  {/* Catch all - redirect to home */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </div>
+            </CartProvider>
+          </AuthProvider>
+        </ConfigProvider>
+      </Router>
     </ErrorBoundary>
   );
 }

@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { LogOut, ShoppingBag, Coffee, CreditCard } from 'lucide-react';
+import { LogOut, ShoppingBag, Coffee, CreditCard, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrdersTab } from '../components/admin/OrdersTab';
 import { MenuTab } from '../components/admin/MenuTab';
 import { PaymentTab } from '../components/admin/PaymentTab';
+import { SettingsTab } from '../components/admin/SettingsTab';
 
 interface AdminDashboardProps {
   onBack: () => void;
 }
 
 export function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'payment'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'payment' | 'settings'>('orders');
   const { signOut, user } = useAuth();
 
   const handleSignOut = async () => {
@@ -74,6 +75,17 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
               <CreditCard className="w-4 h-4" />
               <span>Pembayaran</span>
             </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'settings'
+                  ? 'bg-green-500 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Pengaturan</span>
+            </button>
           </div>
         </div>
       </div>
@@ -82,6 +94,7 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
         {activeTab === 'orders' && <OrdersTab />}
         {activeTab === 'menu' && <MenuTab />}
         {activeTab === 'payment' && <PaymentTab />}
+        {activeTab === 'settings' && <SettingsTab />}
       </div>
     </div>
   );

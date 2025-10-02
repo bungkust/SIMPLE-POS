@@ -9,59 +9,113 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
+  adminRole: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const adminEmails = import.meta.env.VITE_ADMIN_EMAILS?.split(',') || [];
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adminRole, setAdminRole] = useState<string | null>(null);
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        // Check admin status from database
+        await checkAdminStatus(currentUser.email);
+      } else {
+        setAdminRole(null);
+      }
+
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user ?? null;
-      setUser(user);
-      setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
 
-      // Check if user is admin after login
-      if (user && adminEmails.includes(user.email || '')) {
-        console.log(' Admin logged in via OAuth');
+      if (currentUser) {
+        // Check admin status when user signs in
+        await checkAdminStatus(currentUser.email);
+      } else {
+        setAdminRole(null);
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const checkAdminStatus = async (email: string | undefined) => {
+    if (!email) {
+      setAdminRole(null);
+      return;
+    }
+
+    try {
+      // Simple check: only kusbot114@gmail.com is admin
+      if (email.toLowerCase() === 'kusbot114@gmail.com') {
+        setAdminRole('super_admin');
+      } else {
+        setAdminRole(null);
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setAdminRole(null);
+    }
+  };
+
   const signIn = async (_email: string, _password: string) => {
-    // Email login is no longer supported
+    // Email login is no longer supported - use Google OAuth only
     throw new Error('Email login is disabled. Please use Google OAuth.');
   };
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/admin-dashboard`
+      }
     });
-    if (error) throw error;
+
+    if (error) {
+      console.error('Google OAuth error:', error);
+      throw new Error('Gagal login dengan Google');
+    }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      // Clear admin role when signing out
+      setAdminRole(null);
+
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      console.error('Sign out error:', error);
+      throw error;
+    }
   };
 
-  const isAdmin = user ? adminEmails.includes(user.email || '') : false;
+  // Admin check based on database, not environment variables
+  const isAdmin = adminRole !== null;
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signInWithGoogle, signOut, isAdmin }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      signIn,
+      signInWithGoogle,
+      signOut,
+      isAdmin,
+      adminRole
+    }}>
       {children}
     </AuthContext.Provider>
   );

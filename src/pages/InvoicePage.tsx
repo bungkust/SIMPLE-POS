@@ -65,86 +65,126 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      let y = 20;
+      let y = 25;
 
-      // Header
-      doc.setFontSize(18);
-      doc.text('Kopi Pendekar', pageWidth / 2, y, { align: 'center' });
-      y += 10;
+      // 1. HEADER SECTION
+      doc.setFontSize(16);
+      doc.text('KOPI PENDEKAR', pageWidth / 2, y, { align: 'center' });
+      y += 8;
 
-      doc.setFontSize(10);
-      doc.text('Invoice / Struk Pesanan', pageWidth / 2, y, { align: 'center' });
+      doc.setFontSize(12);
+      doc.text('Jl. Contoh No. 123, Jakarta', pageWidth / 2, y, { align: 'center' });
+      y += 6;
+      doc.text('Telp: (021) 12345678 | Email: info@kopipendekar.com', pageWidth / 2, y, { align: 'center' });
       y += 15;
 
-      // Order details
-      doc.setFontSize(12);
-      doc.text(`Order Code: ${order.order_code}`, 20, y);
-      y += 8;
+      // Bill number and cashier
       doc.setFontSize(10);
-      doc.text(`Tanggal: ${formatDateTime(order.created_at)}`, 20, y);
-      y += 6;
-      doc.text(`Nama: ${order.customer_name}`, 20, y);
-      y += 6;
-      doc.text(`HP: ${order.phone}`, 20, y);
-      y += 6;
-      doc.text(`Tanggal Ambil: ${order.pickup_date}`, 20, y);
-      y += 12;
+      doc.text(`Bill No: ${order.order_code}`, 20, y);
+      y += 5;
+      doc.text(`Kasir: Admin`, 20, y);
+      y += 10;
 
-      // Items header
-      doc.setFontSize(11);
-      doc.text('Item Pesanan:', 20, y);
-      y += 8;
+      // 2. TRANSACTION INFO
+      doc.setFontSize(10);
+      doc.text(`Kode CHK: ${order.order_code}`, 20, y);
+      y += 5;
+      doc.text(`Order Type: ${order.pickup_date ? 'Take Away' : 'Dine In'}`, 20, y);
+      y += 10;
 
-      // Items list
+      // Items list with detailed formatting
       doc.setFontSize(9);
+      let itemNumber = 1;
+
       items.forEach((item) => {
-        if (y > pageHeight - 30) {
+        if (y > pageHeight - 60) {
           doc.addPage();
           y = 20;
         }
-        const line = `${item.name_snapshot} x${item.qty} - ${formatRupiah(item.line_total)}`;
-        doc.text(line, 25, y);
-        y += 6;
+
+        // Main item line
+        const mainItemText = `${itemNumber} ${item.name_snapshot} ${item.qty}          ${formatRupiah(item.line_total)}`;
+        doc.text(mainItemText, 20, y);
+        y += 5;
+
+        // Item notes if any
+        if (item.notes) {
+          doc.setFontSize(8);
+          doc.text(`  ${item.notes}`, 25, y);
+          y += 4;
+          doc.setFontSize(9);
+        }
+
+        itemNumber++;
       });
 
-      y += 6;
-      if (y > pageHeight - 60) {
+      y += 10;
+
+      // 3. PAYMENT SUMMARY
+      if (y > pageHeight - 80) {
         doc.addPage();
         y = 20;
       }
+
+      // Draw line separator
       doc.line(20, y, pageWidth - 20, y);
+      y += 10;
+
+      doc.setFontSize(10);
+      const subtotalText = `Subtotal                ${formatRupiah(order.subtotal)}`;
+      doc.text(subtotalText, 20, y);
+      y += 6;
+
+      if (order.discount > 0) {
+        const discountText = `Diskon                  -${formatRupiah(order.discount)}`;
+        doc.text(discountText, 20, y);
+        y += 6;
+      }
+
+      if (order.service_fee > 0) {
+        const serviceText = `Biaya Layanan           ${formatRupiah(order.service_fee)}`;
+        doc.text(serviceText, 20, y);
+        y += 6;
+      }
+
+      // Total line
+      doc.setFontSize(11);
+      doc.text(`Total                   ${formatRupiah(order.total)}`, 20, y);
       y += 8;
 
-      // Subtotal and total
+      // Payment method
       doc.setFontSize(10);
-      doc.text(`Subtotal: ${formatRupiah(order.subtotal)}`, 20, y);
+      doc.text(`Payment Method: ${order.payment_method}`, 20, y);
       y += 6;
-      if (order.discount > 0) {
-        doc.text(`Diskon: -${formatRupiah(order.discount)}`, 20, y);
-        y += 6;
-      }
-      if (order.service_fee > 0) {
-        doc.text(`Biaya Layanan: ${formatRupiah(order.service_fee)}`, 20, y);
-        y += 6;
+
+      if (order.status === 'SUDAH BAYAR') {
+        doc.text(`Status: Lunas`, 20, y);
+      } else {
+        doc.text(`Status: ${order.status}`, 20, y);
       }
 
-      doc.setFontSize(12);
-      doc.text(`TOTAL: ${formatRupiah(order.total)}`, 20, y);
-      y += 10;
+      y += 15;
 
-      // Payment info
+      // 4. FOOTER SECTION
+      doc.setFontSize(8);
+      doc.text('All Price are inclusive Tax 10%', 20, y);
+      y += 5;
+
       doc.setFontSize(9);
-      doc.text(`Metode: ${order.payment_method}`, 20, y);
-      y += 6;
-      doc.text(`Status: ${order.status}`, 20, y);
-      y += 10;
+      doc.text('PT. Kopi Pendekar Indonesia', 20, y);
+      y += 4;
+      doc.text('NPWP: 02.107.429.9-073.000', 20, y);
+      y += 4;
+      doc.text('Jl. Jend. Sudirman Kav. 86', 20, y);
+      y += 4;
+      doc.text('Jakarta Pusat 10220', 20, y);
+      y += 8;
 
-      const paymentInfo = import.meta.env.VITE_PAYMENT_INFO_TEXT || '';
-      if (paymentInfo) {
-        doc.setFontSize(9);
-        const lines = doc.splitTextToSize(paymentInfo, pageWidth - 40);
-        doc.text(lines, 20, y);
-      }
+      // Transaction details
+      doc.setFontSize(8);
+      doc.text(`Status: ${order.status === 'SUDAH BAYAR' ? 'Check Closed' : order.status}`, 20, y);
+      y += 4;
+      doc.text(`Tanggal: ${formatDateTime(order.created_at)}`, 20, y);
 
       // Save PDF
       const fileName = `Invoice-${order.order_code}.pdf`;
