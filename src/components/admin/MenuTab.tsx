@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, CreditCard as Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { formatRupiah } from '../../lib/utils';
 import { Database } from '../../lib/database.types';
 import { MenuFormModal } from './MenuFormModal';
@@ -14,6 +15,7 @@ export function MenuTab() {
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     loadData();
@@ -54,13 +56,29 @@ export function MenuTab() {
     if (!confirm('Hapus menu ini?')) return;
 
     try {
-      const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
+      // For admin users, we need to ensure proper authentication
+      const adminEmails = import.meta.env.VITE_ADMIN_EMAILS?.split(',') || [];
 
-      if (error) throw error;
+      if (adminEmails.includes(user?.email || '')) {
+        // Use service role key for admin operations if needed
+        // Or ensure the user is properly authenticated in Supabase
+        const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
+
+        if (error) {
+          console.error('Delete error:', error);
+          throw error;
+        }
+      } else {
+        // For regular authenticated users
+        const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
+        if (error) throw error;
+      }
+
       await loadData();
+      alert('Menu berhasil dihapus');
     } catch (error) {
       console.error('Error deleting item:', error);
-      alert('Gagal menghapus menu');
+      alert('Gagal menghapus menu. Pastikan Anda login sebagai admin.');
     }
   };
 
