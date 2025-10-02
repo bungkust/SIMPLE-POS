@@ -1,0 +1,19 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[template.environment]
+  VITE_SUPABASE_URL = "Your Supabase URL"
+  VITE_SUPABASE_ANON_KEY = "Your Supabase Anon Key"
+  VITE_SITE_NAME = "Kopi Pendekar"
+  VITE_ADMIN_EMAILS = "Your admin email"
+  VITE_PAYMENT_INFO_TEXT = "Your payment instructions"
+  VITE_QRIS_IMAGE_URL = "Your QRIS image URL"

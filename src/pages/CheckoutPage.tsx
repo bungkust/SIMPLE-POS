@@ -3,6 +3,7 @@ import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { formatRupiah, normalizePhone, getTomorrowDate } from '../lib/utils';
 import { supabase } from '../lib/supabase';
+import { generateOrderCode } from '../lib/orderUtils';
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -33,6 +34,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       const total = subtotal - discount + serviceFee;
 
       const orderData = {
+        order_code: generateOrderCode(),
         customer_name: formData.customerName,
         phone: normalizedPhone,
         pickup_date: formData.pickupDate,

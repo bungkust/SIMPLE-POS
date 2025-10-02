@@ -25,9 +25,7 @@ CREATE TABLE IF NOT EXISTS menu_items (
 -- Create orders table
 CREATE TABLE IF NOT EXISTS orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_code text GENERATED ALWAYS AS (
-    'KP-' || to_char(created_at, 'YYMMDD') || '-' || upper(substr(id::text, 1, 6))
-  ) STORED,
+  order_code text,
   customer_name text NOT NULL,
   phone text NOT NULL,
   pickup_date date NOT NULL,
