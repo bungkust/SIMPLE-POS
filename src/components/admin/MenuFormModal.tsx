@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../lib/database.types';
 
@@ -14,6 +14,9 @@ interface MenuFormModalProps {
 
 export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps) {
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     name: item?.name || '',
     description: item?.description || '',
@@ -22,6 +25,72 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
     category_id: item?.category_id || '',
     is_active: item?.is_active ?? true,
   });
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('File harus berupa gambar.');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran file maksimal 5MB.');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `menu-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('menu-photos')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('menu-photos')
+        .getPublicUrl(fileName);
+
+      // Update form data
+      setFormData(prev => ({
+        ...prev,
+        photo_url: publicUrl,
+      }));
+
+      alert('Foto berhasil diupload!');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Gagal upload foto. Pastikan bucket storage sudah dibuat di Supabase.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setFormData(prev => ({
+      ...prev,
+      photo_url: '',
+    }));
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,22 +203,61 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                URL Foto
+                Foto Menu
               </label>
-              <input
-                type="url"
-                value={formData.photo_url}
-                onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="https://example.com/image.jpg"
-              />
+
+              {/* File Upload Section */}
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 mb-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="photoUpload"
+                />
+
+                <label
+                  htmlFor="photoUpload"
+                  className={`flex flex-col items-center gap-2 cursor-pointer ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Upload className="w-8 h-8 text-slate-400" />
+                  <span className="text-sm text-slate-600">
+                    {uploading ? 'Mengupload...' : 'Klik untuk upload foto'}
+                  </span>
+                  <span className="text-xs text-slate-400">JPG, PNG, WebP (max 5MB)</span>
+                </label>
+              </div>
+
+              {/* URL Input (Alternative) */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Atau masukkan URL foto
+                </label>
+                <input
+                  type="url"
+                  value={formData.photo_url}
+                  onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+
+              {/* Photo Preview */}
               {formData.photo_url && (
-                <div className="mt-2">
+                <div className="relative inline-block">
                   <img
                     src={formData.photo_url}
                     alt="Preview"
                     className="w-32 h-32 object-cover rounded-lg border border-slate-200"
                   />
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               )}
             </div>

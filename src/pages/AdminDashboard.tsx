@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { LogOut, ShoppingBag, Coffee, CreditCard, Settings } from 'lucide-react';
+import { LogOut, ShoppingBag, Coffee, CreditCard, Settings, FolderOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrdersTab } from '../components/admin/OrdersTab';
 import { MenuTab } from '../components/admin/MenuTab';
 import { PaymentTab } from '../components/admin/PaymentTab';
 import { SettingsTab } from '../components/admin/SettingsTab';
+import { CategoriesTab } from '../components/admin/CategoriesTab';
 
 interface AdminDashboardProps {
   onBack: () => void;
 }
 
 export function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'payment' | 'settings'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'payment' | 'settings'>('orders');
   const { signOut, user } = useAuth();
 
   const handleSignOut = async () => {
@@ -26,73 +27,86 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold text-slate-900">Admin Dashboard</h1>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-600">{user?.email}</span>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900">Admin Dashboard</h1>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-xs sm:text-sm text-slate-600 truncate max-w-[120px] sm:max-w-none">{user?.email}</span>
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors touch-manipulation text-sm"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="text-sm font-medium">Keluar</span>
+                <span className="font-medium hidden sm:inline">Keluar</span>
+                <span className="sm:hidden">Exit</span>
               </button>
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-1 scrollbar-hide">
             <button
               onClick={() => setActiveTab('orders')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors touch-manipulation min-w-fit whitespace-nowrap ${
                 activeTab === 'orders'
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-green-500 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <ShoppingBag className="w-4 h-4" />
-              <span>Pesanan</span>
+              <span className="text-sm">Pesanan</span>
             </button>
             <button
               onClick={() => setActiveTab('menu')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors touch-manipulation min-w-fit whitespace-nowrap ${
                 activeTab === 'menu'
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-green-500 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <Coffee className="w-4 h-4" />
-              <span>Menu</span>
+              <span className="text-sm">Menu</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors touch-manipulation min-w-fit whitespace-nowrap ${
+                activeTab === 'categories'
+                  ? 'bg-green-500 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <FolderOpen className="w-4 h-4" />
+              <span className="text-sm">Kategori</span>
             </button>
             <button
               onClick={() => setActiveTab('payment')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors touch-manipulation min-w-fit whitespace-nowrap ${
                 activeTab === 'payment'
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-green-500 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <CreditCard className="w-4 h-4" />
-              <span>Pembayaran</span>
+              <span className="text-sm">Pembayaran</span>
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors touch-manipulation min-w-fit whitespace-nowrap ${
                 activeTab === 'settings'
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-green-500 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <Settings className="w-4 h-4" />
-              <span>Pengaturan</span>
+              <span className="text-sm">Pengaturan</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {activeTab === 'orders' && <OrdersTab />}
         {activeTab === 'menu' && <MenuTab />}
+        {activeTab === 'categories' && <CategoriesTab />}
         {activeTab === 'payment' && <PaymentTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </div>

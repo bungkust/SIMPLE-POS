@@ -31,9 +31,9 @@ export function Header() {
     }
   };
 
-  // Hide admin button for regular users (not on admin pages)
-  const isAdminPage = location.pathname.startsWith('/admin');
-  const showAdminButton = isAdmin || isAdminPage;
+  // Hide admin button for regular users (not on order pages)
+  const isOrderPage = location.pathname.startsWith('/orders') || location.pathname.startsWith('/checkout');
+  const showAdminButton = isAdmin && !isOrderPage;
 
   // Render icon based on type and source
   const renderIcon = () => {
@@ -43,38 +43,38 @@ export function Header() {
         <img
           src={config.storeIcon}
           alt="Store icon"
-          className="w-6 h-6 object-cover"
+          className="w-6 h-6 sm:w-7 sm:h-7 object-cover"
         />
       );
     } else {
       // Render predefined icon
       const IconComponent = iconMap[config.storeIcon as keyof typeof iconMap] || Coffee;
-      return <IconComponent className="w-6 h-6 text-green-500" />;
+      return <IconComponent className="w-6 h-6 sm:w-7 sm:h-7 text-green-500" />;
     }
   };
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           {renderIcon()}
-          <h1 className="text-xl font-bold text-slate-900">{config.storeName}</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">{config.storeName}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <button
             onClick={handleHistoryClick}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors touch-manipulation"
           >
-            <History className="w-5 h-5 text-slate-600" />
-            <span className="text-sm font-medium text-slate-700 hidden sm:inline">Riwayat</span>
+            <History className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
+            <span className="text-xs sm:text-sm font-medium text-slate-700 hidden sm:inline">Riwayat</span>
           </button>
           {showAdminButton && (
             <button
               onClick={handleAdminClick}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors touch-manipulation"
             >
-              <LogIn className="w-5 h-5 text-slate-600" />
-              <span className="text-sm font-medium text-slate-700 hidden sm:inline">
+              <LogIn className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
+              <span className="text-xs sm:text-sm font-medium text-slate-700 hidden sm:inline">
                 {user ? (isAdmin ? 'Admin' : 'Login') : 'Login'}
               </span>
             </button>
