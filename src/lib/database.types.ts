@@ -11,57 +11,105 @@ export interface Database {
     Tables: {
       categories: {
         Row: {
+          created_at: string
           id: string
           name: string
           sort_order: number
-          created_at: string
         }
         Insert: {
+          created_at?: string
           id?: string
           name: string
           sort_order?: number
-          created_at?: string
         }
         Update: {
+          created_at?: string
           id?: string
           name?: string
           sort_order?: number
+        }
+        Relationships: []
+      }
+      menu_discounts: {
+        Row: {
+          created_at: string
+          description: string | null
+          discount_type: 'percentage' | 'fixed_amount'
+          discount_value: number
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
           created_at?: string
+          description?: string | null
+          discount_type: 'percentage' | 'fixed_amount'
+          discount_value: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discount_type?: 'percentage' | 'fixed_amount'
+          discount_value?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_date?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
       menu_items: {
         Row: {
-          id: string
+          base_price: number
           category_id: string | null
-          name: string
-          description: string | null
-          price: number
-          photo_url: string | null
-          is_active: boolean
           created_at: string
+          description: string | null
+          discount_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          photo_url: string | null
+          price: number
+          short_description: string | null
           updated_at: string
         }
         Insert: {
-          id?: string
+          base_price?: number
           category_id?: string | null
-          name: string
-          description?: string | null
-          price: number
-          photo_url?: string | null
-          is_active?: boolean
           created_at?: string
+          description?: string | null
+          discount_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          photo_url?: string | null
+          price: number
+          short_description?: string | null
           updated_at?: string
         }
         Update: {
-          id?: string
+          base_price?: number
           category_id?: string | null
-          name?: string
-          description?: string | null
-          price?: number
-          photo_url?: string | null
-          is_active?: boolean
           created_at?: string
+          description?: string | null
+          discount_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          photo_url?: string | null
+          price?: number
+          short_description?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -70,6 +118,98 @@ export interface Database {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_items_discount_id_fkey"
+            columns: ["discount_id"]
+            isOneToOne: false
+            referencedRelation: "menu_discounts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      menu_option_items: {
+        Row: {
+          additional_price: number
+          created_at: string
+          id: string
+          is_available: boolean
+          menu_option_id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          additional_price?: number
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          menu_option_id: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          additional_price?: number
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          menu_option_id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_option_items_menu_option_id_fkey"
+            columns: ["menu_option_id"]
+            isOneToOne: false
+            referencedRelation: "menu_options"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      menu_options: {
+        Row: {
+          created_at: string
+          id: string
+          is_required: boolean
+          label: string
+          max_selections: number
+          menu_item_id: string
+          selection_type: 'single_required' | 'single_optional' | 'multiple'
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          label: string
+          max_selections?: number
+          menu_item_id: string
+          selection_type: 'single_required' | 'single_optional' | 'multiple'
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          label?: string
+          max_selections?: number
+          menu_item_id?: string
+          selection_type?: 'single_required' | 'single_optional' | 'multiple'
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_options_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
             referencedColumns: ["id"]
           }
         ]

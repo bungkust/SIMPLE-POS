@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../lib/database.types';
@@ -20,11 +20,35 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
   const [formData, setFormData] = useState({
     name: item?.name || '',
     description: item?.description || '',
+    short_description: item?.short_description || '',
     price: item?.price || 0,
+    base_price: item?.base_price || 0,
     photo_url: item?.photo_url || '',
     category_id: item?.category_id || '',
+    discount_id: item?.discount_id || '',
     is_active: item?.is_active ?? true,
   });
+
+  const [availableDiscounts, setAvailableDiscounts] = useState<Database['public']['Tables']['menu_discounts']['Row'][]>([]);
+
+  useEffect(() => {
+    loadDiscounts();
+  }, []);
+
+  const loadDiscounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('menu_discounts')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      if (data) setAvailableDiscounts(data);
+    } catch (error) {
+      console.error('Error loading discounts:', error);
+    }
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -174,18 +198,56 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Harga (Rp) <span className="text-red-500">*</span>
+                Harga Dasar (Rp) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 required
                 min="0"
                 step="1000"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                value={formData.base_price}
+                onChange={(e) => setFormData({ ...formData, base_price: parseInt(e.target.value) || 0 })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="15000"
+                placeholder="22000"
               />
+              <p className="text-xs text-slate-500 mt-1">Harga asli sebelum diskon</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Deskripsi Singkat <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.short_description}
+                onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Contoh: Coffee Milk with Palm Sugar"
+              />
+              <p className="text-xs text-slate-500 mt-1">Deskripsi singkat untuk kartu menu (1-2 kalimat)</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Diskon
+              </label>
+              <select
+                value={formData.discount_id}
+                onChange={(e) => setFormData({ ...formData, discount_id: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">Tanpa Diskon</option>
+                {availableDiscounts.map((discount) => (
+                  <option key={discount.id} value={discount.id}>
+                    {discount.name} - {discount.discount_type === 'percentage'
+                      ? `${discount.discount_value}%`
+                      : `Rp ${discount.discount_value.toLocaleString()}`
+                    }
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Pilih diskon yang akan diterapkan pada menu ini</p>
             </div>
 
             <div>

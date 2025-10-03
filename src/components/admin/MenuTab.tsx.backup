@@ -74,9 +74,12 @@ export function MenuTab() {
     if (!deleteConfirm.itemId) return;
 
     try {
+      // For admin users, we need to ensure proper authentication
       const adminEmails = import.meta.env.VITE_ADMIN_EMAILS?.split(',') || [];
-      
+
       if (adminEmails.includes(user?.email || '')) {
+        // Use service role key for admin operations if needed
+        // Or ensure the user is properly authenticated in Supabase
         const { error } = await supabase.from('menu_items').delete().eq('id', deleteConfirm.itemId);
 
         if (error) {
@@ -84,6 +87,7 @@ export function MenuTab() {
           throw error;
         }
       } else {
+        // For regular authenticated users
         const { error } = await supabase.from('menu_items').delete().eq('id', deleteConfirm.itemId);
         if (error) throw error;
       }
@@ -157,20 +161,11 @@ export function MenuTab() {
                 <div className="mb-2">
                   <span className="text-xs text-slate-500">{getCategoryName(item.category_id)}</span>
                   <h3 className="font-semibold text-slate-900">{item.name}</h3>
-                  {item.short_description && (
-                    <p className="text-sm text-slate-600 line-clamp-2 mt-1">{item.short_description}</p>
+                  {item.description && (
+                    <p className="text-sm text-slate-600 line-clamp-2 mt-1">{item.description}</p>
                   )}
                 </div>
-
-                <div className="mb-3">
-                  {item.discount_id && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm text-slate-500 line-through">{formatRupiah(item.base_price || item.price)}</span>
-                      <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">Diskon</span>
-                    </div>
-                  )}
-                  <p className="font-bold text-green-600">{formatRupiah(item.price)}</p>
-                </div>
+                <p className="font-bold text-green-600 mb-3">{formatRupiah(item.price)}</p>
 
                 <div className="flex gap-2">
                   <button
@@ -286,7 +281,7 @@ function OptionsManagerModal({
   const [optionItemFormData, setOptionItemFormData] = useState({
     name: '',
     additional_price: 0,
-    is_available: true  // Use is_available instead of is_default
+    is_default: false
   });
 
   useEffect(() => {
@@ -404,7 +399,7 @@ function OptionsManagerModal({
     setOptionItemFormData({
       name: '',
       additional_price: 0,
-      is_available: true
+      is_default: false
     });
   };
 
@@ -414,7 +409,7 @@ function OptionsManagerModal({
     setOptionItemFormData({
       name: optionItem.name,
       additional_price: optionItem.additional_price,
-      is_available: optionItem.is_available // Map is_available to form state
+      is_default: optionItem.is_available // Use is_available as default indicator
     });
     setShowOptionItemForm(true);
   };
@@ -437,63 +432,9 @@ function OptionsManagerModal({
     }
   };
 
-  const handleAddOptionItem = (optionId: string) => {
-    setSelectedOptionId(optionId);
-    setShowOptionItemForm(true);
-  };
-
-  const handleOptionItemSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!selectedOptionId) return;
-
-    try {
-      if (editingOptionItem) {
-        const { error } = await supabase
-          .from('menu_option_items')
-          .update({
-            name: optionItemFormData.name,
-            additional_price: optionItemFormData.additional_price,
-            is_available: optionItemFormData.is_available,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingOptionItem.id);
-
-        if (error) throw error;
-      } else {
-        const maxOrder = Math.max(...optionItems.filter(item => item.menu_option_id === selectedOptionId).map(item => item.sort_order), 0);
-        const { error } = await supabase
-          .from('menu_option_items')
-          .insert({
-            name: optionItemFormData.name,
-            additional_price: optionItemFormData.additional_price,
-            is_available: optionItemFormData.is_available,
-            menu_option_id: selectedOptionId,
-            sort_order: maxOrder + 1
-          });
-
-        if (error) throw error;
-      }
-
-      await loadOptions();
-      handleOptionItemFormClose();
-    } catch (error) {
-      console.error('Error saving option item:', error);
-      alert('Gagal menyimpan pilihan opsi: ' + (error as Error).message);
-    }
-  };
-
   const getOptionItems = (optionId: string) => {
     return optionItems.filter(item => item.menu_option_id === optionId);
   };
-
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center sm:justify-center z-50 p-4">
@@ -710,7 +651,6 @@ function OptionsManagerModal({
               </div>
             </form>
           </div>
-        </div>
       )}
 
       {/* Option Item Form Modal */}
@@ -753,25 +693,21 @@ function OptionsManagerModal({
                 <input
                   type="number"
                   min="0"
+                  step="1000"
                   value={optionItemFormData.additional_price}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value) || 0;
-                    // Round to nearest 1000 if not already multiple of 1000
-                    const roundedValue = Math.round(value / 1000) * 1000;
-                    setOptionItemFormData(prev => ({ ...prev, additional_price: Math.max(0, roundedValue) }));
-                  }}
+                  onChange={(e) => setOptionItemFormData(prev => ({ ...prev, additional_price: parseInt(e.target.value) || 0 }))}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   placeholder="0"
                 />
-                <p className="text-xs text-slate-500 mt-1">Biaya tambahan dalam kelipatan Rp 1.000 (otomatis dibulatkan)</p>
+                <p className="text-xs text-slate-500 mt-1">Biaya tambahan untuk pilihan ini (0 jika gratis)</p>
               </div>
 
               <div className="mb-6">
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={optionItemFormData.is_available}
-                    onChange={(e) => setOptionItemFormData(prev => ({ ...prev, is_available: e.target.checked }))}
+                    checked={optionItemFormData.is_default}
+                    onChange={(e) => setOptionItemFormData(prev => ({ ...prev, is_default: e.target.checked }))}
                     className="w-4 h-4 text-green-500 border-slate-300 rounded focus:ring-green-500"
                   />
                   <span className="text-sm text-slate-700">Set as default choice</span>
