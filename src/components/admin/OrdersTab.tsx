@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Filter, CheckCircle, XCircle, ExternalLink, Download, Printer, MessageCircle } from 'lucide-react';
+import { Filter, CheckCircle, XCircle, ExternalLink, Download, Printer, MessageCircle, Sheet } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatRupiah, formatDateTime } from '../../lib/utils';
 import { Database } from '../../lib/database.types';
@@ -19,7 +19,6 @@ export function OrdersTab() {
 
   const loadOrders = async () => {
     try {
-      // Load orders
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
@@ -30,7 +29,6 @@ export function OrdersTab() {
       const orders = ordersData || [];
       setOrders(orders);
 
-      // Load order items for all orders
       if (orders.length > 0) {
         const orderIds = orders.map(order => order.id);
         const { data: itemsData, error: itemsError } = await supabase
@@ -285,6 +283,53 @@ Kopi Pendekar Team`;
     window.open(whatsappURL, '_blank');
   };
 
+  const exportToGoogleSheets = async () => {
+    try {
+      const sheetData = filteredOrders.map((order) => {
+        const items = getOrderItemsForOrder(order.id);
+        return {
+          order_code: order.order_code,
+          created_at: formatDateTime(order.created_at),
+          customer_name: order.customer_name,
+          phone: order.phone,
+          items: items.map(item => `${item.name_snapshot} (${item.qty}x)`).join('; '),
+          total: order.total,
+          payment_method: order.payment_method,
+          status: order.status,
+          exported_at: new Date().toISOString(),
+        };
+      });
+
+      const response = await fetch(import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'exportOrders',
+          data: sheetData,
+          sheetName: 'Orders',
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`✅ Data berhasil di-export ke Google Sheets!\n📊 ${filteredOrders.length} orders telah di-sync.`);
+      } else {
+        throw new Error(result.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('Error exporting to Google Sheets:', error);
+      alert(`❌ Gagal export ke Google Sheets: ${error.message}\n\nPastikan Google Apps Script sudah di-setup dengan benar.`);
+    }
+  };
+
   const getOrderItemsForOrder = (orderId: string) => {
     return orderItems.filter(item => item.order_id === orderId);
   };
@@ -328,13 +373,23 @@ Kopi Pendekar Team`;
           </select>
         </div>
 
-        <button
-          onClick={exportToCSV}
-          className="ml-auto flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          <span>Export CSV</span>
-        </button>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export CSV</span>
+          </button>
+
+          <button
+            onClick={exportToGoogleSheets}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Sheet className="w-4 h-4" />
+            <span>Export to Sheets</span>
+          </button>
+        </div>
       </div>
 
       {filteredOrders.length === 0 ? (

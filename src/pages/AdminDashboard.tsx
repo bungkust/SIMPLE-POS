@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { LogOut, ShoppingBag, Coffee, CreditCard, Settings, FolderOpen } from 'lucide-react';
+import { LogOut, ShoppingBag, Coffee, CreditCard, Settings, FolderOpen, Sheet } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrdersTab } from '../components/admin/OrdersTab';
 import { MenuTab } from '../components/admin/MenuTab';
 import { PaymentTab } from '../components/admin/PaymentTab';
 import { SettingsTab } from '../components/admin/SettingsTab';
 import { CategoriesTab } from '../components/admin/CategoriesTab';
+import { GoogleSheetsTab } from '../components/admin/GoogleSheetsTab';
 
 interface AdminDashboardProps {
   onBack: () => void;
 }
 
 export function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'payment' | 'settings'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'payment' | 'settings' | 'sheets'>('orders');
   const { signOut, user } = useAuth();
 
   const handleSignOut = async () => {
@@ -89,6 +90,17 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
               <span className="text-sm">Pembayaran</span>
             </button>
             <button
+              onClick={() => setActiveTab('sheets')}
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors touch-manipulation min-w-fit whitespace-nowrap ${
+                activeTab === 'sheets'
+                  ? 'bg-green-500 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Sheet className="w-4 h-4" />
+              <span className="text-sm">Google Sheets</span>
+            </button>
+            <button
               onClick={() => setActiveTab('settings')}
               className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors touch-manipulation min-w-fit whitespace-nowrap ${
                 activeTab === 'settings'
@@ -108,6 +120,7 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
         {activeTab === 'menu' && <MenuTab />}
         {activeTab === 'categories' && <CategoriesTab />}
         {activeTab === 'payment' && <PaymentTab />}
+        {activeTab === 'sheets' && <GoogleSheetsTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </div>
     </div>
