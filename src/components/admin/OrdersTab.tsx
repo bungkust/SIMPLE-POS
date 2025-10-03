@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Filter, CheckCircle, XCircle, ExternalLink, Download } from 'lucide-react';
+import { Filter, CheckCircle, XCircle, ExternalLink, Download, Printer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatRupiah, formatDateTime } from '../../lib/utils';
 import { Database } from '../../lib/database.types';
 
 type Order = Database['public']['Tables']['orders']['Row'];
+type OrderItem = Database['public']['Tables']['order_items']['Row'];
 
 export function OrdersTab() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('');
 
@@ -17,15 +19,39 @@ export function OrdersTab() {
 
   const loadOrders = async () => {
     try {
-      const { data, error } = await supabase
+      // Load orders
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setOrders(data || []);
+      if (ordersError) throw ordersError;
+
+      const orders = ordersData || [];
+      setOrders(orders);
+
+      // Load order items for all orders
+      if (orders.length > 0) {
+        const orderIds = orders.map(order => order.id);
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*')
+          .in('order_id', orderIds)
+          .order('order_id');
+
+        if (itemsError) {
+          console.error('Error loading order items:', itemsError);
+          setOrderItems([]);
+        } else {
+          setOrderItems(itemsData || []);
+        }
+      } else {
+        setOrderItems([]);
+      }
     } catch (error) {
       console.error('Error loading orders:', error);
+      setOrders([]);
+      setOrderItems([]);
     } finally {
       setLoading(false);
     }
@@ -52,7 +78,7 @@ export function OrdersTab() {
       'Tanggal',
       'Nama',
       'HP',
-      'Tanggal Ambil',
+      'Pesanan',
       'Total',
       'Metode',
       'Status',
@@ -63,7 +89,7 @@ export function OrdersTab() {
       formatDateTime(order.created_at),
       order.customer_name,
       order.phone,
-      order.pickup_date,
+      formatOrderItems(order.id),
       order.total,
       order.payment_method,
       order.status,
@@ -77,10 +103,179 @@ export function OrdersTab() {
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
     a.download = `orders-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const printReceipt = (order: Order) => {
+    const items = getOrderItemsForOrder(order.id);
+
+    // Create receipt content for 80mm thermal printer
+    const receiptContent = `
+${'='.repeat(32)}
+        KOPI PENDEKAR
+${'='.repeat(32)}
+
+Order: ${order.order_code}
+Tanggal: ${formatDateTime(order.created_at)}
+Nama: ${order.customer_name}
+HP: ${order.phone}
+
+${'-'.repeat(32)}
+DAFTAR PESANAN:
+${'-'.repeat(32)}
+${items.map(item => `${item.name_snapshot}
+${item.qty}x @${formatRupiah(item.price_snapshot)} = ${formatRupiah(item.line_total)}`).join('\n\n')}
+
+${'-'.repeat(32)}
+TOTAL: ${formatRupiah(order.total)}
+Status: ${order.status}
+${'-'.repeat(32)}
+
+Terima kasih atas pesanan Anda!
+
+Printed: ${new Date().toLocaleString('id-ID')}
+${'='.repeat(32)}
+    `;
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Receipt - ${order.order_code}</title>
+          <style>
+            @media print {
+              @page {
+                size: 80mm auto;
+                margin: 0;
+              }
+              body {
+                margin: 0;
+                padding: 3mm;
+              }
+            }
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 14px;
+              line-height: 1.3;
+              margin: 0;
+              padding: 8px;
+              width: 80mm;
+              white-space: pre-wrap;
+            }
+          </style>
+        </head>
+        <body>
+${receiptContent}
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const downloadReceipt = (order: Order) => {
+    const items = getOrderItemsForOrder(order.id);
+
+    // Create receipt content for 80mm thermal printer
+    const receiptContent = `
+${'='.repeat(32)}
+        KOPI PENDEKAR
+${'='.repeat(32)}
+
+Order: ${order.order_code}
+Tanggal: ${formatDateTime(order.created_at)}
+Nama: ${order.customer_name}
+HP: ${order.phone}
+
+${'-'.repeat(32)}
+DAFTAR PESANAN:
+${'-'.repeat(32)}
+${items.map(item => `${item.name_snapshot}
+${item.qty}x @${formatRupiah(item.price_snapshot)} = ${formatRupiah(item.line_total)}`).join('\n\n')}
+
+${'-'.repeat(32)}
+TOTAL: ${formatRupiah(order.total)}
+Status: ${order.status}
+${'-'.repeat(32)}
+
+Terima kasih atas pesanan Anda!
+
+Downloaded: ${new Date().toLocaleString('id-ID')}
+${'='.repeat(32)}
+    `;
+
+    // Create canvas for 80mm thermal printer format
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      alert('Canvas not supported in this browser');
+      return;
+    }
+
+    // Set canvas size for 80mm thermal printer (203 DPI standard)
+    // 80mm × (203 DPI / 25.4 mm per inch) ≈ 640 pixels
+    canvas.width = 640;
+    canvas.height = 800; // Sufficient height for content
+
+    // Set background to white
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Set text properties (scaled for 640px width)
+    ctx.fillStyle = '#000000';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'left';
+
+    // Split content into lines and draw
+    const lines = receiptContent.trim().split('\n');
+    let y = 30;
+
+    lines.forEach(line => {
+      // Handle different line types for better formatting (scaled fonts)
+      if (line.includes('=')) {
+        ctx.font = 'bold 16px monospace';
+      } else if (line.includes('-')) {
+        ctx.font = '14px monospace';
+      } else if (line.includes('Rp') || line.includes('TOTAL')) {
+        ctx.font = 'bold 16px monospace';
+      } else {
+        ctx.font = '14px monospace';
+      }
+
+      ctx.fillText(line, 15, y);
+      y += 22;
+    });
+
+    // Convert canvas to blob
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `receipt-${order.order_code}.jpg`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    }, 'image/jpeg', 0.9);
+  };
+
+  const getOrderItemsForOrder = (orderId: string) => {
+    return orderItems.filter(item => item.order_id === orderId);
+  };
+  const formatOrderItems = (orderId: string) => {
+    const items = getOrderItemsForOrder(orderId);
+    if (items.length === 0) return 'Tidak ada item';
+
+    return items.map(item =>
+      `${item.name_snapshot} (${item.qty}x) - ${formatRupiah(item.line_total)}`
+    ).join(', ');
   };
 
   const filteredOrders = orders.filter((order) => {
@@ -151,6 +346,9 @@ export function OrdersTab() {
                     HP
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                    Pesanan
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
                     Total
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
@@ -184,6 +382,9 @@ export function OrdersTab() {
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-900">{order.customer_name}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{order.phone}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate" title={formatOrderItems(order.id)}>
+                      {formatOrderItems(order.id)}
+                    </td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-900">
                       {formatRupiah(order.total)}
                     </td>
@@ -199,6 +400,20 @@ export function OrdersTab() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => printReceipt(order)}
+                          className="p-1 hover:bg-blue-100 rounded text-blue-600"
+                          title="Cetak Struk"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => downloadReceipt(order)}
+                          className="p-1 hover:bg-green-100 rounded text-green-600"
+                          title="Download Struk"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
                         {order.status === 'BELUM BAYAR' && (
                           <>
                             <button
