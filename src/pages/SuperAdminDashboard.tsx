@@ -29,7 +29,7 @@ interface SuperAdminDashboardProps {
 }
 
 export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
-  const { signOut, user, isSuperAdmin, adminRole, loading } = useAuth();
+  const { signOut, user, accessStatus, loading } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantAdmins, setTenantAdmins] = useState<{[tenantId: string]: TenantAdmin[]}>({});
   const [componentLoading, setComponentLoading] = useState(true);
@@ -39,36 +39,36 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
 
   useEffect(() => {
-    console.log('🔍 SuperAdminDashboard: Component mounted');
-    console.log('🔍 SuperAdminDashboard: Auth loading:', loading);
-    console.log('🔍 SuperAdminDashboard: User:', user?.email);
-    console.log('🔍 SuperAdminDashboard: isSuperAdmin:', isSuperAdmin);
-    console.log('🔍 SuperAdminDashboard: adminRole:', adminRole);
+    console.log('🔍 SuperAdminDashboard:', {
+      loading,
+      user: user?.email,
+      isSuperAdmin: accessStatus?.is_super_admin,
+      adminRole: accessStatus?.is_super_admin ? 'super_admin' : null
+    });
 
-    // Wait for auth to complete before checking permissions
     if (loading) {
-      console.log('⏳ SuperAdminDashboard: Waiting for auth to complete...');
+      console.log('⏳ Loading auth...');
       return;
     }
 
     if (!user) {
-      console.log('❌ SuperAdminDashboard: No user found');
-      setError('User not authenticated');
+      console.log('❌ No user found');
+      setError('No user found. Silakan login.');
       setComponentLoading(false);
       return;
     }
 
-    if (!isSuperAdmin) {
-      console.log('❌ SuperAdminDashboard: User is not super admin');
-      setError('Access denied: Super admin privileges required');
+    if (!accessStatus?.is_super_admin) {
+      console.log('⛔ Access denied (not super admin)');
+      setError('Access denied (not super admin)');
       setComponentLoading(false);
       return;
     }
 
-    console.log('✅ SuperAdminDashboard: Access granted, loading tenants...');
+    console.log('✅ Access granted, loading tenants...');
     setComponentLoading(false);
     loadTenants();
-  }, [user, isSuperAdmin, adminRole, loading]);
+  }, [user, accessStatus, loading]);
 
   const loadTenants = async () => {
     try {

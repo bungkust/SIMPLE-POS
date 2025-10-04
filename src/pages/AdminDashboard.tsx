@@ -14,7 +14,7 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ onBack }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'payment' | 'settings' | 'sheets'>('orders');
-  const { signOut, user, tenant } = useAuth();
+  const { signOut, user, currentTenant, isTenantAdmin } = useAuth();
 
   const handleSignOut = async () => {
     try {
@@ -31,7 +31,7 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
             <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              Admin Dashboard {tenant ? `- ${tenant.name}` : ''}
+              Admin Dashboard {currentTenant ? `- ${currentTenant.tenant_name}` : ''}
             </h1>
             <div className="flex items-center gap-2 sm:gap-3">
               <span className="text-xs sm:text-sm text-slate-600 truncate max-w-[120px] sm:max-w-none">{user?.email}</span>
@@ -60,7 +60,7 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
                   <span className="hidden sm:inline">Admin</span>
                 </a>
 
-                {tenant?.role === 'admin' && (
+                {isTenantAdmin && (
                   <a
                     href="/sadmin/dashboard"
                     target="_blank"

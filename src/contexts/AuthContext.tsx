@@ -1,200 +1,90 @@
+'use client'
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-  role: string;
+// ========================================
+// TYPES & INTERFACES
+// ========================================
+
+interface TenantMembership {
+  tenant_id: string;
+  tenant_slug: string;
+  tenant_name: string;
+  role: 'super_admin' | 'admin' | 'manager' | 'cashier';
+}
+
+interface UserAccessStatus {
+  is_super_admin: boolean;
+  memberships: TenantMembership[];
+  user_id: string;
+  user_email: string;
 }
 
 interface AuthContextType {
+  // Authentication State
   user: User | null;
-  tenant: Tenant | null;
   loading: boolean;
+
+  // Authorization State
+  accessStatus: UserAccessStatus | null;
+  currentTenant: TenantMembership | null;
+
+  // Actions
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  isAdmin: boolean;
-  adminRole: string | null;
+  setCurrentTenant: (tenant: TenantMembership | null) => void;
+  refreshAccessStatus: () => Promise<void>;
+
+  // Computed Properties
+  isAuthenticated: boolean;
   isSuperAdmin: boolean;
+  hasTenantAccess: boolean;
+  isTenantAdmin: boolean;
+  isTenantSuperAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Get tenant slug from URL path
+// ========================================
+// UTILITY FUNCTIONS
+// ========================================
+
 const getTenantSlugFromURL = (): string | null => {
   const path = window.location.pathname;
   const pathParts = path.split('/').filter(Boolean);
 
-  // Check if path starts with tenant slug pattern (not admin, not other routes)
-  if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success') {
+  if (pathParts.length >= 1 &&
+      !pathParts[0].includes('admin') &&
+      !pathParts[0].includes('login') &&
+      pathParts[0] !== 'checkout' &&
+      pathParts[0] !== 'orders' &&
+      pathParts[0] !== 'invoice' &&
+      pathParts[0] !== 'success') {
     return pathParts[0];
   }
 
   return null;
 };
 
-// Resolve tenant by slug (for URL-based access)
-const resolveTenantBySlug = async (slug: string): Promise<Tenant | null> => {
-  console.log('🔄 resolveTenantBySlug: Resolving tenant for slug:', slug);
-
-  try {
-    const { data, error } = await (supabase as any)
-      .from('tenants')
-      .select('id, name, slug')
-      .eq('slug', slug)
-      .eq('is_active', true)
-      .single();
-
-    console.log('🔄 resolveTenantBySlug: Query result:', { data, error });
-
-    if (error || !data) {
-      console.error('❌ resolveTenantBySlug: Resolution failed:', error);
-      return null;
-    }
-
-    const result = {
-      id: data.id,
-      name: data.name,
-      slug: data.slug,
-      role: 'guest' // Default role for URL-based access
-    };
-
-    console.log('✅ resolveTenantBySlug: Success:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ resolveTenantBySlug: Error:', error);
-    return null;
-  }
-};
+// ========================================
+// AUTH PROVIDER COMPONENT
+// ========================================
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Authentication State
   const [user, setUser] = useState<User | null>(null);
-  const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [adminRole, setAdminRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    console.log('🔄 AuthContext: Starting initialization...');
+  // Authorization State
+  const [accessStatus, setAccessStatus] = useState<UserAccessStatus | null>(null);
+  const [currentTenant, setCurrentTenant] = useState<TenantMembership | null>(null);
 
-    // Prevent double execution in React StrictMode
-    let initialized = false;
-
-    const initializeAuth = async () => {
-      if (initialized) {
-        console.log('🔄 AuthContext: Already initialized, skipping...');
-        return;
-      }
-      initialized = true;
-
-      try {
-        setLoading(true);
-        console.log('🔄 AuthContext: Getting session...');
-
-        const { data: { session } } = await supabase.auth.getSession();
-        const currentUser = session?.user ?? null;
-
-        console.log('🔄 AuthContext: Session result:', { currentUser: !!currentUser, email: currentUser?.email });
-
-        if (currentUser) {
-          console.log('🔄 AuthContext: User found');
-          setUser(currentUser);
-
-          // Check if user is super admin
-          const isSuperAdmin = await checkSuperAdmin(currentUser.email || '');
-          console.log('🔄 AuthContext: Super admin check result:', isSuperAdmin);
-
-          if (isSuperAdmin) {
-            console.log('👑 AuthContext: User is super admin');
-            setAdminRole('super_admin');
-          } else {
-            // Check if user has tenant access
-            const userTenant = await getUserTenant(currentUser.email || '');
-            if (userTenant) {
-              setTenant(userTenant);
-              setAdminRole(userTenant.role);
-              console.log('✅ AuthContext: User tenant set:', userTenant);
-            } else {
-              // Set guest role if no tenant access
-              setTenant(null);
-              setAdminRole(null);
-              console.log('❓ AuthContext: No tenant access found');
-            }
-          }
-        } else {
-          console.log('🔄 AuthContext: No user found');
-
-          // Check if we're on a tenant-specific URL
-          const tenantSlug = getTenantSlugFromURL();
-          if (tenantSlug) {
-            console.log('🔄 AuthContext: Tenant URL detected:', tenantSlug);
-            const tenantInfo = await resolveTenantBySlug(tenantSlug);
-            if (tenantInfo) {
-              setTenant(tenantInfo);
-              console.log('✅ AuthContext: Tenant set from URL:', tenantInfo);
-            }
-          }
-
-          setUser(null);
-          setAdminRole(null);
-        }
-      } catch (error) {
-        console.error('❌ AuthContext: Initialization error:', error);
-        // Don't set mock data on error - let it fail gracefully
-        setUser(null);
-        setTenant(null);
-        setAdminRole(null);
-      } finally {
-        console.log('🔄 AuthContext: Setting loading to false');
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('🔄 AuthContext: Auth state changed:', { event: _event, hasUser: !!session?.user });
-
-      const currentUser = session?.user ?? null;
-
-      if (currentUser) {
-        console.log('🔄 AuthContext: Processing authenticated user:', currentUser.email);
-        setUser(currentUser);
-
-        // Check if user is super admin
-        const isSuperAdmin = await checkSuperAdmin(currentUser.email || '');
-
-        if (isSuperAdmin) {
-          console.log('👑 AuthContext: User is super admin');
-          setAdminRole('super_admin');
-          setTenant(null); // Super admins don't have tenant context
-        } else {
-          // Get user's tenant information
-          const userTenant = await getUserTenant(currentUser.email || '');
-          if (userTenant) {
-            setTenant(userTenant);
-            setAdminRole(userTenant.role);
-            console.log('✅ AuthContext: User tenant set from auth change:', userTenant);
-          } else {
-            setTenant(null);
-            setAdminRole(null);
-            console.log('❓ AuthContext: No tenant access found for user');
-          }
-        }
-      } else {
-        console.log('🔄 AuthContext: User logged out');
-        setUser(null);
-        setTenant(null);
-        setAdminRole(null);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  // ========================================
+  // AUTHENTICATION FUNCTIONS
+  // ========================================
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -217,9 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      // Check if current user is super admin (this should be checked after OAuth redirect)
-      // For now, we'll redirect based on the current implementation
-      const redirectTo = `${window.location.origin}/admin/dashboard`;
+      const redirectTo = `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -241,8 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setUser(null);
-      setTenant(null);
-      setAdminRole(null);
+      setAccessStatus(null);
+      setCurrentTenant(null);
 
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -254,120 +142,178 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Check if user is super admin
-  const checkSuperAdmin = async (email: string): Promise<boolean> => {
+  // ========================================
+  // AUTHORIZATION FUNCTIONS
+  // ========================================
+
+  const refreshAccessStatus = async () => {
     try {
-      console.log('🔍 checkSuperAdmin: STARTING CHECK FOR:', email);
-
-      // Ensure email is valid
-      if (!email || typeof email !== 'string') {
-        console.log('❌ checkSuperAdmin: Invalid email provided');
-        return false;
-      }
-
-      console.log('🔍 checkSuperAdmin: About to execute query...');
-
-      // Add timeout to prevent hanging
-      const queryPromise = (supabase as any)
-        .from('admin_users')
-        .select('role')
-        .eq('email', email)
-        .eq('is_active', true)
-        .single();
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
-      );
-
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
-
-      console.log('🔍 checkSuperAdmin: Query completed');
-      console.log('🔍 checkSuperAdmin: Raw data:', data);
-      console.log('🔍 checkSuperAdmin: Raw error:', error);
+      const { data, error } = await (supabase as any).rpc('get_user_access_status');
 
       if (error) {
-        console.log('❌ checkSuperAdmin: Query error:', error.message, error.code, error.details);
-        return false;
+        console.error('Failed to get access status:', error);
+        setAccessStatus(null);
+        return;
       }
 
-      if (!data) {
-        console.log('❌ checkSuperAdmin: No data returned');
-        return false;
+      if (data) {
+        setAccessStatus(data);
+
+        // Auto-select tenant from URL if user has access
+        const urlSlug = getTenantSlugFromURL();
+        if (urlSlug && !currentTenant) {
+          // Find matching membership from RPC data (no extra query needed)
+          const matchingMembership = data.memberships.find(
+            (m: TenantMembership) => m.tenant_slug === urlSlug
+          );
+
+          if (matchingMembership) {
+            setCurrentTenant(matchingMembership);
+          }
+        }
+
+        // Set default tenant if none selected
+        if (!currentTenant && data.memberships.length > 0) {
+          setCurrentTenant(data.memberships[0]);
+        }
       }
-
-      console.log('🔍 checkSuperAdmin: Data role:', data.role);
-      const isSuperAdmin = data.role === 'super_admin';
-      console.log('✅ checkSuperAdmin: Final result:', isSuperAdmin);
-      return isSuperAdmin;
-    } catch (error: any) {
-      console.error('❌ checkSuperAdmin: Exception caught:', error);
-      console.error('❌ checkSuperAdmin: Error type:', typeof error);
-      console.error('❌ checkSuperAdmin: Error constructor:', error?.constructor?.name);
-      console.error('❌ checkSuperAdmin: Error message:', error?.message);
-      console.error('❌ checkSuperAdmin: Error stack:', error?.stack);
-      return false;
-    }
-  };
-
-  // Get user's tenant information
-  const getUserTenant = async (email: string): Promise<Tenant | null> => {
-    try {
-      const { data, error } = await (supabase as any)
-        .from('tenant_users')
-        .select(`
-          tenant_id,
-          role,
-          tenants (
-            id,
-            name,
-            slug
-          )
-        `)
-        .eq('user_email', email)
-        .eq('is_active', true)
-        .single();
-
-      if (error || !data || !data.tenants) {
-        console.log('❌ getUserTenant: No tenant found for user:', email);
-        return null;
-      }
-
-      const tenantData = Array.isArray(data.tenants) ? data.tenants[0] : data.tenants;
-
-      return {
-        id: tenantData.id,
-        name: tenantData.name,
-        slug: tenantData.slug,
-        role: data.role
-      };
     } catch (error) {
-      console.error('Error getting user tenant:', error);
-      return null;
+      console.error('Error refreshing access status:', error);
+      setAccessStatus(null);
     }
   };
 
-  // Admin check berdasarkan tenant role
-  const isAdmin = adminRole !== null && (adminRole === 'admin' || adminRole === 'super_admin');
+  // ========================================
+  // INITIALIZATION & LISTENERS
+  // ========================================
 
-  // Super admin check
-  const isSuperAdmin = adminRole === 'super_admin';
+  useEffect(() => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        setLoading(true);
+
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUser = session?.user ?? null;
+
+        if (currentUser && mounted) {
+          setUser(currentUser);
+          await refreshAccessStatus();
+        } else if (mounted) {
+          setUser(null);
+          setAccessStatus(null);
+          setCurrentTenant(null);
+
+          // Check for tenant-specific URL access (for non-authenticated users)
+          const tenantSlug = getTenantSlugFromURL();
+          if (tenantSlug) {
+            // For non-authenticated users, we can't verify access, so just set a placeholder
+            // The actual tenant access will be checked after authentication
+            setCurrentTenant({
+              tenant_id: '',
+              tenant_slug: tenantSlug,
+              tenant_name: tenantSlug,
+              role: 'cashier'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setUser(null);
+          setAccessStatus(null);
+          setCurrentTenant(null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+
+        try {
+          if (currentUser) {
+            setUser(currentUser);
+            await refreshAccessStatus();
+          } else {
+            setUser(null);
+            setAccessStatus(null);
+            setCurrentTenant(null);
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error);
+          setUser(null);
+          setAccessStatus(null);
+          setCurrentTenant(null);
+        } finally {
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // ========================================
+  // COMPUTED PROPERTIES
+  // ========================================
+
+  const isAuthenticated = !!user;
+  const isSuperAdmin = accessStatus?.is_super_admin ?? false;
+  const hasTenantAccess = (accessStatus?.memberships.length ?? 0) > 0;
+  const isTenantAdmin = currentTenant?.role === 'admin' || currentTenant?.role === 'super_admin';
+  const isTenantSuperAdmin = currentTenant?.role === 'super_admin';
+
+  // ========================================
+  // CONTEXT VALUE
+  // ========================================
+
+  const value: AuthContextType = {
+    // Authentication State
+    user,
+    loading,
+
+    // Authorization State
+    accessStatus,
+    currentTenant,
+
+    // Actions
+    signIn,
+    signInWithGoogle,
+    signOut,
+    setCurrentTenant,
+    refreshAccessStatus,
+
+    // Computed Properties
+    isAuthenticated,
+    isSuperAdmin,
+    hasTenantAccess,
+    isTenantAdmin,
+    isTenantSuperAdmin,
+  };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      tenant,
-      loading,
-      signIn,
-      signInWithGoogle,
-      signOut,
-      isAdmin,
-      adminRole,
-      isSuperAdmin
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 }
+
+// ========================================
+// HOOK
+// ========================================
 
 export function useAuth() {
   const context = useContext(AuthContext);
