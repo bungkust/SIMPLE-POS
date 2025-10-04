@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogOut, ShoppingBag, Coffee, CreditCard, Settings, FolderOpen, Sheet } from 'lucide-react';
+import { LogOut, ShoppingBag, Coffee, CreditCard, Settings, FolderOpen, Sheet, Shield, Home } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrdersTab } from '../components/admin/OrdersTab';
 import { MenuTab } from '../components/admin/MenuTab';
@@ -35,6 +35,45 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
             </h1>
             <div className="flex items-center gap-2 sm:gap-3">
               <span className="text-xs sm:text-sm text-slate-600 truncate max-w-[120px] sm:max-w-none">{user?.email}</span>
+
+              {/* Quick Access Links */}
+              <div className="flex items-center gap-1 sm:gap-2">
+                <a
+                  href="/kopipendekar"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-2 py-1 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors text-xs sm:text-sm"
+                  title="Kopi Pendekar Homepage"
+                >
+                  <Home className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Homepage</span>
+                </a>
+
+                <a
+                  href="/kopipendekar/admin/login"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-2 py-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors text-xs sm:text-sm"
+                  title="Admin Login"
+                >
+                  <Coffee className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Admin</span>
+                </a>
+
+                {tenant?.role === 'admin' && (
+                  <a
+                    href="/sadmin/dashboard"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-2 py-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-colors text-xs sm:text-sm"
+                    title="Super Admin Dashboard"
+                  >
+                    <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Super Admin</span>
+                  </a>
+                )}
+              </div>
+
               <button
                 onClick={handleSignOut}
                 className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors touch-manipulation text-sm"

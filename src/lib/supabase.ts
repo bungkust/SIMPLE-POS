@@ -37,4 +37,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 });
 
+// Make supabase globally available for debugging (development only)
+if (import.meta.env.DEV) {
+  (window as any).supabase = supabase;
+}
+
 console.log('Supabase client created successfully with RLS support');

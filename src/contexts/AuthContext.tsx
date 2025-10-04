@@ -104,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           // Check if user is super admin
           const isSuperAdmin = await checkSuperAdmin(currentUser.email || '');
+          console.log('🔄 AuthContext: Super admin check result:', isSuperAdmin);
 
           if (isSuperAdmin) {
             console.log('👑 AuthContext: User is super admin');
@@ -256,20 +257,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check if user is super admin
   const checkSuperAdmin = async (email: string): Promise<boolean> => {
     try {
-      const { data, error } = await (supabase as any)
+      console.log('🔍 checkSuperAdmin: STARTING CHECK FOR:', email);
+
+      // Ensure email is valid
+      if (!email || typeof email !== 'string') {
+        console.log('❌ checkSuperAdmin: Invalid email provided');
+        return false;
+      }
+
+      console.log('🔍 checkSuperAdmin: About to execute query...');
+
+      // Add timeout to prevent hanging
+      const queryPromise = (supabase as any)
         .from('admin_users')
         .select('role')
         .eq('email', email)
         .eq('is_active', true)
         .single();
 
-      if (error || !data) {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+      );
+
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+
+      console.log('🔍 checkSuperAdmin: Query completed');
+      console.log('🔍 checkSuperAdmin: Raw data:', data);
+      console.log('🔍 checkSuperAdmin: Raw error:', error);
+
+      if (error) {
+        console.log('❌ checkSuperAdmin: Query error:', error.message, error.code, error.details);
         return false;
       }
 
-      return data.role === 'super_admin';
-    } catch (error) {
-      console.error('Error checking super admin:', error);
+      if (!data) {
+        console.log('❌ checkSuperAdmin: No data returned');
+        return false;
+      }
+
+      console.log('🔍 checkSuperAdmin: Data role:', data.role);
+      const isSuperAdmin = data.role === 'super_admin';
+      console.log('✅ checkSuperAdmin: Final result:', isSuperAdmin);
+      return isSuperAdmin;
+    } catch (error: any) {
+      console.error('❌ checkSuperAdmin: Exception caught:', error);
+      console.error('❌ checkSuperAdmin: Error type:', typeof error);
+      console.error('❌ checkSuperAdmin: Error constructor:', error?.constructor?.name);
+      console.error('❌ checkSuperAdmin: Error message:', error?.message);
+      console.error('❌ checkSuperAdmin: Error stack:', error?.stack);
       return false;
     }
   };

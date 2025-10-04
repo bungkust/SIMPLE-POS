@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit, Trash2, Shield, List, Grid3X3, Table, UserPlus, X, LogOut, ExternalLink, User, Home } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Shield, List, Grid3X3, Table, UserPlus, X, LogOut, User, Home } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 type Tenant = {
@@ -29,21 +29,52 @@ interface SuperAdminDashboardProps {
 }
 
 export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
-  const { signOut, user } = useAuth();
+  const { signOut, user, isSuperAdmin, adminRole, loading } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantAdmins, setTenantAdmins] = useState<{[tenantId: string]: TenantAdmin[]}>({});
-  const [loading, setLoading] = useState(true);
+  const [componentLoading, setComponentLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showTenantForm, setShowTenantForm] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
 
   useEffect(() => {
+    console.log('🔍 SuperAdminDashboard: Component mounted');
+    console.log('🔍 SuperAdminDashboard: Auth loading:', loading);
+    console.log('🔍 SuperAdminDashboard: User:', user?.email);
+    console.log('🔍 SuperAdminDashboard: isSuperAdmin:', isSuperAdmin);
+    console.log('🔍 SuperAdminDashboard: adminRole:', adminRole);
+
+    // Wait for auth to complete before checking permissions
+    if (loading) {
+      console.log('⏳ SuperAdminDashboard: Waiting for auth to complete...');
+      return;
+    }
+
+    if (!user) {
+      console.log('❌ SuperAdminDashboard: No user found');
+      setError('User not authenticated');
+      setComponentLoading(false);
+      return;
+    }
+
+    if (!isSuperAdmin) {
+      console.log('❌ SuperAdminDashboard: User is not super admin');
+      setError('Access denied: Super admin privileges required');
+      setComponentLoading(false);
+      return;
+    }
+
+    console.log('✅ SuperAdminDashboard: Access granted, loading tenants...');
+    setComponentLoading(false);
     loadTenants();
-  }, []);
+  }, [user, isSuperAdmin, adminRole, loading]);
 
   const loadTenants = async () => {
     try {
-      setLoading(true);
+      console.log('🔄 SuperAdminDashboard: Starting to load tenants...');
+      setComponentLoading(true);
+      setError(null);
 
       // Load tenants
       const { data: tenantsData, error: tenantsError } = await (supabase as any)
@@ -51,15 +82,20 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (tenantsError) throw tenantsError;
+      if (tenantsError) {
+        console.error('❌ SuperAdminDashboard: Tenants query error:', tenantsError);
+        throw tenantsError;
+      }
 
       const tenants = tenantsData || [];
+      console.log('✅ SuperAdminDashboard: Loaded tenants:', tenants.length);
       setTenants(tenants);
 
       // Load tenant admins for each tenant
       const adminsMap: {[tenantId: string]: TenantAdmin[]} = {};
 
       for (const tenant of tenants) {
+        console.log('🔄 SuperAdminDashboard: Loading admins for tenant:', tenant.name);
         const { data: adminsData, error: adminsError } = await (supabase as any)
           .from('tenant_users')
           .select('*')
@@ -69,16 +105,19 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
 
         if (!adminsError && adminsData) {
           adminsMap[tenant.id] = adminsData;
+          console.log('✅ SuperAdminDashboard: Loaded admins for tenant:', tenant.name, adminsData.length);
         } else {
           adminsMap[tenant.id] = [];
+          console.log('⚠️ SuperAdminDashboard: No admins found for tenant:', tenant.name);
         }
       }
 
       setTenantAdmins(adminsMap);
     } catch (error) {
-      console.error('Error loading tenants:', error);
+      console.error('❌ SuperAdminDashboard: Error loading tenants:', error);
+      setError('Failed to load tenants. Please try again.');
     } finally {
-      setLoading(false);
+      setComponentLoading(false);
     }
   };
 
@@ -122,10 +161,40 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
     }
   };
 
-  if (loading) {
+  if (componentLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Error</h2>
+          <p className="text-slate-600 mb-6">{error}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
