@@ -13,7 +13,7 @@ export function ProtectedRoute({
   requireAdmin = false,
   requireAuth = false
 }: ProtectedRouteProps) {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, tenant, loading, isAdmin } = useAuth();
   const [hasChecked, setHasChecked] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -101,7 +101,7 @@ export function ProtectedRoute({
                 Your account ({user.email}) doesn't have admin privileges.
               </p>
               <p className="text-xs text-slate-400">
-                Only kusbot114@gmail.com has admin access.
+                Contact your tenant administrator for access.
               </p>
             </div>
           ) : (

@@ -32,32 +32,55 @@ export function MenuTab() {
   }, []);
 
   const loadData = async () => {
+    console.log('🔄 MenuTab: Starting to load menu data...');
     try {
+      console.log('🔄 MenuTab: Querying menu_items and categories...');
       const [itemsRes, categoriesRes] = await Promise.all([
         supabase.from('menu_items').select('*').order('created_at', { ascending: false }),
         supabase.from('categories').select('*').order('sort_order'),
       ]);
 
-      if (itemsRes.data) setMenuItems(itemsRes.data);
-      if (categoriesRes.data) setCategories(categoriesRes.data);
+      console.log('🔄 MenuTab: Menu items query result:', { dataLength: itemsRes.data?.length, error: itemsRes.error });
+      console.log('🔄 MenuTab: Categories query result:', { dataLength: categoriesRes.data?.length, error: categoriesRes.error });
+
+      if (itemsRes.error) {
+        console.error('❌ MenuTab: Menu items query failed:', itemsRes.error);
+      } else {
+        console.log('✅ MenuTab: Menu items loaded successfully:', itemsRes.data?.length, 'items');
+        if (itemsRes.data) setMenuItems(itemsRes.data);
+      }
+
+      if (categoriesRes.error) {
+        console.error('❌ MenuTab: Categories query failed:', categoriesRes.error);
+      } else {
+        console.log('✅ MenuTab: Categories loaded successfully:', categoriesRes.data?.length, 'categories');
+        if (categoriesRes.data) setCategories(categoriesRes.data);
+      }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ MenuTab: Error loading data:', error);
     } finally {
+      console.log('🔄 MenuTab: Setting loading to false');
       setLoading(false);
     }
   };
 
   const toggleActive = async (itemId: string, currentState: boolean) => {
+    console.log('🔄 MenuTab: Toggling active state for item:', itemId);
     try {
       const { error } = await supabase
         .from('menu_items')
         .update({ is_active: !currentState, updated_at: new Date().toISOString() })
         .eq('id', itemId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ MenuTab: Toggle active failed:', error);
+        throw error;
+      }
+
+      console.log('✅ MenuTab: Toggle active successful');
       await loadData();
     } catch (error) {
-      console.error('Error toggling active state:', error);
+      console.error('❌ MenuTab: Error toggling active state:', error);
       alert('Gagal mengupdate status menu');
     }
   };
@@ -325,8 +348,11 @@ function OptionsManagerModal({
   const handleOptionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('🔄 OptionsManager: Submitting option form:', { editingOption: !!editingOption, optionFormData });
+
     try {
       if (editingOption) {
+        console.log('🔄 OptionsManager: Updating option with ID:', editingOption.id);
         const { error } = await supabase
           .from('menu_options')
           .update({
@@ -335,9 +361,15 @@ function OptionsManagerModal({
           })
           .eq('id', editingOption.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ OptionsManager: Option update failed:', error);
+          throw error;
+        }
+
+        console.log('✅ OptionsManager: Option updated successfully');
       } else {
         const maxOrder = Math.max(...options.map(opt => opt.sort_order), 0);
+        console.log('🔄 OptionsManager: Creating new option for menu item:', menuItem.id);
         const { error } = await supabase
           .from('menu_options')
           .insert({
@@ -346,13 +378,18 @@ function OptionsManagerModal({
             sort_order: maxOrder + 1
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ OptionsManager: Option creation failed:', error);
+          throw error;
+        }
+
+        console.log('✅ OptionsManager: Option created successfully');
       }
 
       await loadOptions();
       handleOptionFormClose();
     } catch (error) {
-      console.error('Error saving option:', error);
+      console.error('❌ OptionsManager: Error saving option:', error);
       alert('Gagal menyimpan opsi');
     }
   };
@@ -445,10 +482,20 @@ function OptionsManagerModal({
   const handleOptionItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedOptionId) return;
+    if (!selectedOptionId) {
+      console.error('❌ OptionsManager: No option ID selected');
+      return;
+    }
+
+    console.log('🔄 OptionsManager: Submitting option item form:', {
+      editingOptionItem: !!editingOptionItem,
+      selectedOptionId,
+      optionItemFormData
+    });
 
     try {
       if (editingOptionItem) {
+        console.log('🔄 OptionsManager: Updating option item with ID:', editingOptionItem.id);
         const { error } = await supabase
           .from('menu_option_items')
           .update({
@@ -459,9 +506,15 @@ function OptionsManagerModal({
           })
           .eq('id', editingOptionItem.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ OptionsManager: Option item update failed:', error);
+          throw error;
+        }
+
+        console.log('✅ OptionsManager: Option item updated successfully');
       } else {
         const maxOrder = Math.max(...optionItems.filter(item => item.menu_option_id === selectedOptionId).map(item => item.sort_order), 0);
+        console.log('🔄 OptionsManager: Creating new option item for option:', selectedOptionId);
         const { error } = await supabase
           .from('menu_option_items')
           .insert({
@@ -472,13 +525,18 @@ function OptionsManagerModal({
             sort_order: maxOrder + 1
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ OptionsManager: Option item creation failed:', error);
+          throw error;
+        }
+
+        console.log('✅ OptionsManager: Option item created successfully');
       }
 
       await loadOptions();
       handleOptionItemFormClose();
     } catch (error) {
-      console.error('Error saving option item:', error);
+      console.error('❌ OptionsManager: Error saving option item:', error);
       alert('Gagal menyimpan pilihan opsi: ' + (error as Error).message);
     }
   };

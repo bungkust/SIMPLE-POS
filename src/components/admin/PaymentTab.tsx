@@ -45,14 +45,27 @@ export function PaymentTab() {
   }, []);
 
   const loadPaymentMethods = async () => {
+    console.log('🔄 PaymentTab: Starting to load payment methods...');
     try {
+      console.log('🔄 PaymentTab: Querying payment_methods table...');
       const { data, error } = await (supabase as any).from('payment_methods').select('*').order('sort_order');
 
-      if (error) throw error;
-      setPaymentMethods((data || []) as PaymentMethod[]);
+      console.log('🔄 PaymentTab: Payment methods query result:', { dataLength: data?.length, error });
+
+      if (error) {
+        console.error('❌ PaymentTab: Payment methods query failed:', error);
+        throw error;
+      }
+
+      if (data) {
+        console.log('✅ PaymentTab: Payment methods loaded successfully:', data.length, 'methods');
+        setPaymentMethods((data || []) as PaymentMethod[]);
+      }
     } catch (error) {
-      console.error('Error loading payment methods:', error);
+      console.error('❌ PaymentTab: Error loading payment methods:', error);
+      setPaymentMethods([]);
     } finally {
+      console.log('🔄 PaymentTab: Setting loading to false');
       setLoading(false);
     }
   };

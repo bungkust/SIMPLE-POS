@@ -24,7 +24,17 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+    storageKey: 'supabase-auth-token',
+    flowType: 'pkce'  // Use PKCE flow for better security
   },
+  global: {
+    headers: {
+      'X-Client-Info': 'supabase-js-web',
+      'apikey': supabaseAnonKey
+    }
+  }
 });
 
-console.log('Supabase client created successfully');
+console.log('Supabase client created successfully with RLS support');

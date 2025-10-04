@@ -12,24 +12,32 @@ export function OrdersTab() {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('');
-
   useEffect(() => {
     loadOrders();
   }, []);
 
   const loadOrders = async () => {
+    console.log('OrdersTab: Starting to load orders...');
     try {
+      console.log('OrdersTab: Querying orders table...');
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (ordersError) throw ordersError;
+      console.log('OrdersTab: Orders query result:', { dataLength: ordersData?.length, error: ordersError });
+
+      if (ordersError) {
+        console.error('OrdersTab: Orders query failed:', ordersError);
+        throw ordersError;
+      }
 
       const orders = ordersData || [];
+      console.log('OrdersTab: Orders loaded successfully:', orders.length, 'orders');
       setOrders(orders);
 
       if (orders.length > 0) {
+        console.log('OrdersTab: Loading order items for', orders.length, 'orders...');
         const orderIds = orders.map(order => order.id);
         const { data: itemsData, error: itemsError } = await supabase
           .from('order_items')
@@ -37,20 +45,25 @@ export function OrdersTab() {
           .in('order_id', orderIds)
           .order('order_id');
 
+        console.log('OrdersTab: Order items query result:', { dataLength: itemsData?.length, error: itemsError });
+
         if (itemsError) {
-          console.error('Error loading order items:', itemsError);
+          console.error('OrdersTab: Order items query failed:', itemsError);
           setOrderItems([]);
         } else {
+          console.log('OrdersTab: Order items loaded successfully:', itemsData?.length, 'items');
           setOrderItems(itemsData || []);
         }
       } else {
+        console.log('OrdersTab: No orders found, setting empty order items');
         setOrderItems([]);
       }
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('OrdersTab: Error loading orders:', error);
       setOrders([]);
       setOrderItems([]);
     } finally {
+      console.log('OrdersTab: Setting loading to false');
       setLoading(false);
     }
   };

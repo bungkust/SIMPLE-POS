@@ -1,18 +1,48 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import React from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { ProtectedRoute } from './components/ProtectedRoute';
 import { Header } from './components/Header';
 import { MenuBrowser } from './components/MenuBrowser';
 import { CartBar } from './components/CartBar';
 import { CheckoutPage } from './pages/CheckoutPage';
-import { OrderSuccessPage } from './pages/OrderSuccessPage';
 import { InvoicePage } from './pages/InvoicePage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
+import { OrderSuccessPage } from './pages/OrderSuccessPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { SuperAdminLoginPage } from './pages/SuperAdminLoginPage';
+import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { AuthProvider } from './contexts/AuthContext';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { CartProvider } from './contexts/CartContext';
+import { handleOAuthError } from './lib/auth-utils';
+import './lib/disable-service-worker';
+
+// Helper function to get current tenant slug from URL
+const getCurrentTenantSlug = (): string => {
+  const path = window.location.pathname;
+  const pathParts = path.split('/').filter(Boolean);
+
+  // Check if path starts with tenant slug pattern (not admin, not other routes)
+  if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success') {
+    return pathParts[0];
+  }
+
+  return 'kopipendekar'; // Default tenant
+};
+
+// Helper function to get order code from current URL
+const getOrderCode = (): string => {
+  const path = window.location.pathname;
+  const pathParts = path.split('/').filter(Boolean);
+
+  // Look for order code in paths like /invoice/KP-251003-7W2B9I or /success/KP-251003-7W2B9I
+  if (pathParts.length >= 2 && (pathParts[0] === 'invoice' || pathParts[0] === 'success')) {
+    return pathParts[1];
+  }
+
+  return '';
+};
 
 // Wrapper components to handle props
 function HomePage() {
@@ -27,30 +57,38 @@ function HomePage() {
 
 function CheckoutPageWrapper() {
   const navigate = useNavigate();
-  return <CheckoutPage onBack={() => navigate('/')} onSuccess={(orderCode) => navigate(`/success/${orderCode}`)} />;
+  return (
+    <CheckoutPage
+      onBack={() => navigate(`/${getCurrentTenantSlug()}`)}
+      onSuccess={(orderCode: string) => navigate(`/${getCurrentTenantSlug()}/success/${orderCode}`)}
+    />
+  );
 }
 
 function OrderHistoryPageWrapper() {
   const navigate = useNavigate();
-  return <OrderHistoryPage onBack={() => navigate('/')} onViewInvoice={(orderCode) => navigate(`/invoice/${orderCode}`)} />;
+  return <OrderHistoryPage onBack={() => navigate('/')} onViewInvoice={(orderCode: string) => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)} />;
 }
 
 function InvoicePageWrapper() {
   const { orderCode } = useParams<{ orderCode: string }>();
   const navigate = useNavigate();
-  return <InvoicePage orderCode={orderCode!} onBack={() => navigate('/')} />;
+  return <InvoicePage orderCode={orderCode || ''} onBack={() => navigate(`/${getCurrentTenantSlug()}/orders`)} />;
 }
 
 function OrderSuccessPageWrapper() {
   const { orderCode } = useParams<{ orderCode: string }>();
   const navigate = useNavigate();
-  return (
-    <OrderSuccessPage
-      orderCode={orderCode!}
-      onViewInvoice={() => navigate(`/invoice/${orderCode}`)}
-      onBackToMenu={() => navigate('/')}
-    />
-  );
+  return <OrderSuccessPage
+    orderCode={orderCode || ''}
+    onViewInvoice={() => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)}
+    onBackToMenu={() => navigate(`/${getCurrentTenantSlug()}`)}
+  />;
+}
+
+function SuperAdminLoginPageWrapper() {
+  const navigate = useNavigate();
+  return <SuperAdminLoginPage onBack={() => navigate('/')} />;
 }
 
 function AdminLoginPageWrapper() {
@@ -58,12 +96,22 @@ function AdminLoginPageWrapper() {
   return <AdminLoginPage onBack={() => navigate('/')} />;
 }
 
+function SuperAdminDashboardWrapper() {
+  const navigate = useNavigate();
+  return <SuperAdminDashboard onBack={() => navigate('/')} />;
+}
+
 function AdminDashboardWrapper() {
   const navigate = useNavigate();
-  return <AdminDashboard onBack={() => navigate('/')} />;
+  return <AdminDashboard onBack={() => navigate(`/${getCurrentTenantSlug()}`)} />;
 }
 
 function App() {
+  // Handle OAuth errors on app startup
+  React.useEffect(() => {
+    handleOAuthError();
+  }, []);
+
   return (
     <ErrorBoundary>
       <Router>
@@ -74,23 +122,26 @@ function App() {
                 <Routes>
                   {/* Public Routes - Regular Users */}
                   <Route path="/" element={<HomePage />} />
-                  <Route path="/checkout" element={<CheckoutPageWrapper />} />
-                  <Route path="/orders" element={<OrderHistoryPageWrapper />} />
-                  <Route path="/invoice/:orderCode" element={<InvoicePageWrapper />} />
-                  <Route path="/success/:orderCode" element={<OrderSuccessPageWrapper />} />
+                  <Route path="/:tenantSlug" element={<HomePage />} />
+                  <Route path="/login" element={<AdminLoginPageWrapper />} />
+                  <Route path="/:tenantSlug/admin/login" element={<AdminLoginPageWrapper />} />
+                  <Route path="/:tenantSlug/checkout" element={<CheckoutPageWrapper />} />
+                  <Route path="/:tenantSlug/orders" element={<OrderHistoryPageWrapper />} />
+                  <Route path="/:tenantSlug/invoice/:orderCode" element={<InvoicePageWrapper />} />
+                  <Route path="/:tenantSlug/success/:orderCode" element={<OrderSuccessPageWrapper />} />
 
-                  {/* Admin Routes - Protected */}
-                  <Route path="/admin/login" element={
-                    <ProtectedRoute requireAuth={true}>
-                      <AdminLoginPageWrapper />
-                    </ProtectedRoute>
-                  } />
+                  {/* Legacy routes - redirect to tenant-specific versions */}
+                  <Route path="/checkout" element={<Navigate to={`/${getCurrentTenantSlug()}/checkout`} replace />} />
+                  <Route path="/orders" element={<Navigate to={`/${getCurrentTenantSlug()}/orders`} replace />} />
+                  <Route path="/invoice/:orderCode" element={<Navigate to={`/${getCurrentTenantSlug()}/invoice/${getOrderCode()}`} replace />} />
+                  <Route path="/success/:orderCode" element={<Navigate to={`/${getCurrentTenantSlug()}/success/${getOrderCode()}`} replace />} />
 
-                  <Route path="/admin/dashboard" element={
-                    <ProtectedRoute requireAdmin={true}>
-                      <AdminDashboardWrapper />
-                    </ProtectedRoute>
-                  } />
+                  {/* Super Admin Routes */}
+                  <Route path="/sadmin/login" element={<SuperAdminLoginPageWrapper />} />
+                  <Route path="/sadmin/dashboard" element={<SuperAdminDashboardWrapper />} />
+
+                  {/* Tenant Admin Routes */}
+                  <Route path="/:tenantSlug/admin/dashboard" element={<AdminDashboardWrapper />} />
 
                   {/* Catch all - redirect to home */}
                   <Route path="*" element={<Navigate to="/" replace />} />

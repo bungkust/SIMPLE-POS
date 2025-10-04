@@ -1,36 +1,18 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Coffee } from 'lucide-react';
+import { ArrowLeft, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-interface AdminLoginPageProps {
+interface SuperAdminLoginPageProps {
   onBack: () => void;
 }
 
-export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
+export function SuperAdminLoginPage({ onBack }: SuperAdminLoginPageProps) {
   const [loading, setLoading] = useState(false);
-  const [tenantInfo, setTenantInfo] = useState<{ name: string; slug: string } | null>(null);
 
-  useEffect(() => {
-    // Get tenant information from URL path
-    const pathParts = window.location.pathname.split('/').filter(Boolean);
-    const tenantSlug = pathParts.length > 0 ? pathParts[0] : 'kopipendekar';
-
-    // For now, set mock tenant info based on slug
-    // In production, this would query the database
-    const tenantInfoMap: Record<string, { name: string; slug: string }> = {
-      kopipendekar: { name: 'Kopi Pendekar', slug: 'kopipendekar' }
-    };
-
-    setTenantInfo(tenantInfoMap[tenantSlug] || { name: 'Tenant', slug: tenantSlug });
-  }, []);
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      // Get tenant slug from current URL path
-      const pathParts = window.location.pathname.split('/').filter(Boolean);
-      const tenantSlug = pathParts.length > 0 ? pathParts[0] : 'kopipendekar';
-
-      const redirectTo = `${window.location.origin}/${tenantSlug}/admin/dashboard`;
+      const redirectTo = `${window.location.origin}/sadmin/dashboard`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -63,28 +45,25 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
             <span className="text-sm">Kembali</span>
           </button>
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Coffee className="w-8 h-8 text-green-500" />
-            <h1 className="text-2xl font-bold text-slate-900">
-              {tenantInfo ? tenantInfo.name : 'Loading...'}
-            </h1>
+            <Shield className="w-8 h-8 text-purple-500" />
+            <h1 className="text-2xl font-bold text-slate-900">Super Admin</h1>
           </div>
-          <p className="text-slate-600">Login</p>
-          {tenantInfo && (
-            <p className="text-sm text-slate-500 mt-1">
-              Tenant: {tenantInfo.name} ({tenantInfo.slug})
-            </p>
-          )}
+          <p className="text-slate-600">Tenant Management</p>
+          <p className="text-sm text-slate-500 mt-1">
+            Kelola tenant dan sistem
+          </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="text-center mb-6">
             <p className="text-slate-600 text-sm mb-4">
-              Login dengan Google untuk mengakses dashboard admin {tenantInfo?.name} ({tenantInfo?.slug})
+              Login dengan Google untuk mengakses dashboard super admin
             </p>
 
             <button
               onClick={handleGoogleLogin}
               disabled={loading}
+              className="w-full bg-white border border-slate-300 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -96,7 +75,7 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
             </button>
 
             <p className="text-xs text-slate-500 mt-4">
-              Pastikan email Google Anda terdaftar sebagai admin untuk {tenantInfo?.name}
+              Pastikan email Google Anda terdaftar sebagai super admin
             </p>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useCart } from '../contexts/CartContext';
 import { formatRupiah, normalizePhone, getTomorrowDate } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { generateOrderCode } from '../lib/orderUtils';
+import { ErrorModal } from '../components/ErrorModal';
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -13,6 +14,12 @@ interface CheckoutPageProps {
 export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   const { items, totalAmount, removeItem, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
+  const [errorModal, setErrorModal] = useState({
+    isOpen: false,
+    message: '',
+    details: '',
+    onRetry: null as (() => void) | null
+  });
   const [formData, setFormData] = useState({
     customerName: '',
     phone: '',
@@ -107,7 +114,18 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       onSuccess(order.order_code);
     } catch (error) {
       console.error('Error creating order:', error);
-      alert('Gagal membuat pesanan. Silakan coba lagi.');
+
+      // Show error modal instead of alert
+      setErrorModal({
+        isOpen: true,
+        message: 'Gagal membuat pesanan',
+        details: error instanceof Error ? error.message : 'Unknown error occurred',
+        onRetry: () => {
+          setErrorModal({ isOpen: false, message: '', details: '', onRetry: null });
+          // Re-submit the form
+          handleSubmit(new Event('submit') as any);
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -257,6 +275,17 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
           </button>
         </form>
       </div>
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, message: '', details: '', onRetry: null })}
+        title="Error"
+        message={errorModal.message}
+        details={errorModal.details}
+        onRetry={errorModal.onRetry || undefined}
+        showTechnicalDetails={false}
+      />
     </div>
   );
 }
