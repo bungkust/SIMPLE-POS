@@ -102,8 +102,7 @@ function SuperAdminDashboardWrapper() {
 }
 
 function AdminDashboardWrapper() {
-  const navigate = useNavigate();
-  return <AdminDashboard onBack={() => navigate(`/${getCurrentTenantSlug()}`)} />;
+  return <AdminDashboard />;
 }
 
 function App() {

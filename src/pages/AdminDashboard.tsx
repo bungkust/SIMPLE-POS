@@ -9,10 +9,10 @@ import { CategoriesTab } from '../components/admin/CategoriesTab';
 import { GoogleSheetsTab } from '../components/admin/GoogleSheetsTab';
 
 interface AdminDashboardProps {
-  onBack: () => void;
+  // Removed onBack prop since we handle logout redirection internally
 }
 
-export function AdminDashboard({ onBack }: AdminDashboardProps) {
+export function AdminDashboard({}: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'payment' | 'settings' | 'sheets'>('orders');
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const { signOut, user, currentTenant, isTenantAdmin, loading, accessStatus } = useAuth();
@@ -76,9 +76,22 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
   const handleSignOut = async () => {
     try {
       await signOut();
-      onBack();
+
+      // Redirect to specific tenant login page instead of calling onBack()
+      if (currentTenant?.tenant_slug) {
+        window.location.href = `/${currentTenant.tenant_slug}/admin/login`;
+      } else {
+        // Fallback to generic login if no tenant info
+        window.location.href = '/kopipendekar/admin/login';
+      }
     } catch (error) {
       console.error('Sign out error:', error);
+      // Even if sign out fails, redirect to login page
+      if (currentTenant?.tenant_slug) {
+        window.location.href = `/${currentTenant.tenant_slug}/admin/login`;
+      } else {
+        window.location.href = '/kopipendekar/admin/login';
+      }
     }
   };
 
