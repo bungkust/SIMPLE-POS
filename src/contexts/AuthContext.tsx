@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(`Login gagal: ${error.message}`);
       }
 
-      console.log('Login successful for:', email);
+      console.log('Login successful for user:', user?.id?.substring(0, 8) + '...');
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;
@@ -222,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentUser = session?.user ?? null;
 
         if (currentUser && mounted) {
-          console.log('👤 User found:', currentUser.email);
+          console.log('👤 User found:', currentUser.id?.substring(0, 8) + '...');
           setUser(currentUser);
           await refreshAccessStatus();
         } else if (mounted) {
@@ -267,7 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           if (currentUser) {
-            console.log('👤 Setting user:', currentUser.email);
+            console.log('👤 Setting user:', currentUser.id?.substring(0, 8) + '...');
             setUser(currentUser);
             await refreshAccessStatus();
           } else {

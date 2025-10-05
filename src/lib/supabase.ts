@@ -7,7 +7,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 console.log('Supabase Config:', {
   url: supabaseUrl ? 'Set' : 'Missing',
   keyLength: supabaseAnonKey?.length || 0,
-  fullUrl: supabaseUrl,
+  fullUrl: 'Configured',
 });
 
 if (!supabaseUrl || !supabaseAnonKey) {
