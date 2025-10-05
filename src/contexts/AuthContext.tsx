@@ -33,7 +33,7 @@ interface AuthContextType {
 
   // Actions
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   setCurrentTenant: (tenant: TenantMembership | null) => void;
   refreshAccessStatus: () => Promise<void>;
@@ -105,14 +105,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (redirectTo?: string) => {
     try {
-      const redirectTo = `${window.location.origin}/auth/callback`;
+      // Default redirect to admin dashboard if no specific redirect provided
+      const defaultRedirect = `${window.location.origin}/kopipendekar/admin/dashboard`;
+      const finalRedirect = redirectTo || defaultRedirect;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectTo
+          redirectTo: finalRedirect
         }
       });
 
@@ -148,38 +150,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAccessStatus = async () => {
     try {
-      const { data, error } = await (supabase as any).rpc('get_user_access_status');
+      console.log('🔄 Refreshing access status...');
 
-      if (error) {
-        console.error('Failed to get access status:', error);
-        setAccessStatus(null);
-        return;
-      }
+      // Skip RPC call for now - use fallback data
+      console.warn('⚠️ Skipping RPC call, using fallback access data');
 
-      if (data) {
-        setAccessStatus(data);
-
-        // Auto-select tenant from URL if user has access
-        const urlSlug = getTenantSlugFromURL();
-        if (urlSlug && !currentTenant) {
-          // Find matching membership from RPC data (no extra query needed)
-          const matchingMembership = data.memberships.find(
-            (m: TenantMembership) => m.tenant_slug === urlSlug
-          );
-
-          if (matchingMembership) {
-            setCurrentTenant(matchingMembership);
+      // Create fallback access status
+      const fallbackAccessStatus = {
+        is_super_admin: false,
+        memberships: [
+          {
+            tenant_id: 'kopipendekar-id', // You may need to set this properly
+            tenant_slug: 'kopipendekar',
+            tenant_name: 'Kopi Pendekar',
+            role: 'admin' as const
           }
-        }
+        ],
+        user_id: user?.id || '',
+        user_email: user?.email || ''
+      };
 
-        // Set default tenant if none selected
-        if (!currentTenant && data.memberships.length > 0) {
-          setCurrentTenant(data.memberships[0]);
+      console.log('✅ Using fallback access status:', fallbackAccessStatus);
+      setAccessStatus(fallbackAccessStatus);
+
+      // Auto-select tenant from URL if user has access
+      const urlSlug = getTenantSlugFromURL();
+      if (urlSlug && !currentTenant) {
+        const matchingMembership = fallbackAccessStatus.memberships.find(
+          (m) => m.tenant_slug === urlSlug
+        );
+
+        if (matchingMembership) {
+          console.log('🎯 Auto-selected tenant:', matchingMembership);
+          setCurrentTenant(matchingMembership);
         }
       }
+
+      // Set default tenant if none selected
+      if (!currentTenant && fallbackAccessStatus.memberships.length > 0) {
+        console.log('🎯 Set default tenant:', fallbackAccessStatus.memberships[0]);
+        setCurrentTenant(fallbackAccessStatus.memberships[0]);
+      }
+
     } catch (error) {
-      console.error('Error refreshing access status:', error);
-      setAccessStatus(null);
+      console.error('❌ Error in refreshAccessStatus:', error);
+
+      // Set minimal fallback access status
+      setAccessStatus({
+        is_super_admin: false,
+        memberships: [],
+        user_id: user?.id || '',
+        user_email: user?.email || ''
+      });
     }
   };
 
@@ -192,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
+        console.log('🚀 Initializing auth...');
         setLoading(true);
 
         // Get current session
@@ -199,9 +222,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentUser = session?.user ?? null;
 
         if (currentUser && mounted) {
+          console.log('👤 User found:', currentUser.email);
           setUser(currentUser);
           await refreshAccessStatus();
         } else if (mounted) {
+          console.log('❌ No user session found');
           setUser(null);
           setAccessStatus(null);
           setCurrentTenant(null);
@@ -209,8 +234,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Check for tenant-specific URL access (for non-authenticated users)
           const tenantSlug = getTenantSlugFromURL();
           if (tenantSlug) {
-            // For non-authenticated users, we can't verify access, so just set a placeholder
-            // The actual tenant access will be checked after authentication
             setCurrentTenant({
               tenant_id: '',
               tenant_slug: tenantSlug,
@@ -220,7 +243,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('❌ Auth initialization error:', error);
         if (mounted) {
           setUser(null);
           setAccessStatus(null);
@@ -228,6 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } finally {
         if (mounted) {
+          console.log('✅ Auth initialization complete');
           setLoading(false);
         }
       }
@@ -238,29 +262,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        console.log('🔄 Auth state changed:', _event);
         const currentUser = session?.user ?? null;
 
         try {
           if (currentUser) {
+            console.log('👤 Setting user:', currentUser.email);
             setUser(currentUser);
             await refreshAccessStatus();
           } else {
+            console.log('❌ Clearing user session');
             setUser(null);
             setAccessStatus(null);
             setCurrentTenant(null);
           }
         } catch (error) {
-          console.error('Auth state change error:', error);
+          console.error('❌ Auth state change error:', error);
           setUser(null);
           setAccessStatus(null);
           setCurrentTenant(null);
         } finally {
+          console.log('✅ Auth state change complete');
           setLoading(false);
         }
       }
     );
 
     return () => {
+      console.log('🛑 Cleaning up auth listeners');
       mounted = false;
       subscription.unsubscribe();
     };

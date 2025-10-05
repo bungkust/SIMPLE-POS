@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { LogOut, ShoppingBag, Coffee, CreditCard, Settings, FolderOpen, Sheet, Shield, Home } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { LogOut, ShoppingBag, Coffee, CreditCard, Settings, FolderOpen, Sheet, Shield, Home, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrdersTab } from '../components/admin/OrdersTab';
 import { MenuTab } from '../components/admin/MenuTab';
@@ -14,7 +14,64 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ onBack }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'payment' | 'settings' | 'sheets'>('orders');
-  const { signOut, user, currentTenant, isTenantAdmin } = useAuth();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const { signOut, user, currentTenant, isTenantAdmin, loading, accessStatus } = useAuth();
+
+  // Show error if loading takes too long
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) {
+        console.error('❌ Dashboard loading timeout - check console for errors');
+        setLoadingTimeout(true);
+      }
+    }, 10000); // 10 seconds
+
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-slate-600">Memuat dashboard...</p>
+          {loadingTimeout && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2 text-red-800">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-medium">Loading Timeout</span>
+              </div>
+              <p className="text-red-700 text-sm mt-1">
+                Check browser console (F12) for error messages
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if no access
+  if (!accessStatus && user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-xl shadow-sm max-w-md">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Error</h2>
+          <p className="text-slate-600 mb-4">
+            Unable to load user permissions. Check console for details.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleSignOut = async () => {
     try {
