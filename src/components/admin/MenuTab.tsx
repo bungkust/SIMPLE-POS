@@ -25,7 +25,7 @@ export function MenuTab() {
   });
   const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
   const [showOptionsManager, setShowOptionsManager] = useState(false);
-  const { user } = useAuth();
+  const { user, currentTenant } = useAuth();
 
   useEffect(() => {
     loadData();
