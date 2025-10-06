@@ -1,10 +1,12 @@
 [build]
-  publish = "dist"
-  command = "npm run build"
+  publish  = "dist"
+  command  = "npm run build"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
 
+# ----- Security headers (aman) -----
 [[headers]]
   for = "/*"
   [headers.values]
@@ -14,16 +16,31 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.google.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.google.com https://*.googleapis.com; frame-ancestors 'none';"
 
-# HTTPS redirect (TOML format, not JSON)
+# ----- Redirect ke HTTPS (boleh tetap) -----
 [[redirects]]
   from = "http://*"
-  to = "https://:splat"
+  to   = "https://:splat"
   status = 301
 
+# ----- (Opsional) Map Functions dulu, kalau kamu punya /api/* -----
+# Taruh rule ini SEBELUM fallback SPA
+# [[redirects]]
+#   from = "/api/*"
+#   to   = "/.netlify/functions/:splat"
+#   status = 200
+
+# ----- INI YANG WAJIB: SPA fallback -----
+# HARUS di paling bawah
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200
+
+# Template env (tidak berpengaruh ke build)
 [template.environment]
-  VITE_SUPABASE_URL = "Your Supabase URL"
-  VITE_SUPABASE_ANON_KEY = "Your Supabase Anon Key"
-  VITE_SITE_NAME = "Kopi Pendekar"
-  VITE_ADMIN_EMAILS = "Your admin email"
-  VITE_PAYMENT_INFO_TEXT = "Your payment instructions"
-  VITE_QRIS_IMAGE_URL = "Your QRIS image URL"
+  VITE_SUPABASE_URL       = "Your Supabase URL"
+  VITE_SUPABASE_ANON_KEY  = "Your Supabase Anon Key"
+  VITE_SITE_NAME          = "Kopi Pendekar"
+  VITE_ADMIN_EMAILS       = "Your admin email"
+  VITE_PAYMENT_INFO_TEXT  = "Your payment instructions"
+  VITE_QRIS_IMAGE_URL     = "Your QRIS image URL"
