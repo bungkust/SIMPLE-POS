@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         is_super_admin: false,
         memberships: [
           {
-            tenant_id: 'kopipendekar-id', // You may need to set this properly
+            tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230', // Kopi Pendekar tenant ID from database
             tenant_slug: 'kopipendekar',
             tenant_name: 'Kopi Pendekar',
             role: 'admin' as const
