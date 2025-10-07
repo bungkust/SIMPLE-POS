@@ -4,6 +4,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Header } from './components/Header';
 import { MenuBrowser } from './components/MenuBrowser';
 import { CartBar } from './components/CartBar';
+import { LandingPage } from './components/LandingPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { InvoicePage } from './pages/InvoicePage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
@@ -45,7 +46,11 @@ const getOrderCode = (): string => {
 };
 
 // Wrapper components to handle props
-function HomePage() {
+function LandingPageWrapper() {
+  return <LandingPage />;
+}
+
+function MenuPageWrapper() {
   return (
     <>
       <Header />
@@ -119,9 +124,9 @@ function App() {
             <CartProvider>
               <div className="min-h-screen bg-slate-50">
                 <Routes>
-                  {/* Public Routes - Regular Users */}
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/:tenantSlug" element={<HomePage />} />
+                  {/* Public Routes - Landing Page and Customer Interface */}
+                  <Route path="/" element={<LandingPageWrapper />} />
+                  <Route path="/:tenantSlug" element={<MenuPageWrapper />} />
                   <Route path="/login" element={<AdminLoginPageWrapper />} />
                   <Route path="/:tenantSlug/admin/login" element={<AdminLoginPageWrapper />} />
                   <Route path="/:tenantSlug/checkout" element={<CheckoutPageWrapper />} />
