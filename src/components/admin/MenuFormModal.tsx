@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Database } from '../../lib/database.types';
 import { ErrorModal } from '../ErrorModal';
 
@@ -24,6 +25,8 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { currentTenant } = useAuth();
+
   const [formData, setFormData] = useState({
     name: item?.name || '',
     description: item?.description || '',
@@ -37,6 +40,64 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
 
   // Local state for discount percentage input (not stored in DB)
   const [discountInput, setDiscountInput] = useState(0);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentTenant) return;
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar. Maksimal 5MB.');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Hanya file gambar yang diperbolehkan.');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Generate unique filename with timestamp
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+      // Upload to Supabase Storage with tenant-specific folder
+      const { error: uploadError } = await supabase.storage
+        .from('menu-photos')
+        .upload(`${currentTenant.tenant_slug}/${fileName}`, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('menu-photos')
+        .getPublicUrl(`${currentTenant.tenant_slug}/${fileName}`);
+
+      if (urlData?.publicUrl) {
+        setFormData(prev => ({ ...prev, photo_url: urlData.publicUrl }));
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Photo uploaded successfully:', urlData.publicUrl);
+        }
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Photo upload error:', error);
+      }
+      alert('Gagal mengupload foto. Silakan coba lagi.');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +134,10 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
           console.log('🔄 MenuFormModal: ========== INSERT OPERATION ==========');
         }
 
-        const { error } = await supabase.from('menu_items').insert(formData);
+        const { error } = await supabase.from('menu_items').insert({
+          ...formData,
+          tenant_id: currentTenant.tenant_id
+        });
 
         if (error) throw error;
 
@@ -255,6 +319,7 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
                   accept="image/*"
                   className="hidden"
                   id="photoUpload"
+                  onChange={handleFileUpload}
                 />
 
                 <label

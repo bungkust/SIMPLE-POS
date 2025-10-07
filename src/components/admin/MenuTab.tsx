@@ -32,13 +32,18 @@ export function MenuTab() {
   }, [currentTenant]);
 
   const loadData = async () => {
-    console.log('🔄 MenuTab: Starting to load menu data...');
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
+
+    console.log('🔄 MenuTab: Starting to load menu data for tenant:', currentTenant.tenant_id);
     try {
       console.log('🔄 MenuTab: Starting to load menu data...');
 
       const [itemsRes, categoriesRes] = await Promise.all([
-        supabase.from('menu_items').select('*').order('created_at'),
-        supabase.from('categories').select('*').order('sort_order'),
+        supabase.from('menu_items').select('*').eq('tenant_id', currentTenant.tenant_id).order('created_at'),
+        supabase.from('categories').select('*').eq('tenant_id', currentTenant.tenant_id).order('sort_order'),
       ]);
 
       if (process.env.NODE_ENV === 'development') {
