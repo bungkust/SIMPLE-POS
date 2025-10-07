@@ -529,6 +529,7 @@ function TenantFormModal({
   // Tenant admin management state
   const [tenantAdmins, setTenantAdmins] = useState<TenantAdmin[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
   const [newAdminRole, setNewAdminRole] = useState('admin');
   const [showAddAdminForm, setShowAddAdminForm] = useState(false);
 
@@ -558,29 +559,46 @@ function TenantFormModal({
   };
 
   const handleAddAdmin = async () => {
-    if (!tenant || !newAdminEmail.trim()) return;
+    if (!tenant || !newAdminEmail.trim() || !newAdminPassword.trim()) return;
 
     try {
-      const { error } = await (supabase as any)
-        .from('tenant_users')
-        .insert({
-          tenant_id: tenant.id,
-          user_email: newAdminEmail.trim(),
-          role: newAdminRole,
-          is_active: true,
-        });
+      setLoading(true);
 
-      if (error) throw error;
+      // First, create user account in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newAdminEmail.trim(),
+        password: newAdminPassword.trim(),
+      });
 
-      setNewAdminEmail('');
-      setShowAddAdminForm(false);
-      loadTenantAdmins();
-      alert('Admin berhasil ditambahkan');
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Then, link user to tenant
+        const { error: tenantError } = await (supabase as any)
+          .from('tenant_users')
+          .insert({
+            tenant_id: tenant.id,
+            user_id: authData.user.id,
+            user_email: newAdminEmail.trim(),
+            role: newAdminRole,
+            is_active: true,
+          });
+
+        if (tenantError) throw tenantError;
+
+        setNewAdminEmail('');
+        setNewAdminPassword('');
+        setShowAddAdminForm(false);
+        loadTenantAdmins();
+        alert('Admin berhasil ditambahkan dengan akun baru');
+      }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error adding admin:', error);
       }
-      alert('Gagal menambahkan admin');
+      alert(`Gagal menambahkan admin: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -780,28 +798,51 @@ function TenantFormModal({
                 {/* Add New Admin */}
                 {showAddAdminForm ? (
                   <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        type="email"
-                        value={newAdminEmail}
-                        onChange={(e) => setNewAdminEmail(e.target.value)}
-                        placeholder="Email admin baru"
-                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                      />
-                      <select
-                        value={newAdminRole}
-                        onChange={(e) => setNewAdminRole(e.target.value)}
-                        className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                      >
-                        <option value="admin">Admin</option>
-                        <option value="manager">Manager</option>
-                        <option value="cashier">Cashier</option>
-                      </select>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Email Admin
+                        </label>
+                        <input
+                          type="email"
+                          value={newAdminEmail}
+                          onChange={(e) => setNewAdminEmail(e.target.value)}
+                          placeholder="Email admin baru"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Password
+                        </label>
+                        <input
+                          type="password"
+                          value={newAdminPassword}
+                          onChange={(e) => setNewAdminPassword(e.target.value)}
+                          placeholder="Password untuk admin"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Role
+                        </label>
+                        <select
+                          value={newAdminRole}
+                          onChange={(e) => setNewAdminRole(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="manager">Manager</option>
+                          <option value="cashier">Cashier</option>
+                        </select>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mt-3">
                       <button
                         onClick={handleAddAdmin}
-                        className="px-3 py-1 bg-purple-500 text-white rounded text-sm hover:bg-purple-600 transition-colors"
+                        disabled={!newAdminEmail.trim() || !newAdminPassword.trim()}
+                        className="px-3 py-1 bg-purple-500 text-white rounded text-sm hover:bg-purple-600 transition-colors disabled:opacity-50"
                       >
                         Tambah
                       </button>
@@ -809,6 +850,7 @@ function TenantFormModal({
                         onClick={() => {
                           setShowAddAdminForm(false);
                           setNewAdminEmail('');
+                          setNewAdminPassword('');
                         }}
                         className="px-3 py-1 border border-slate-300 text-slate-700 rounded text-sm hover:bg-slate-50 transition-colors"
                       >

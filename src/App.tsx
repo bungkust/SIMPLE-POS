@@ -5,6 +5,7 @@ import { Header } from './components/Header';
 import { MenuBrowser } from './components/MenuBrowser';
 import { CartBar } from './components/CartBar';
 import { LandingPage } from './components/LandingPage';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { InvoicePage } from './pages/InvoicePage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
@@ -102,12 +103,19 @@ function AdminLoginPageWrapper() {
 }
 
 function SuperAdminDashboardWrapper() {
-  const navigate = useNavigate();
-  return <SuperAdminDashboard onBack={() => navigate('/')} />;
+  return (
+    <ProtectedRoute requireSuperAdmin={true}>
+      <SuperAdminDashboard />
+    </ProtectedRoute>
+  );
 }
 
 function AdminDashboardWrapper() {
-  return <AdminDashboard />;
+  return (
+    <ProtectedRoute requireAdmin={true}>
+      <AdminDashboard />
+    </ProtectedRoute>
+  );
 }
 
 function App() {

@@ -106,7 +106,7 @@ export function AdminDashboard({}: AdminDashboardProps) {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
             <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              Admin Dashboard {currentTenant ? `- ${currentTenant.tenant_name}` : ''}
+              Admin Dashboard
             </h1>
             <div className="flex items-center gap-2 sm:gap-3">
               <span className="text-xs sm:text-sm text-slate-600 truncate max-w-[120px] sm:max-w-none">{user?.email}</span>
@@ -134,19 +134,6 @@ export function AdminDashboard({}: AdminDashboardProps) {
                   <Coffee className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">Admin</span>
                 </a>
-
-                {isTenantAdmin && (
-                  <a
-                    href="/sadmin/dashboard"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-2 py-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-colors text-xs sm:text-sm"
-                    title="Super Admin Dashboard"
-                  >
-                    <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Super Admin</span>
-                  </a>
-                )}
               </div>
 
               <button

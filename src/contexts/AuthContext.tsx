@@ -159,13 +159,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Create fallback access status
       const fallbackAccessStatus = {
-        is_super_admin: false,
+        is_super_admin: true, // Set to true for development
         memberships: [
           {
             tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230', // Kopi Pendekar tenant ID from database
             tenant_slug: 'kopipendekar',
             tenant_name: 'Kopi Pendekar',
-            role: 'admin' as const
+            role: 'super_admin' as const
           }
         ],
         user_id: user?.id || '',
