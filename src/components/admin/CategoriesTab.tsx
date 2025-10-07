@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { Database } from '../../lib/database.types';
 
@@ -23,13 +24,22 @@ export function CategoriesTab() {
     categoryName: ''
   });
 
+  const { currentTenant } = useAuth();
+
   useEffect(() => {
-    loadCategories();
-  }, []);
+    if (currentTenant) {
+      loadCategories();
+    }
+  }, [currentTenant]);
 
   const loadCategories = async () => {
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
+
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 CategoriesTab: Starting to load categories...');
+      console.log('🔄 CategoriesTab: Starting to load categories for tenant:', currentTenant.tenant_id);
     }
     try {
       if (process.env.NODE_ENV === 'development') {
@@ -38,6 +48,7 @@ export function CategoriesTab() {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
+        .eq('tenant_id', currentTenant.tenant_id)
         .order('sort_order');
 
       if (process.env.NODE_ENV === 'development') {
@@ -73,6 +84,11 @@ export function CategoriesTab() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!currentTenant) {
+      alert('Tidak dapat menyimpan kategori: Tenant tidak ditemukan');
+      return;
+    }
+
     if (!formData.name.trim()) {
       alert('Nama kategori tidak boleh kosong');
       return;
@@ -98,7 +114,8 @@ export function CategoriesTab() {
           .from('categories')
           .insert({
             name: formData.name.trim(),
-            sort_order: maxOrder + 1
+            sort_order: maxOrder + 1,
+            tenant_id: currentTenant.tenant_id
           });
 
         if (error) throw error;
