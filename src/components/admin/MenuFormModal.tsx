@@ -43,13 +43,17 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
 
     setLoading(true);
 
-    console.log('🔄 MenuFormModal: ========== FORM SUBMIT STARTED ==========');
-    console.log('🔄 MenuFormModal: Form data:', formData);
-    console.log('🔄 MenuFormModal: Discount input:', discountInput);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 MenuFormModal: ========== FORM SUBMIT STARTED ==========');
+      console.log('🔄 MenuFormModal: Form data:', formData);
+      console.log('🔄 MenuFormModal: Discount input:', discountInput);
+    }
 
     try {
       if (item) {
-        console.log('🔄 MenuFormModal: ========== UPDATE OPERATION ==========');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 MenuFormModal: ========== UPDATE OPERATION ==========');
+        }
 
         const { error } = await supabase
           .from('menu_items')
@@ -61,21 +65,29 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
 
         if (error) throw error;
 
-        console.log('✅ MenuFormModal: ========== UPDATE SUCCESSFUL ==========');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ MenuFormModal: ========== UPDATE SUCCESSFUL ==========');
+        }
       } else {
-        console.log('🔄 MenuFormModal: ========== INSERT OPERATION ==========');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 MenuFormModal: ========== INSERT OPERATION ==========');
+        }
 
         const { error } = await supabase.from('menu_items').insert(formData);
 
         if (error) throw error;
 
-        console.log('✅ MenuFormModal: ========== INSERT SUCCESSFUL ==========');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ MenuFormModal: ========== INSERT SUCCESSFUL ==========');
+        }
       }
 
       onClose();
     } catch (error) {
-      console.error('❌ MenuFormModal: ========== FORM SUBMIT ERROR ==========');
-      console.error('❌ MenuFormModal: Error saving menu item:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ MenuFormModal: ========== FORM SUBMIT ERROR ==========');
+        console.error('❌ MenuFormModal: Error saving menu item:', error);
+      }
 
       setErrorModal({
         isOpen: true,

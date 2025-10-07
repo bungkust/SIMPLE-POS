@@ -35,7 +35,9 @@ export function MenuCard({ item, onClick }: MenuCardProps) {
       if (error) throw error;
       if (data) setDiscount(data);
     } catch (error) {
-      console.error('Error loading discount:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading discount:', error);
+      }
     }
   };
 

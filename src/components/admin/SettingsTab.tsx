@@ -52,7 +52,9 @@ export function SettingsTab() {
 
       showNotification('Berhasil!', 'Pengaturan berhasil disimpan!', 'success');
     } catch (error) {
-      console.error('Error saving settings:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error saving settings:', error);
+      }
       showNotification('Gagal!', 'Gagal menyimpan pengaturan. Silakan coba lagi.', 'error');
     } finally {
       setLoading(false);
@@ -104,13 +106,17 @@ export function SettingsTab() {
         return;
       }
 
-      console.log('User authenticated:', user.email);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('User authenticated:', user.email);
+      }
 
       // Create unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
-      console.log('Uploading file:', fileName, 'to bucket: store-icons');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Uploading file:', fileName, 'to bucket: store-icons');
+      }
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
@@ -121,18 +127,24 @@ export function SettingsTab() {
         });
 
       if (error) {
-        console.error('Storage upload error:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Storage upload error:', error);
+        }
         throw error;
       }
 
-      console.log('Upload successful:', data);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Upload successful:', data);
+      }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('store-icons')
         .getPublicUrl(fileName);
 
-      console.log('Public URL:', publicUrl);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Public URL:', publicUrl);
+      }
 
       // Update form data
       setFormData(prev => ({
@@ -145,7 +157,9 @@ export function SettingsTab() {
       showNotification('Berhasil!', 'Icon berhasil diupload!', 'success');
 
     } catch (error) {
-      console.error('Error uploading icon:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error uploading icon:', error);
+      }
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       showNotification('Gagal!', `Gagal upload icon: ${errorMessage}. Pastikan bucket 'store-icons' sudah dibuat dan RLS policies sudah benar.`, 'error');
     } finally {

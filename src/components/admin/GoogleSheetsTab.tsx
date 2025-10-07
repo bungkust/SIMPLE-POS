@@ -219,7 +219,9 @@ function testExport() {
           .order('order_id');
 
         if (itemsError) {
-          console.error('Error loading order items:', itemsError);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error loading order items:', itemsError);
+          }
           setOrderItems([]);
         } else {
           setOrderItems(itemsData || []);
@@ -228,7 +230,9 @@ function testExport() {
         setOrderItems([]);
       }
     } catch (error) {
-      console.error('Error loading orders:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading orders:', error);
+      }
       setOrders([]);
       setOrderItems([]);
     } finally {
@@ -241,7 +245,9 @@ function testExport() {
       await navigator.clipboard.writeText(text);
       alert('✅ Kode berhasil di-copy ke clipboard!');
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to copy text: ', err);
+      }
       alert('❌ Gagal copy ke clipboard. Silakan copy manual.');
     }
   };

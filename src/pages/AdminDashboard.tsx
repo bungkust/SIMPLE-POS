@@ -21,7 +21,9 @@ export function AdminDashboard({}: AdminDashboardProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
-        console.error('❌ Dashboard loading timeout - check console for errors');
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Dashboard loading timeout - check console for errors');
+        }
         setLoadingTimeout(true);
       }
     }, 10000); // 10 seconds
@@ -85,7 +87,9 @@ export function AdminDashboard({}: AdminDashboardProps) {
         window.location.href = '/kopipendekar/admin/login';
       }
     } catch (error) {
-      console.error('Sign out error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Sign out error:', error);
+      }
       // Even if sign out fails, redirect to login page
       if (currentTenant?.tenant_slug) {
         window.location.href = `/${currentTenant.tenant_slug}/admin/login`;

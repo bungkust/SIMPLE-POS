@@ -54,7 +54,9 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
           .single();
 
         if (discountError) {
-          console.error('Error loading discount:', discountError);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error loading discount:', discountError);
+          }
         } else if (discountData) {
           setDiscount(discountData);
         }
@@ -68,7 +70,9 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
         .order('sort_order');
 
       if (optionsError) {
-        console.error('Error loading options:', optionsError);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error loading options:', optionsError);
+        }
         // Don't throw error, just log it - options might not exist yet
         setOptions([]);
       } else if (optionsData) {
@@ -85,7 +89,9 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
             .order('sort_order');
 
           if (itemsError) {
-            console.error('Error loading option items:', itemsError);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error loading option items:', itemsError);
+            }
             setOptionItems([]);
           } else if (itemsData) {
             setOptionItems(itemsData);
@@ -95,7 +101,9 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
         setOptions([]);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading data:', error);
+      }
       // Set empty arrays to prevent crashes
       setOptions([]);
       setOptionItems([]);

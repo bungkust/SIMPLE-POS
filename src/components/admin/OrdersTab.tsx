@@ -17,27 +17,39 @@ export function OrdersTab() {
   }, []);
 
   const loadOrders = async () => {
-    console.log('OrdersTab: Starting to load orders...');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('OrdersTab: Starting to load orders...');
+    }
     try {
-      console.log('OrdersTab: Querying orders table...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('OrdersTab: Querying orders table...');
+      }
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      console.log('OrdersTab: Orders query result:', { dataLength: ordersData?.length, error: ordersError });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('OrdersTab: Orders query result:', { dataLength: ordersData?.length, error: ordersError });
+      }
 
       if (ordersError) {
-        console.error('OrdersTab: Orders query failed:', ordersError);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('OrdersTab: Orders query failed:', ordersError);
+        }
         throw ordersError;
       }
 
       const orders = ordersData || [];
-      console.log('OrdersTab: Orders loaded successfully:', orders.length, 'orders');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('OrdersTab: Orders loaded successfully:', orders.length, 'orders');
+      }
       setOrders(orders);
 
       if (orders.length > 0) {
-        console.log('OrdersTab: Loading order items for', orders.length, 'orders...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('OrdersTab: Loading order items for', orders.length, 'orders...');
+        }
         const orderIds = orders.map(order => order.id);
         const { data: itemsData, error: itemsError } = await supabase
           .from('order_items')
@@ -45,25 +57,37 @@ export function OrdersTab() {
           .in('order_id', orderIds)
           .order('order_id');
 
-        console.log('OrdersTab: Order items query result:', { dataLength: itemsData?.length, error: itemsError });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('OrdersTab: Order items query result:', { dataLength: itemsData?.length, error: itemsError });
+        }
 
         if (itemsError) {
-          console.error('OrdersTab: Order items query failed:', itemsError);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('OrdersTab: Order items query failed:', itemsError);
+          }
           setOrderItems([]);
         } else {
-          console.log('OrdersTab: Order items loaded successfully:', itemsData?.length, 'items');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('OrdersTab: Order items loaded successfully:', itemsData?.length, 'items');
+          }
           setOrderItems(itemsData || []);
         }
       } else {
-        console.log('OrdersTab: No orders found, setting empty order items');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('OrdersTab: No orders found, setting empty order items');
+        }
         setOrderItems([]);
       }
     } catch (error) {
-      console.error('OrdersTab: Error loading orders:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('OrdersTab: Error loading orders:', error);
+      }
       setOrders([]);
       setOrderItems([]);
     } finally {
-      console.log('OrdersTab: Setting loading to false');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('OrdersTab: Setting loading to false');
+      }
       setLoading(false);
     }
   };
@@ -78,7 +102,9 @@ export function OrdersTab() {
       if (error) throw error;
       await loadOrders();
     } catch (error) {
-      console.error('Error updating order:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error updating order:', error);
+      }
       alert('Gagal mengupdate status pesanan');
     }
   };
@@ -338,8 +364,10 @@ Kopi Pendekar Team`;
         throw new Error(result.error || 'Unknown error');
       }
     } catch (error) {
-      console.error('Error exporting to Google Sheets:', error);
-      alert(`❌ Gagal export ke Google Sheets: ${error.message}\n\nPastikan Google Apps Script sudah di-setup dengan benar.`);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error exporting to Google Sheets:', error);
+      }
+      alert(`❌ Gagal export ke Google Sheets: ${(error as Error).message}\n\nPastikan Google Apps Script sudah di-setup dengan benar.`);
     }
   };
 

@@ -28,41 +28,51 @@ export function MenuTab() {
   const { user, currentTenant } = useAuth();
 
   useEffect(() => {
-    loadData();
   }, []);
 
   const loadData = async () => {
     console.log('🔄 MenuTab: Starting to load menu data...');
     try {
-      console.log('🔄 MenuTab: Querying menu_items and categories...');
+      console.log('🔄 MenuTab: Starting to load menu data...');
+
       const [itemsRes, categoriesRes] = await Promise.all([
-        supabase.from('menu_items').select('*').order('created_at', { ascending: false }),
+        supabase.from('menu_items').select('*').order('created_at'),
         supabase.from('categories').select('*').order('sort_order'),
       ]);
 
-      console.log('🔄 MenuTab: Menu items query result:', { dataLength: itemsRes.data?.length, error: itemsRes.error });
-      console.log('🔄 MenuTab: Categories query result:', { dataLength: categoriesRes.data?.length, error: categoriesRes.error });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 MenuTab: Menu items query result:', { dataLength: itemsRes.data?.length, error: itemsRes.error });
+        console.log('🔄 MenuTab: Categories query result:', { dataLength: categoriesRes.data?.length, error: categoriesRes.error });
+      }
 
       if (itemsRes.error) {
-        console.error('❌ MenuTab: Menu items query failed:', itemsRes.error);
-      } else {
-        console.log('✅ MenuTab: Menu items loaded successfully:', itemsRes.data?.length, 'items');
-        if (itemsRes.data) {
-          console.log('🔍 MenuTab: Menu items data:', itemsRes.data.map(item => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            base_price: item.base_price,
-            formatted_price: formatRupiah(item.price)
-          })));
-          setMenuItems(itemsRes.data);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ MenuTab: Menu items query failed:', itemsRes.error);
         }
+      } else {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ MenuTab: Menu items loaded successfully:', itemsRes.data?.length, 'items');
+          if (itemsRes.data) {
+            console.log('🔍 MenuTab: Menu items data:', itemsRes.data.map(item => ({
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              base_price: item.base_price,
+              formatted_price: formatRupiah(item.price)
+            })));
+          }
+        }
+        if (itemsRes.data) setMenuItems(itemsRes.data);
       }
 
       if (categoriesRes.error) {
-        console.error('❌ MenuTab: Categories query failed:', categoriesRes.error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ MenuTab: Categories query failed:', categoriesRes.error);
+        }
       } else {
-        console.log('✅ MenuTab: Categories loaded successfully:', categoriesRes.data?.length, 'categories');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ MenuTab: Categories loaded successfully:', categoriesRes.data?.length, 'categories');
+        }
         if (categoriesRes.data) setCategories(categoriesRes.data);
       }
     } catch (error) {
@@ -356,7 +366,9 @@ function OptionsManagerModal({
         }
       }
     } catch (error) {
-      console.error('Error loading options:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading options:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -365,11 +377,15 @@ function OptionsManagerModal({
   const handleOptionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log('🔄 OptionsManager: Submitting option form:', { editingOption: !!editingOption, optionFormData });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 OptionsManager: Submitting option form:', { editingOption: !!editingOption, optionFormData });
+    }
 
     try {
       if (editingOption) {
-        console.log('🔄 OptionsManager: Updating option with ID:', editingOption.id);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 OptionsManager: Updating option with ID:', editingOption.id);
+        }
         const { error } = await supabase
           .from('menu_options')
           .update({
@@ -379,14 +395,22 @@ function OptionsManagerModal({
           .eq('id', editingOption.id);
 
         if (error) {
-          console.error('❌ OptionsManager: Option update failed:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ OptionsManager: Option update failed:', error);
+          }
           throw error;
         }
 
-        console.log('✅ OptionsManager: Option updated successfully');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ OptionsManager: Option updated successfully');
+        }
       } else {
         const maxOrder = Math.max(...options.map(opt => opt.sort_order), 0);
-        console.log('🔄 OptionsManager: Creating new option for menu item:', menuItem.id);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 OptionsManager: Creating new option for menu item:', menuItem.id);
+          console.log('🔄 OptionsManager: Current tenant:', currentTenant);
+          console.log('🔄 OptionsManager: Current tenant ID:', currentTenant?.tenant_id);
+        }
         const { error } = await supabase
           .from('menu_options')
           .insert({
@@ -397,17 +421,23 @@ function OptionsManagerModal({
           });
 
         if (error) {
-          console.error('❌ OptionsManager: Option creation failed:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ OptionsManager: Option creation failed:', error);
+          }
           throw error;
         }
 
-        console.log('✅ OptionsManager: Option created successfully');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ OptionsManager: Option created successfully');
+        }
       }
 
       await loadOptions();
       handleOptionFormClose();
     } catch (error) {
-      console.error('❌ OptionsManager: Error saving option:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ OptionsManager: Error saving option:', error);
+      }
       alert('Gagal menyimpan opsi');
     }
   };
@@ -501,19 +531,25 @@ function OptionsManagerModal({
     e.preventDefault();
 
     if (!selectedOptionId) {
-      console.error('❌ OptionsManager: No option ID selected');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ OptionsManager: No option ID selected');
+      }
       return;
     }
 
-    console.log('🔄 OptionsManager: Submitting option item form:', {
-      editingOptionItem: !!editingOptionItem,
-      selectedOptionId,
-      optionItemFormData
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 OptionsManager: Submitting option item form:', {
+        editingOptionItem: !!editingOptionItem,
+        selectedOptionId,
+        optionItemFormData
+      });
+    }
 
     try {
       if (editingOptionItem) {
-        console.log('🔄 OptionsManager: Updating option item with ID:', editingOptionItem.id);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 OptionsManager: Updating option item with ID:', editingOptionItem.id);
+        }
         const { error } = await supabase
           .from('menu_option_items')
           .update({
@@ -525,14 +561,22 @@ function OptionsManagerModal({
           .eq('id', editingOptionItem.id);
 
         if (error) {
-          console.error('❌ OptionsManager: Option item update failed:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ OptionsManager: Option item update failed:', error);
+          }
           throw error;
         }
 
-        console.log('✅ OptionsManager: Option item updated successfully');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ OptionsManager: Option item updated successfully');
+        }
       } else {
         const maxOrder = Math.max(...optionItems.filter(item => item.menu_option_id === selectedOptionId).map(item => item.sort_order), 0);
-        console.log('🔄 OptionsManager: Creating new option item for option:', selectedOptionId);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 OptionsManager: Creating new option item for option:', selectedOptionId);
+          console.log('🔄 OptionsManager: Current tenant for option item:', currentTenant);
+          console.log('🔄 OptionsManager: Current tenant ID for option item:', currentTenant?.tenant_id);
+        }
         const { error } = await supabase
           .from('menu_option_items')
           .insert({
@@ -545,17 +589,23 @@ function OptionsManagerModal({
           });
 
         if (error) {
-          console.error('❌ OptionsManager: Option item creation failed:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ OptionsManager: Option item creation failed:', error);
+          }
           throw error;
         }
 
-        console.log('✅ OptionsManager: Option item created successfully');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ OptionsManager: Option item created successfully');
+        }
       }
 
       await loadOptions();
       handleOptionItemFormClose();
     } catch (error) {
-      console.error('❌ OptionsManager: Error saving option item:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ OptionsManager: Error saving option item:', error);
+      }
       alert('Gagal menyimpan pilihan opsi: ' + (error as Error).message);
     }
   };

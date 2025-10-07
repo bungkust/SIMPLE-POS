@@ -22,11 +22,15 @@ export function SuperAdminLoginPage({ onBack }: SuperAdminLoginPageProps) {
       });
 
       if (error) {
-        console.error('Google login error:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Google login error:', error);
+        }
         alert('Gagal login dengan Google. Silakan coba lagi.');
       }
     } catch (error) {
-      console.error('Google login error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Google login error:', error);
+      }
       alert('Terjadi kesalahan saat login dengan Google.');
     } finally {
       setLoading(false);

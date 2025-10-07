@@ -106,14 +106,18 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
             }),
           });
         } catch (error) {
-          console.error('Failed to send to Google Sheets:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Failed to send to Google Sheets:', error);
+          }
         }
       }
 
       clearCart();
       onSuccess(order.order_code);
     } catch (error) {
-      console.error('Error creating order:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error creating order:', error);
+      }
 
       // Show error modal instead of alert
       setErrorModal({

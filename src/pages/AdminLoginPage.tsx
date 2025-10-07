@@ -39,7 +39,9 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
 
     setLoading(true);
     try {
-      console.log('Attempting email login for:', email);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Attempting email login for:', email);
+      }
 
       // Simple email login without complex auth context
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -48,12 +50,16 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
       });
 
       if (error) {
-        console.error('Supabase auth error:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Supabase auth error:', error);
+        }
         throw new Error(`Login gagal: ${error.message}`);
       }
 
       if (data.user) {
-        console.log('Login successful, redirecting...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Login successful, redirecting...');
+        }
 
         // Get tenant slug and redirect
         const pathParts = window.location.pathname.split('/').filter(Boolean);
@@ -61,7 +67,9 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
         window.location.href = `/${tenantSlug}/admin/dashboard`;
       }
     } catch (error) {
-      console.error('Email login error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Email login error:', error);
+      }
       alert(error instanceof Error ? error.message : 'Login gagal. Periksa email dan password Anda.');
     } finally {
       setLoading(false);
@@ -85,12 +93,16 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
       });
 
       if (error) {
-        console.error('Google login error:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Google login error:', error);
+        }
         alert('Gagal login dengan Google. Silakan coba lagi.');
       }
       // OAuth will handle redirect automatically
     } catch (error) {
-      console.error('Google login error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Google login error:', error);
+      }
       alert('Terjadi kesalahan saat login dengan Google.');
     } finally {
       setLoading(false);

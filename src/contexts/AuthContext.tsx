@@ -153,7 +153,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🔄 Refreshing access status...');
 
       // Skip RPC call for now - use fallback data
-      console.warn('⚠️ Skipping RPC call, using fallback access data');
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Skipping RPC call, using fallback access data');
+      }
 
       // Create fallback access status
       const fallbackAccessStatus = {
@@ -170,7 +172,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user_email: user?.email || ''
       };
 
-      console.log('✅ Using fallback access status:', fallbackAccessStatus);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Using fallback access status:', fallbackAccessStatus);
+      }
       setAccessStatus(fallbackAccessStatus);
 
       // Auto-select tenant from URL if user has access
@@ -181,19 +185,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
 
         if (matchingMembership) {
-          console.log('🎯 Auto-selected tenant:', matchingMembership);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🎯 Auto-selected tenant:', matchingMembership);
+          }
           setCurrentTenant(matchingMembership);
         }
       }
 
       // Set default tenant if none selected
       if (!currentTenant && fallbackAccessStatus.memberships.length > 0) {
-        console.log('🎯 Set default tenant:', fallbackAccessStatus.memberships[0]);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🎯 Set default tenant:', fallbackAccessStatus.memberships[0]);
+        }
         setCurrentTenant(fallbackAccessStatus.memberships[0]);
       }
 
     } catch (error) {
-      console.error('❌ Error in refreshAccessStatus:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Error in refreshAccessStatus:', error);
+      }
 
       // Set minimal fallback access status
       setAccessStatus({
@@ -214,7 +224,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        console.log('🚀 Initializing auth...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🚀 Initializing auth...');
+        }
         setLoading(true);
 
         // Get current session
@@ -222,11 +234,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentUser = session?.user ?? null;
 
         if (currentUser && mounted) {
-          console.log('👤 User found:', currentUser.id?.substring(0, 8) + '...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('👤 User found:', currentUser.id?.substring(0, 8) + '...');
+          }
           setUser(currentUser);
           await refreshAccessStatus();
         } else if (mounted) {
-          console.log('❌ No user session found');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('❌ No user session found');
+          }
           setUser(null);
           setAccessStatus(null);
           setCurrentTenant(null);
@@ -243,7 +259,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error('❌ Auth initialization error:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Auth initialization error:', error);
+        }
         if (mounted) {
           setUser(null);
           setAccessStatus(null);
@@ -251,7 +269,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } finally {
         if (mounted) {
-          console.log('✅ Auth initialization complete');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Auth initialization complete');
+          }
           setLoading(false);
         }
       }
@@ -262,34 +282,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        console.log('🔄 Auth state changed:', _event);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Auth state changed:', _event);
+        }
         const currentUser = session?.user ?? null;
 
         try {
           if (currentUser) {
-            console.log('👤 Setting user:', currentUser.id?.substring(0, 8) + '...');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('👤 Setting user:', currentUser.id?.substring(0, 8) + '...');
+            }
             setUser(currentUser);
             await refreshAccessStatus();
           } else {
-            console.log('❌ Clearing user session');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('❌ Clearing user session');
+            }
             setUser(null);
             setAccessStatus(null);
             setCurrentTenant(null);
           }
         } catch (error) {
-          console.error('❌ Auth state change error:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ Auth state change error:', error);
+          }
           setUser(null);
           setAccessStatus(null);
           setCurrentTenant(null);
         } finally {
-          console.log('✅ Auth state change complete');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Auth state change complete');
+          }
           setLoading(false);
         }
       }
     );
 
     return () => {
-      console.log('🛑 Cleaning up auth listeners');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🛑 Cleaning up auth listeners');
+      }
       mounted = false;
       subscription.unsubscribe();
     };

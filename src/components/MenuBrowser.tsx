@@ -30,7 +30,9 @@ export function MenuBrowser() {
       if (categoriesRes.data) setCategories(categoriesRes.data);
       if (itemsRes.data) setMenuItems(itemsRes.data);
     } catch (error) {
-      console.error('Error loading data:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading data:', error);
+      }
     } finally {
       setLoading(false);
     }

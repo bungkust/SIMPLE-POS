@@ -39,40 +39,52 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
 
   useEffect(() => {
-    console.log('🔍 SuperAdminDashboard:', {
-      loading,
-      user: user?.email,
-      isSuperAdmin: accessStatus?.is_super_admin,
-      adminRole: accessStatus?.is_super_admin ? 'super_admin' : null
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 SuperAdminDashboard:', {
+        loading,
+        user: user?.email,
+        isSuperAdmin: accessStatus?.is_super_admin,
+        adminRole: accessStatus?.is_super_admin ? 'super_admin' : null
+      });
+    }
 
     if (loading) {
-      console.log('⏳ Loading auth...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⏳ Loading auth...');
+      }
       return;
     }
 
     if (!user) {
-      console.log('❌ No user found');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ No user found');
+      }
       setError('No user found. Silakan login.');
       setComponentLoading(false);
       return;
     }
 
     if (!accessStatus?.is_super_admin) {
-      console.log('⛔ Access denied (not super admin)');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⛔ Access denied (not super admin)');
+      }
       setError('Access denied (not super admin)');
       setComponentLoading(false);
       return;
     }
 
-    console.log('✅ Access granted, loading tenants...');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Access granted, loading tenants...');
+    }
     setComponentLoading(false);
     loadTenants();
   }, [user, accessStatus, loading]);
 
   const loadTenants = async () => {
     try {
-      console.log('🔄 SuperAdminDashboard: Starting to load tenants...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 SuperAdminDashboard: Starting to load tenants...');
+      }
       setComponentLoading(true);
       setError(null);
 
@@ -83,19 +95,25 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
         .order('created_at', { ascending: false });
 
       if (tenantsError) {
-        console.error('❌ SuperAdminDashboard: Tenants query error:', tenantsError);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ SuperAdminDashboard: Tenants query error:', tenantsError);
+        }
         throw tenantsError;
       }
 
       const tenants = tenantsData || [];
-      console.log('✅ SuperAdminDashboard: Loaded tenants:', tenants.length);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ SuperAdminDashboard: Loaded tenants:', tenants.length);
+      }
       setTenants(tenants);
 
       // Load tenant admins for each tenant
       const adminsMap: {[tenantId: string]: TenantAdmin[]} = {};
 
       for (const tenant of tenants) {
-        console.log('🔄 SuperAdminDashboard: Loading admins for tenant:', tenant.name);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 SuperAdminDashboard: Loading admins for tenant:', tenant.name);
+        }
         const { data: adminsData, error: adminsError } = await (supabase as any)
           .from('tenant_users')
           .select('*')
@@ -105,16 +123,22 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
 
         if (!adminsError && adminsData) {
           adminsMap[tenant.id] = adminsData;
-          console.log('✅ SuperAdminDashboard: Loaded admins for tenant:', tenant.name, adminsData.length);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ SuperAdminDashboard: Loaded admins for tenant:', tenant.name, adminsData.length);
+          }
         } else {
           adminsMap[tenant.id] = [];
-          console.log('⚠️ SuperAdminDashboard: No admins found for tenant:', tenant.name);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('⚠️ SuperAdminDashboard: No admins found for tenant:', tenant.name);
+          }
         }
       }
 
       setTenantAdmins(adminsMap);
     } catch (error) {
-      console.error('❌ SuperAdminDashboard: Error loading tenants:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ SuperAdminDashboard: Error loading tenants:', error);
+      }
       setError('Failed to load tenants. Please try again.');
     } finally {
       setComponentLoading(false);
@@ -147,7 +171,9 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
       alert('Tenant berhasil dihapus');
       loadTenants();
     } catch (error) {
-      console.error('Error deleting tenant:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error deleting tenant:', error);
+      }
       alert('Gagal menghapus tenant');
     }
   };
@@ -157,7 +183,9 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
       await signOut();
       onBack();
     } catch (error) {
-      console.error('Sign out error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Sign out error:', error);
+      }
     }
   };
 
@@ -523,7 +551,9 @@ function TenantFormModal({
       if (error) throw error;
       setTenantAdmins(data || []);
     } catch (error) {
-      console.error('Error loading tenant admins:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading tenant admins:', error);
+      }
     }
   };
 
@@ -547,7 +577,9 @@ function TenantFormModal({
       loadTenantAdmins();
       alert('Admin berhasil ditambahkan');
     } catch (error) {
-      console.error('Error adding admin:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error adding admin:', error);
+      }
       alert('Gagal menambahkan admin');
     }
   };
@@ -566,7 +598,9 @@ function TenantFormModal({
       loadTenantAdmins();
       alert('Admin berhasil dihapus');
     } catch (error) {
-      console.error('Error removing admin:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error removing admin:', error);
+      }
       alert('Gagal menghapus admin');
     }
   };
@@ -600,7 +634,9 @@ function TenantFormModal({
 
       onClose();
     } catch (error) {
-      console.error('Error saving tenant:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error saving tenant:', error);
+      }
       alert('Gagal menyimpan tenant');
     } finally {
       setLoading(false);

@@ -28,30 +28,44 @@ export function CategoriesTab() {
   }, []);
 
   const loadCategories = async () => {
-    console.log('🔄 CategoriesTab: Starting to load categories...');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 CategoriesTab: Starting to load categories...');
+    }
     try {
-      console.log('🔄 CategoriesTab: Querying categories table...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 CategoriesTab: Querying categories table...');
+      }
       const { data, error } = await supabase
         .from('categories')
         .select('*')
         .order('sort_order');
 
-      console.log('🔄 CategoriesTab: Categories query result:', { dataLength: data?.length, error });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 CategoriesTab: Categories query result:', { dataLength: data?.length, error });
+      }
 
       if (error) {
-        console.error('❌ CategoriesTab: Categories query failed:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ CategoriesTab: Categories query failed:', error);
+        }
         throw error;
       }
 
       if (data) {
-        console.log('✅ CategoriesTab: Categories loaded successfully:', data.length, 'categories');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ CategoriesTab: Categories loaded successfully:', data.length, 'categories');
+        }
         setCategories(data);
       }
     } catch (error) {
-      console.error('❌ CategoriesTab: Error loading categories:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ CategoriesTab: Error loading categories:', error);
+      }
       setCategories([]);
     } finally {
-      console.log('🔄 CategoriesTab: Setting loading to false');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 CategoriesTab: Setting loading to false');
+      }
       setLoading(false);
     }
   };
@@ -93,7 +107,9 @@ export function CategoriesTab() {
       await loadCategories();
       handleFormClose();
     } catch (error) {
-      console.error('Error saving category:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error saving category:', error);
+      }
       alert('Gagal menyimpan kategori');
     }
   };
@@ -129,7 +145,9 @@ export function CategoriesTab() {
       await loadCategories();
       alert('Kategori berhasil dihapus');
     } catch (error) {
-      console.error('Error deleting category:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error deleting category:', error);
+      }
       alert('Gagal menghapus kategori');
     } finally {
       setDeleteConfirm({ isOpen: false, categoryId: null, categoryName: '' });
@@ -167,7 +185,9 @@ export function CategoriesTab() {
 
       await loadCategories();
     } catch (error) {
-      console.error('Error moving category:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error moving category:', error);
+      }
       alert('Gagal mengubah urutan kategori');
     }
   };

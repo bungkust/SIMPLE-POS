@@ -36,7 +36,9 @@ export function OrderHistoryPage({ onBack, onViewInvoice }: OrderHistoryPageProp
       if (error) throw error;
       setOrders(data || []);
     } catch (error) {
-      console.error('Error loading orders:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading orders:', error);
+      }
       alert('Gagal memuat riwayat pesanan');
     } finally {
       setLoading(false);
