@@ -17,7 +17,9 @@ export const getRedirectUrl = (path: string = '/sadmin/dashboard'): string => {
   return `${window.location.origin}${path}`;
 };
 
-console.log('Supabase client initialized successfully');
+if (process.env.NODE_ENV === 'development') {
+  console.log('Supabase client initialized successfully');
+}
 
 if (!supabaseUrl || !supabaseAnonKey) {
   const error = new Error(
@@ -51,4 +53,6 @@ if (import.meta.env.DEV) {
   (window as any).supabase = supabase;
 }
 
-console.log('Supabase client created successfully');
+if (process.env.NODE_ENV === 'development') {
+  console.log('Supabase client created successfully');
+}
