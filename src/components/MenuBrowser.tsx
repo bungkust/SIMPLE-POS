@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
 import { MenuCard } from './MenuCard';
 import { MenuDetailModal } from './MenuDetailModal';
+import { MenuListItem } from './MenuListItem';
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -113,11 +114,27 @@ export function MenuBrowser() {
           <p className="text-slate-500 text-base sm:text-lg">Tidak ada menu yang ditemukan</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {filteredItems.map((item) => (
-            <MenuCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
-          ))}
-        </div>
+        <>
+          {/* Mobile Layout - Compact List */}
+          <div className="block sm:hidden">
+            {filteredItems.map((item) => (
+              <MenuListItem
+                key={item.id}
+                item={item}
+                onClick={() => setSelectedItem(item)}
+              />
+            ))}
+          </div>
+
+          {/* Desktop Layout - Card Grid */}
+          <div className="hidden sm:block">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {filteredItems.map((item) => (
+                <MenuCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {selectedItem && (

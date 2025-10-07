@@ -339,20 +339,6 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
             </div>
           </div>
 
-          {/* Notes Textarea */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Catatan (opsional)
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Contoh: Less sugar, extra ice"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none touch-manipulation"
-              rows={3}
-            />
-          </div>
-
           {/* Options Section - Only show if item has options */}
           {options.length > 0 && (
             <div className="space-y-6">
@@ -421,6 +407,20 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
               })}
             </div>
           )}
+
+          {/* Notes Textarea - Moved to bottom */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Catatan (opsional)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Contoh: Less sugar, extra ice"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none touch-manipulation"
+              rows={3}
+            />
+          </div>
         </div>
 
         {/* Footer */}
