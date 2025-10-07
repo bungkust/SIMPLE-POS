@@ -4,11 +4,7 @@ import type { Database } from './database.types';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-console.log('Supabase Config:', {
-  url: supabaseUrl ? 'Set' : 'Missing',
-  keyLength: supabaseAnonKey?.length || 0,
-  fullUrl: 'Configured',
-});
+console.log('Supabase client initialized successfully');
 
 if (!supabaseUrl || !supabaseAnonKey) {
   const error = new Error(
@@ -42,4 +38,4 @@ if (import.meta.env.DEV) {
   (window as any).supabase = supabase;
 }
 
-console.log('Supabase client created successfully with RLS support');
+console.log('Supabase client created successfully');

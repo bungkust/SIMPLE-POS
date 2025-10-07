@@ -107,9 +107,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async (redirectTo?: string) => {
     try {
-      // Default redirect to admin dashboard if no specific redirect provided
-      const defaultRedirect = `${window.location.origin}/kopipendekar/admin/dashboard`;
+      // Use the actual current origin instead of hardcoded localhost
+      const currentOrigin = window.location.origin;
+      const defaultRedirect = `${currentOrigin}/sadmin/dashboard`;
       const finalRedirect = redirectTo || defaultRedirect;
+
+      console.log('🔐 OAuth redirect URL:', finalRedirect);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -150,22 +153,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAccessStatus = async () => {
     try {
-      console.log('🔄 Refreshing access status...');
-
       // Skip RPC call for now - use fallback data
       if (process.env.NODE_ENV === 'development') {
         console.warn('⚠️ Skipping RPC call, using fallback access data');
+      } else {
+        console.warn('⚠️ WARNING: Using fallback access data in PRODUCTION - This should not happen!');
       }
 
-      // Create fallback access status
+      // Create fallback access status (development only - NOT for production)
+      const isDev = process.env.NODE_ENV === 'development';
       const fallbackAccessStatus = {
-        is_super_admin: true, // Set to true for development
+        is_super_admin: isDev ? true : false, // Only super admin in development
         memberships: [
           {
-            tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230', // Kopi Pendekar tenant ID from database
+            tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230',
             tenant_slug: 'kopipendekar',
             tenant_name: 'Kopi Pendekar',
-            role: 'super_admin' as const
+            role: (isDev ? 'super_admin' : 'admin') as const
           }
         ],
         user_id: user?.id || '',
@@ -173,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Using fallback access status:', fallbackAccessStatus);
+        console.log('✅ Using fallback access status');
       }
       setAccessStatus(fallbackAccessStatus);
 
@@ -207,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Set minimal fallback access status
       setAccessStatus({
-        is_super_admin: false,
+        is_super_admin: false, // No super admin access in production fallback
         memberships: [],
         user_id: user?.id || '',
         user_email: user?.email || ''

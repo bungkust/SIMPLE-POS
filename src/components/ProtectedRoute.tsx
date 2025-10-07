@@ -28,10 +28,11 @@ export function ProtectedRoute({
   const handleGoogleLogin = async () => {
     setAuthLoading(true);
     try {
+      const currentOrigin = window.location.origin;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/admin/dashboard`
+          redirectTo: `${currentOrigin}/sadmin/dashboard`
         }
       });
 
