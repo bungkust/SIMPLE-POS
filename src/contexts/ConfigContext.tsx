@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface AppConfig {
   storeName: string;
@@ -48,7 +49,7 @@ const getDefaultConfigForTenant = (tenantSlug: string): AppConfig => {
 };
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
-  const { currentTenant } = useAuth();
+  const { currentTenant, user } = useAuth();
   const [config, setConfig] = useState<AppConfig>({
     storeName: 'Loading...',
     storeIcon: 'Coffee',
@@ -56,40 +57,97 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (currentTenant) {
-      const tenantSlug = currentTenant.tenant_slug;
-      const defaultConfig = getDefaultConfigForTenant(tenantSlug);
+  // Load config from database first, then localStorage as fallback
+  const loadConfig = async (tenantSlug: string) => {
+    try {
+      // Try to load from database if user is authenticated
+      if (user && currentTenant) {
+        const { data, error } = await supabase
+          .from('tenant_settings' as any)
+          .select('*')
+          .eq('tenant_id', currentTenant.tenant_id)
+          .single();
 
-      // Create tenant-specific localStorage key
+        if (data && !error) {
+          const dbConfig: AppConfig = {
+            storeName: data.store_name || getDefaultConfigForTenant(tenantSlug).storeName,
+            storeIcon: data.store_icon || getDefaultConfigForTenant(tenantSlug).storeIcon,
+            storeIconType: data.store_icon_type || 'predefined'
+          };
+          setConfig(dbConfig);
+
+          // Also save to localStorage for faster subsequent loads
+          const storageKey = `tenant-config-${tenantSlug}`;
+          localStorage.setItem(storageKey, JSON.stringify(dbConfig));
+
+          return;
+        }
+      }
+
+      // Fallback to localStorage
       const storageKey = `tenant-config-${tenantSlug}`;
-
-      // Load config from localStorage for this tenant
       const savedConfig = localStorage.getItem(storageKey);
       if (savedConfig) {
         try {
           const parsedConfig = JSON.parse(savedConfig);
-          setConfig({ ...defaultConfig, ...parsedConfig });
+          setConfig({ ...getDefaultConfigForTenant(tenantSlug), ...parsedConfig });
         } catch (error) {
-          console.error('Error loading tenant config:', error);
-          setConfig(defaultConfig);
+          console.error('Error loading tenant config from localStorage:', error);
+          setConfig(getDefaultConfigForTenant(tenantSlug));
         }
       } else {
-        setConfig(defaultConfig);
+        setConfig(getDefaultConfigForTenant(tenantSlug));
       }
+    } catch (error) {
+      console.error('Error loading config:', error);
+      setConfig(getDefaultConfigForTenant(tenantSlug));
+    }
+  };
+
+  // Save config to database and localStorage
+  const saveConfig = async (tenantSlug: string, newConfig: AppConfig) => {
+    try {
+      // Save to database if user is authenticated
+      if (user && currentTenant) {
+        const { error } = await supabase
+          .from('tenant_settings' as any)
+          .upsert({
+            tenant_id: currentTenant.tenant_id,
+            store_name: newConfig.storeName,
+            store_icon: newConfig.storeIcon,
+            store_icon_type: newConfig.storeIconType,
+            updated_at: new Date().toISOString()
+          });
+
+        if (error) {
+          console.error('Error saving config to database:', error);
+          // Continue with localStorage fallback
+        }
+      }
+
+      // Always save to localStorage for immediate availability
+      const storageKey = `tenant-config-${tenantSlug}`;
+      localStorage.setItem(storageKey, JSON.stringify(newConfig));
+    } catch (error) {
+      console.error('Error saving config:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (currentTenant) {
+      loadConfig(currentTenant.tenant_slug);
       setLoading(false);
     }
-  }, [currentTenant]);
+  }, [currentTenant, user]);
 
-  const updateConfig = (newConfig: Partial<AppConfig>) => {
+  const updateConfig = async (newConfig: Partial<AppConfig>) => {
     if (!currentTenant) return;
 
     const updatedConfig = { ...config, ...newConfig };
     setConfig(updatedConfig);
 
-    // Save to localStorage with tenant-specific key
-    const storageKey = `tenant-config-${currentTenant.tenant_slug}`;
-    localStorage.setItem(storageKey, JSON.stringify(updatedConfig));
+    // Save to both database and localStorage
+    await saveConfig(currentTenant.tenant_slug, updatedConfig);
   };
 
   return (

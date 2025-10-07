@@ -1,13 +1,36 @@
 import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Database } from '../lib/database.types';
+import { useAuth } from '../contexts/AuthContext';
 import { MenuCard } from './MenuCard';
 import { MenuDetailModal } from './MenuDetailModal';
 import { MenuListItem } from './MenuListItem';
 
-type MenuItem = Database['public']['Tables']['menu_items']['Row'];
-type Category = Database['public']['Tables']['categories']['Row'];
+type MenuItem = {
+  id: string;
+  tenant_id: string;
+  category_id: string | null;
+  name: string;
+  short_description: string | null;
+  description: string | null;
+  price: number;
+  base_price: number;
+  photo_url: string | null;
+  is_active: boolean;
+  featured: boolean;
+  created_at: string;
+  updated_at: string;
+  discount_id: string | null;
+  search_text: string | null;
+};
+
+type Category = {
+  id: string;
+  tenant_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+};
 
 export function MenuBrowser() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -17,15 +40,22 @@ export function MenuBrowser() {
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { currentTenant } = useAuth();
+
   useEffect(() => {
-    loadData();
-  }, []);
+    if (currentTenant) {
+      loadData();
+    }
+  }, [currentTenant]);
 
   const loadData = async () => {
+    if (!currentTenant) return;
+
     try {
+      setLoading(true);
       const [categoriesRes, itemsRes] = await Promise.all([
-        supabase.from('categories').select('*').order('sort_order'),
-        supabase.from('menu_items').select('*').eq('is_active', true),
+        supabase.from('categories').select('*').eq('tenant_id', currentTenant.tenant_id).order('sort_order'),
+        supabase.from('menu_items').select('*').eq('tenant_id', currentTenant.tenant_id).eq('is_active', true),
       ]);
 
       if (categoriesRes.data) setCategories(categoriesRes.data);
@@ -94,19 +124,21 @@ export function MenuBrowser() {
         >
           Semua
         </button>
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setSelectedCategory(cat.id)}
-            className={`px-3 sm:px-4 py-2 sm:py-3 rounded-full text-sm font-medium whitespace-nowrap transition-colors touch-manipulation min-w-fit ${
-              selectedCategory === cat.id
-                ? 'bg-green-500 text-white shadow-sm'
-                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {cat.name}
-          </button>
-        ))}
+        {categories
+          .filter(cat => cat.tenant_id === currentTenant?.tenant_id)
+          .map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3 sm:px-4 py-2 sm:py-3 rounded-full text-sm font-medium whitespace-nowrap transition-colors touch-manipulation min-w-fit ${
+                selectedCategory === cat.id
+                  ? 'bg-green-500 text-white shadow-sm'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
       </div>
 
       {filteredItems.length === 0 ? (

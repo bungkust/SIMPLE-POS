@@ -835,6 +835,31 @@ begin
   if c=0 then alter table public.tenant_users alter column tenant_id set not null; end if;
 end$$;
 
+-- =============== TENANT SETTINGS TABLE ===================
+create table if not exists public.tenant_settings (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid,
+  store_name text,
+  store_icon text,
+  store_icon_type text check (store_icon_type in ('predefined', 'uploaded')),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.table_constraints
+    where table_schema='public' and table_name='tenant_settings'
+      and constraint_name='tenant_settings_tenant_id_fkey'
+  ) then
+    alter table public.tenant_settings
+      add constraint tenant_settings_tenant_id_fkey
+      foreign key (tenant_id) references public.tenants(id);
+  end if;
+end$$;
+create unique index if not exists tenant_settings_tenant_uniq on public.tenant_settings(tenant_id);
+create index if not exists tenant_settings_tenant_idx on public.tenant_settings(tenant_id);
+
 -- =============== SEED ADMIN ==============================
 insert into public.admin_users (email, role, is_active)
 values ('kusbot114@gmail.com','super_admin',true)
