@@ -4,10 +4,6 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-// ========================================
-// TYPES & INTERFACES
-// ========================================
-
 interface TenantMembership {
   tenant_id: string;
   tenant_slug: string;
@@ -107,8 +103,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async (redirectTo?: string) => {
     try {
-      // Use the actual current origin instead of hardcoded localhost
-      const currentOrigin = window.location.origin;
+      // Use environment-specific redirect URLs for production compatibility
+      const isProduction = process.env.NODE_ENV === 'production';
+      const currentOrigin = isProduction
+        ? 'https://your-production-domain.com' // Replace with your actual production domain
+        : window.location.origin;
+
       const defaultRedirect = `${currentOrigin}/sadmin/dashboard`;
       const finalRedirect = redirectTo || defaultRedirect;
 

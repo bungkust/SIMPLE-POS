@@ -4,6 +4,19 @@ import type { Database } from './database.types';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+// Get the correct redirect URL based on environment
+export const getRedirectUrl = (path: string = '/sadmin/dashboard'): string => {
+  const isProduction = import.meta.env.PROD;
+  const productionDomain = import.meta.env.VITE_PRODUCTION_DOMAIN || 'https://your-production-domain.com';
+
+  if (isProduction) {
+    return `${productionDomain}${path}`;
+  }
+
+  // Development: use current origin
+  return `${window.location.origin}${path}`;
+};
+
 console.log('Supabase client initialized successfully');
 
 if (!supabaseUrl || !supabaseAnonKey) {

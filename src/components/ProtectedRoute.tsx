@@ -28,7 +28,12 @@ export function ProtectedRoute({
   const handleGoogleLogin = async () => {
     setAuthLoading(true);
     try {
-      const currentOrigin = window.location.origin;
+      // Use environment-specific redirect URLs for production compatibility
+      const isProduction = process.env.NODE_ENV === 'production';
+      const currentOrigin = isProduction
+        ? 'https://your-production-domain.com' // Replace with your actual production domain
+        : window.location.origin;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
