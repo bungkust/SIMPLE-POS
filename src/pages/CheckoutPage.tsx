@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { formatRupiah, normalizePhone, getTomorrowDate } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { generateOrderCode } from '../lib/orderUtils';
@@ -13,6 +14,7 @@ interface CheckoutPageProps {
 
 export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   const { items, totalAmount, removeItem, clearCart } = useCart();
+  const { currentTenant } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errorModal, setErrorModal] = useState({
     isOpen: false,
@@ -40,7 +42,16 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       const serviceFee = 0;
       const total = subtotal - discount + serviceFee;
 
+      // Ensure we have a valid tenant_id - fallback to default Kopi Pendekar tenant if needed
+      const tenantId = currentTenant?.tenant_id || 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230';
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Creating order with tenant_id:', tenantId);
+        console.log('Current tenant object:', currentTenant);
+      }
+
       const orderData = {
+        tenant_id: tenantId, // ✅ Add tenant_id to fix the null constraint issue
         order_code: generateOrderCode(),
         customer_name: formData.customerName,
         phone: normalizedPhone,
@@ -64,6 +75,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       if (!order) throw new Error('Failed to create order');
 
       const orderItems = items.map((item) => ({
+        tenant_id: tenantId, // ✅ Add tenant_id to order items too
         order_id: order.id,
         menu_id: item.id,
         name_snapshot: item.name,

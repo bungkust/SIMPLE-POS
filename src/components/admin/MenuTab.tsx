@@ -28,7 +28,8 @@ export function MenuTab() {
   const { user, currentTenant } = useAuth();
 
   useEffect(() => {
-  }, []);
+    loadData();
+  }, [currentTenant]);
 
   const loadData = async () => {
     console.log('🔄 MenuTab: Starting to load menu data...');

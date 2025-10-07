@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, ShoppingBag, Coffee, CreditCard, Settings, FolderOpen, Sheet, Shield, Home, AlertCircle } from 'lucide-react';
+import { LogOut, ShoppingBag, Coffee, CreditCard, Settings, FolderOpen, Sheet, Shield, Home, AlertCircle, Calculator } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrdersTab } from '../components/admin/OrdersTab';
 import { MenuTab } from '../components/admin/MenuTab';
@@ -7,13 +7,14 @@ import { PaymentTab } from '../components/admin/PaymentTab';
 import { SettingsTab } from '../components/admin/SettingsTab';
 import { CategoriesTab } from '../components/admin/CategoriesTab';
 import { GoogleSheetsTab } from '../components/admin/GoogleSheetsTab';
+import { CashierTab } from '../components/admin/CashierTab';
 
 interface AdminDashboardProps {
   // Removed onBack prop since we handle logout redirection internally
 }
 
 export function AdminDashboard({}: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'payment' | 'settings' | 'sheets'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'payment' | 'kasir' | 'settings' | 'sheets'>('orders');
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const { signOut, user, currentTenant, isTenantAdmin, loading, accessStatus } = useAuth();
 
@@ -205,6 +206,17 @@ export function AdminDashboard({}: AdminDashboardProps) {
               <span className="text-sm">Pembayaran</span>
             </button>
             <button
+              onClick={() => setActiveTab('kasir')}
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors touch-manipulation min-w-fit whitespace-nowrap ${
+                activeTab === 'kasir'
+                  ? 'bg-green-500 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Calculator className="w-4 h-4" />
+              <span className="text-sm">Kasir</span>
+            </button>
+            <button
               onClick={() => setActiveTab('sheets')}
               className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors touch-manipulation min-w-fit whitespace-nowrap ${
                 activeTab === 'sheets'
@@ -235,6 +247,7 @@ export function AdminDashboard({}: AdminDashboardProps) {
         {activeTab === 'menu' && <MenuTab />}
         {activeTab === 'categories' && <CategoriesTab />}
         {activeTab === 'payment' && <PaymentTab />}
+        {activeTab === 'kasir' && <CashierTab />}
         {activeTab === 'sheets' && <GoogleSheetsTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </div>

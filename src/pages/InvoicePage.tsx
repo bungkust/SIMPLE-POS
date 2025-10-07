@@ -16,6 +16,7 @@ interface InvoicePageProps {
 export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
+  const [qrisImageUrl, setQrisImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -41,6 +42,24 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
 
       if (itemsError) throw itemsError;
       setItems(itemsData || []);
+
+      // Load QRIS image if payment method is QRIS
+      if (orderData.payment_method === 'QRIS') {
+        try {
+          const { data: paymentMethods, error: pmError } = await (supabase as any)
+            .from('payment_methods')
+            .select('qris_image_url')
+            .eq('payment_type', 'QRIS')
+            .eq('is_active', true)
+            .limit(1);
+
+          if (!pmError && paymentMethods && paymentMethods.length > 0) {
+            setQrisImageUrl(paymentMethods[0].qris_image_url);
+          }
+        } catch (error) {
+          console.warn('Could not load QRIS image:', error);
+        }
+      }
     } catch (error) {
       console.error('Error loading order:', error);
       alert('Gagal memuat invoice');
@@ -359,7 +378,24 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
             <p className="text-slate-700">{order.payment_method}</p>
           </div>
 
-          {order.status === 'BELUM BAYAR' && (
+          {order.payment_method === 'QRIS' && qrisImageUrl && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <h4 className="font-semibold text-blue-900 mb-3">QRIS Payment</h4>
+              <div className="text-center">
+                <p className="text-sm text-blue-800 mb-3">Scan kode QRIS untuk pembayaran:</p>
+                <img
+                  src={qrisImageUrl}
+                  alt="QRIS Code"
+                  className="w-48 h-48 mx-auto border border-blue-200 rounded-lg"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5YTNhZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIE5vdCBGb3VuZDwvdGV4dD48L3N2Zz4=';
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {order.status === 'BELUM BAYAR' && order.payment_method !== 'QRIS' && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
               <h4 className="font-semibold text-orange-900 mb-2">Instruksi Pembayaran</h4>
               {paymentInfo && <p className="text-sm text-orange-800 mb-3">{paymentInfo}</p>}

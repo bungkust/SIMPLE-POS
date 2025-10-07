@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Filter, CheckCircle, XCircle, ExternalLink, Download, Printer, MessageCircle, Sheet } from 'lucide-react';
+import { Filter, CheckCircle, XCircle, ExternalLink, Download, Printer, MessageCircle, Sheet, ShoppingBag, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatRupiah, formatDateTime } from '../../lib/utils';
 import { Database } from '../../lib/database.types';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Order = Database['public']['Tables']['orders']['Row'];
 type OrderItem = Database['public']['Tables']['order_items']['Row'];
 
 export function OrdersTab() {
+  const { currentTenant } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('');
+
   useEffect(() => {
     loadOrders();
   }, []);
@@ -24,10 +27,16 @@ export function OrdersTab() {
       if (process.env.NODE_ENV === 'development') {
         console.log('OrdersTab: Querying orders table...');
       }
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+
+      // Build query with optional tenant_id filter
+      let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
+
+      // Only filter by tenant_id if currentTenant exists and has a valid tenant_id
+      if (currentTenant?.tenant_id) {
+        query = query.eq('tenant_id', currentTenant.tenant_id);
+      }
+
+      const { data: ordersData, error: ordersError } = await query;
 
       if (process.env.NODE_ENV === 'development') {
         console.log('OrdersTab: Orders query result:', { dataLength: ordersData?.length, error: ordersError });
@@ -51,11 +60,15 @@ export function OrdersTab() {
           console.log('OrdersTab: Loading order items for', orders.length, 'orders...');
         }
         const orderIds = orders.map(order => order.id);
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select('*')
-          .in('order_id', orderIds)
-          .order('order_id');
+
+        // Build order items query with tenant_id filter if available
+        let itemsQuery = supabase.from('order_items').select('*').in('order_id', orderIds).order('order_id');
+
+        if (currentTenant?.tenant_id) {
+          itemsQuery = itemsQuery.eq('tenant_id', currentTenant.tenant_id);
+        }
+
+        const { data: itemsData, error: itemsError } = await itemsQuery;
 
         if (process.env.NODE_ENV === 'development') {
           console.log('OrdersTab: Order items query result:', { dataLength: itemsData?.length, error: itemsError });
@@ -94,9 +107,21 @@ export function OrdersTab() {
 
   const updateOrderStatus = async (orderId: string, status: 'SUDAH BAYAR' | 'DIBATALKAN') => {
     try {
+      // Update the order with tenant_id for activity logging
+      // If the order doesn't have a tenant_id but currentTenant exists, set it
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString()
+      };
+
+      // Only set tenant_id if currentTenant exists and order doesn't have one
+      if (currentTenant?.tenant_id) {
+        updateData.tenant_id = currentTenant.tenant_id;
+      }
+
       const { error } = await supabase
         .from('orders')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update(updateData)
         .eq('id', orderId);
 
       if (error) throw error;
@@ -389,119 +414,197 @@ Kopi Pendekar Team`;
     return order.status === filterStatus;
   });
 
+  // Calculate stats for the header
+  const totalOrders = orders.length;
+  const paidOrders = orders.filter(order => order.status === 'SUDAH BAYAR').length;
+  const pendingOrders = orders.filter(order => order.status === 'BELUM BAYAR').length;
+  const cancelledOrders = orders.filter(order => order.status === 'DIBATALKAN').length;
+  const totalRevenue = orders.filter(order => order.status === 'SUDAH BAYAR').reduce((sum, order) => sum + order.total, 0);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
+      <div className="flex items-center justify-center py-16">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex flex-wrap gap-3 mb-6">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-500" />
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="">Semua Status</option>
-            <option value="BELUM BAYAR">Belum Bayar</option>
-            <option value="SUDAH BAYAR">Sudah Bayar</option>
-            <option value="DIBATALKAN">Dibatalkan</option>
-          </select>
+    <div className="space-y-6">
+      {/* Header Section with Stats */}
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-6 text-white">
+        <div className="flex items-center gap-3 mb-4">
+          <ShoppingBag className="w-8 h-8" />
+          <div>
+            <h2 className="text-2xl font-bold">Orders Management</h2>
+            <p className="text-green-100">Kelola dan pantau semua pesanan</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <button
-            onClick={exportToCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export CSV</span>
-          </button>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5" />
+              <span className="text-sm text-green-100">Total Orders</span>
+            </div>
+            <p className="text-2xl font-bold">{totalOrders}</p>
+          </div>
 
-          <button
-            onClick={exportToGoogleSheets}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Sheet className="w-4 h-4" />
-            <span>Export to Sheets</span>
-          </button>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              <span className="text-sm text-green-100">Paid</span>
+            </div>
+            <p className="text-2xl font-bold">{paidOrders}</p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              <span className="text-sm text-green-100">Pending</span>
+            </div>
+            <p className="text-2xl font-bold">{pendingOrders}</p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              <span className="text-sm text-green-100">Revenue</span>
+            </div>
+            <p className="text-2xl font-bold">{formatRupiah(totalRevenue)}</p>
+          </div>
         </div>
       </div>
 
+      {/* Filter and Actions Section */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-slate-500" />
+              <label className="text-sm font-medium text-slate-700">Filter Status:</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+              >
+                <option value="">Semua Status</option>
+                <option value="BELUM BAYAR">Belum Bayar</option>
+                <option value="SUDAH BAYAR">Sudah Bayar</option>
+                <option value="DIBATALKAN">Dibatalkan</option>
+              </select>
+            </div>
+            <span className="text-sm text-slate-500">
+              Menampilkan {filteredOrders.length} dari {totalOrders} pesanan
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={exportToCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </button>
+
+            <button
+              onClick={exportToGoogleSheets}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Sheet className="w-4 h-4" />
+              <span className="hidden sm:inline">Export to Sheets</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Orders Table */}
       {filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-          <p className="text-slate-600">Tidak ada pesanan</p>
+        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+          <AlertCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500 text-lg mb-2">Tidak ada pesanan ditemukan</p>
+          <p className="text-slate-400 text-sm">
+            {filterStatus ? 'Coba ubah filter status untuk melihat pesanan lain' : 'Belum ada pesanan yang masuk hari ini'}
+          </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-slate-50/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Order Code
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Tanggal
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
-                    Nama
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Customer
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
-                    HP
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Items
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
-                    Pesanan
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Metode Pembayaran
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
-                    Total
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
-                    Metode
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
-                    Aksi
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-100">
                 {filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
+                  <tr key={order.id} className="hover:bg-slate-25 transition-colors">
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-900">{order.order_code}</span>
+                        <span className="font-semibold text-slate-900">{order.order_code}</span>
                         <button
                           onClick={() => window.open(`#invoice-${order.order_code}`, '_blank')}
-                          className="p-1 hover:bg-slate-200 rounded"
+                          className="p-1 hover:bg-slate-100 rounded transition-colors"
                           title="Lihat Invoice"
                         >
-                          <ExternalLink className="w-3 h-3 text-slate-500" />
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
                         </button>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
+                    <td className="px-6 py-4 text-sm text-slate-600">
                       {formatDateTime(order.created_at)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-900">{order.customer_name}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{order.phone}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate" title={formatOrderItems(order.id)}>
-                      {formatOrderItems(order.id)}
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-slate-900">{order.customer_name}</p>
+                        <p className="text-sm text-slate-500">{order.phone}</p>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                    <td className="px-6 py-4 text-sm text-slate-600 max-w-xs">
+                      <div className="truncate" title={formatOrderItems(order.id)}>
+                        {formatOrderItems(order.id)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium ${
+                        order.payment_method === 'TRANSFER'
+                          ? 'bg-green-100 text-green-700'
+                          : order.payment_method === 'QRIS'
+                          ? 'bg-blue-100 text-blue-700'
+                          : order.payment_method === 'COD'
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {order.payment_method === 'TRANSFER' ? 'Transfer' : order.payment_method === 'QRIS' ? 'QRIS' : order.payment_method === 'COD' ? 'COD' : 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-900">
                       {formatRupiah(order.total)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{order.payment_method}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-4">
                       <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                        className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium ${
                           order.status === 'BELUM BAYAR' ? 'bg-orange-100 text-orange-700' :
                           order.status === 'SUDAH BAYAR' ? 'bg-green-100 text-green-700' :
                           'bg-red-100 text-red-700'
@@ -510,25 +613,25 @@ Kopi Pendekar Team`;
                         {order.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => printReceipt(order)}
-                          className="p-1 hover:bg-blue-100 rounded text-blue-600"
+                          className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
                           title="Cetak Struk"
                         >
                           <Printer className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => downloadReceipt(order)}
-                          className="p-1 hover:bg-green-100 rounded text-green-600"
+                          className="p-2 hover:bg-green-50 rounded-lg text-green-600 transition-colors"
                           title="Download Struk"
                         >
                           <Download className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => sendReceiptToWhatsApp(order)}
-                          className="p-1 hover:bg-emerald-100 rounded text-emerald-600"
+                          className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-600 transition-colors"
                           title="Kirim ke WhatsApp"
                         >
                           <MessageCircle className="w-4 h-4" />
@@ -537,14 +640,14 @@ Kopi Pendekar Team`;
                           <>
                             <button
                               onClick={() => updateOrderStatus(order.id, 'SUDAH BAYAR')}
-                              className="p-1 hover:bg-green-100 rounded text-green-600"
+                              className="p-2 hover:bg-green-50 rounded-lg text-green-600 transition-colors"
                               title="Tandai Sudah Bayar"
                             >
                               <CheckCircle className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => updateOrderStatus(order.id, 'DIBATALKAN')}
-                              className="p-1 hover:bg-red-100 rounded text-red-600"
+                              className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-colors"
                               title="Batalkan"
                             >
                               <XCircle className="w-4 h-4" />

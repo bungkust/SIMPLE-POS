@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Upload, Image } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ConfirmDialog } from '../ConfirmDialog';
 
@@ -39,6 +39,8 @@ export function PaymentTab() {
     itemId: null,
     itemName: ''
   });
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
 
   useEffect(() => {
     loadPaymentMethods();
@@ -97,6 +99,7 @@ export function PaymentTab() {
       account_holder: method.account_holder || '',
       qris_image_url: method.qris_image_url || ''
     });
+    setFilePreview(method.qris_image_url || null);
   };
 
   const cancelEdit = () => {
@@ -112,6 +115,40 @@ export function PaymentTab() {
       account_holder: '',
       qris_image_url: ''
     });
+    setFilePreview(null);
+  };
+
+  const uploadQRISImage = async (file: File): Promise<string | null> => {
+    try {
+      setUploadingFile(true);
+
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `qris-${Date.now()}.${fileExt}`;
+      const filePath = `payment-methods/${fileName}`;
+
+      // Upload file to Supabase storage - use 'store-icons' bucket (same as SettingsTab)
+      const { data, error } = await supabase.storage
+        .from('store-icons')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('store-icons')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error uploading QRIS image:', error);
+      }
+      alert('Gagal mengupload gambar QRIS');
+      return null;
+    } finally {
+      setUploadingFile(false);
+    }
   };
 
   const saveEdit = async () => {
@@ -334,12 +371,77 @@ export function PaymentTab() {
                     {editForm.payment_type === 'QRIS' && (
                       <div className="space-y-4 p-4 bg-slate-50 rounded-lg">
                         <h4 className="font-medium text-slate-900">QRIS</h4>
+
+                        {/* File Upload */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Upload Gambar QRIS</label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const url = await uploadQRISImage(file);
+                                  if (url) {
+                                    setEditForm({ ...editForm, qris_image_url: url });
+                                    setFilePreview(url);
+                                  }
+                                }
+                              }}
+                              className="hidden"
+                              id="qris-file-upload"
+                              disabled={uploadingFile}
+                            />
+                            <label
+                              htmlFor="qris-file-upload"
+                              className={`flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors ${
+                                uploadingFile ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              <Upload className="w-4 h-4" />
+                              <span className="text-sm">
+                                {uploadingFile ? 'Mengupload...' : 'Pilih File'}
+                              </span>
+                            </label>
+                            {filePreview && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFilePreview(null);
+                                  setEditForm({ ...editForm, qris_image_url: '' });
+                                }}
+                                className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">
+                            Upload gambar QRIS dari device Anda (JPG, PNG, max 5MB)
+                          </p>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="relative">
+                          <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-slate-300" />
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-slate-50 px-2 text-slate-500">atau</span>
+                          </div>
+                        </div>
+
+                        {/* URL Input */}
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-1">URL Gambar QRIS</label>
                           <input
                             type="url"
                             value={editForm.qris_image_url}
-                            onChange={(e) => setEditForm({ ...editForm, qris_image_url: e.target.value })}
+                            onChange={(e) => {
+                              setEditForm({ ...editForm, qris_image_url: e.target.value });
+                              setFilePreview(e.target.value);
+                            }}
                             placeholder="https://example.com/qris-image.jpg"
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                           />
@@ -347,12 +449,14 @@ export function PaymentTab() {
                             Masukkan URL gambar QRIS yang akan ditampilkan ke pelanggan
                           </p>
                         </div>
-                        {editForm.qris_image_url && (
+
+                        {/* Preview */}
+                        {(editForm.qris_image_url || filePreview) && (
                           <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Preview QRIS</label>
                             <div className="border border-slate-300 rounded-lg p-4 bg-white">
                               <img
-                                src={editForm.qris_image_url}
+                                src={filePreview || editForm.qris_image_url}
                                 alt="QRIS Preview"
                                 className="max-w-xs mx-auto"
                                 onError={(e) => {
