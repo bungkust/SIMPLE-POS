@@ -167,8 +167,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Skip RPC call for now - use fallback data
       if (process.env.NODE_ENV === 'development') {
         console.warn('⚠️ Skipping RPC call, using fallback access data');
-      } else {
-        console.warn('⚠️ WARNING: Using fallback access data in PRODUCTION - This should not happen!');
       }
 
       // Create fallback access status (development only - NOT for production)

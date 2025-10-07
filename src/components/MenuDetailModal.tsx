@@ -63,14 +63,18 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
       }
 
       // Load options
-      console.log('🔍 MenuDetailModal: Loading options for menu item:', item.id, item.name);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 MenuDetailModal: Loading options for menu item:', item.id, item.name);
+      }
       const { data: optionsData, error: optionsError } = await supabase
         .from('menu_options')
         .select('*')
         .eq('menu_item_id', item.id)
         .order('sort_order');
 
-      console.log('📊 MenuDetailModal: Options query result:', { optionsData, optionsError });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 MenuDetailModal: Options query result:', { optionsData, optionsError });
+      }
 
       if (optionsError) {
         if (process.env.NODE_ENV === 'development') {
@@ -79,13 +83,17 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
         // Don't throw error, just log it - options might not exist yet
         setOptions([]);
       } else if (optionsData) {
-        console.log('✅ MenuDetailModal: Loaded options:', optionsData.length, optionsData);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ MenuDetailModal: Loaded options:', optionsData.length, optionsData);
+        }
         setOptions(optionsData);
 
         // Load option items for all options
         const optionIds = optionsData.map(opt => opt.id);
         if (optionIds.length > 0) {
-          console.log('🔍 MenuDetailModal: Loading option items for option IDs:', optionIds);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 MenuDetailModal: Loading option items for option IDs:', optionIds);
+          }
           const { data: itemsData, error: itemsError } = await supabase
             .from('menu_option_items')
             .select('*')
@@ -93,7 +101,9 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
             .eq('is_available', true)
             .order('sort_order');
 
-          console.log('📊 MenuDetailModal: Option items query result:', { itemsData, itemsError });
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📊 MenuDetailModal: Option items query result:', { itemsData, itemsError });
+          }
 
           if (itemsError) {
             if (process.env.NODE_ENV === 'development') {
@@ -101,15 +111,21 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
             }
             setOptionItems([]);
           } else if (itemsData) {
-            console.log('✅ MenuDetailModal: Loaded option items:', itemsData.length, itemsData);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ MenuDetailModal: Loaded option items:', itemsData.length, itemsData);
+            }
             setOptionItems(itemsData);
           }
         } else {
-          console.log('ℹ️ MenuDetailModal: No option IDs to load items for');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('ℹ️ MenuDetailModal: No option IDs to load items for');
+          }
           setOptionItems([]);
         }
       } else {
-        console.log('ℹ️ MenuDetailModal: No options data returned');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('ℹ️ MenuDetailModal: No options data returned');
+        }
         setOptions([]);
       }
     } catch (error) {
@@ -360,7 +376,9 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
                 const optionItemsForOption = getOptionItemsForOption(option.id);
                 const selectedItems = getSelectedItemsForOption(option.id);
 
-                console.log('🎯 MenuDetailModal: Rendering option:', option.label, 'with items:', optionItemsForOption.length);
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🎯 MenuDetailModal: Rendering option:', option.label, 'with items:', optionItemsForOption.length);
+                }
 
                 return (
                   <div key={option.id} className="border-b border-slate-200 pb-4 last:border-b-0">

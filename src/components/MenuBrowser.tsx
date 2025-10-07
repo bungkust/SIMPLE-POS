@@ -43,43 +43,59 @@ export function MenuBrowser() {
   const { currentTenant } = useAuth();
 
   useEffect(() => {
-    console.log('🔄 MenuBrowser: useEffect triggered, currentTenant:', currentTenant);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 MenuBrowser: useEffect triggered, currentTenant:', currentTenant);
+    }
     loadData();
   }, [currentTenant]);
 
   const loadData = async () => {
     if (!currentTenant) {
-      console.log('❌ MenuBrowser: No current tenant available');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ MenuBrowser: No current tenant available');
+      }
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      console.log('🔄 MenuBrowser: Loading data for tenant:', currentTenant.tenant_slug, currentTenant.tenant_id);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 MenuBrowser: Loading data for tenant:', currentTenant.tenant_slug, currentTenant.tenant_id);
+      }
 
       const [categoriesRes, itemsRes] = await Promise.all([
         supabase.from('categories').select('*').eq('tenant_id', currentTenant.tenant_id).order('sort_order'),
         supabase.from('menu_items').select('*').eq('tenant_id', currentTenant.tenant_id).eq('is_active', true),
       ]);
 
-      console.log('📊 MenuBrowser: Categories response:', categoriesRes);
-      console.log('📊 MenuBrowser: Menu items response:', itemsRes);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 MenuBrowser: Categories response:', categoriesRes);
+        console.log('📊 MenuBrowser: Menu items response:', itemsRes);
+      }
 
       if (categoriesRes.data) {
-        console.log('✅ MenuBrowser: Loaded categories:', categoriesRes.data.length);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ MenuBrowser: Loaded categories:', categoriesRes.data.length);
+        }
         setCategories(categoriesRes.data);
       }
       if (itemsRes.data) {
-        console.log('✅ MenuBrowser: Loaded menu items:', itemsRes.data.length);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ MenuBrowser: Loaded menu items:', itemsRes.data.length);
+        }
         setMenuItems(itemsRes.data);
       }
 
       if (categoriesRes.error) {
-        console.error('❌ MenuBrowser: Categories error:', categoriesRes.error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ MenuBrowser: Categories error:', categoriesRes.error);
+        }
       }
       if (itemsRes.error) {
-        console.error('❌ MenuBrowser: Menu items error:', itemsRes.error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ MenuBrowser: Menu items error:', itemsRes.error);
+        }
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
