@@ -103,9 +103,10 @@ function AdminLoginPageWrapper() {
 }
 
 function SuperAdminDashboardWrapper() {
+  const navigate = useNavigate();
   return (
     <ProtectedRoute requireSuperAdmin={true}>
-      <SuperAdminDashboard />
+      <SuperAdminDashboard onBack={() => navigate('/sadmin/login')} />
     </ProtectedRoute>
   );
 }
@@ -127,8 +128,8 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
-        <ConfigProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <ConfigProvider>
             <CartProvider>
               <div className="min-h-screen bg-slate-50">
                 <Routes>
@@ -160,8 +161,8 @@ function App() {
                 </Routes>
               </div>
             </CartProvider>
-          </AuthProvider>
-        </ConfigProvider>
+          </ConfigProvider>
+        </AuthProvider>
       </Router>
     </ErrorBoundary>
   );

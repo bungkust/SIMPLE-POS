@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Coffee, Store, ShoppingBag, Utensils, Save, RotateCcw, Upload, X } from 'lucide-react';
 import { useConfig } from '../../contexts/ConfigContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { NotificationDialog } from '../NotificationDialog';
 
@@ -13,6 +14,7 @@ const iconOptions = [
 
 export function SettingsTab() {
   const { config, updateConfig } = useConfig();
+  const { currentTenant } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -62,12 +64,46 @@ export function SettingsTab() {
   };
 
   const handleReset = () => {
-    setFormData({
-      storeName: 'Kopi Pendekar',
-      storeIcon: 'Coffee',
-      storeIconType: 'predefined',
-    });
+    if (!currentTenant) return;
+
+    // Get tenant-specific defaults from ConfigContext
+    const getDefaultConfigForTenant = (tenantSlug: string) => {
+      const tenantDefaults: Record<string, any> = {
+        'kopipendekar': {
+          storeName: 'Kopi Pendekar',
+          storeIcon: 'Coffee',
+          storeIconType: 'predefined'
+        },
+        'matchae': {
+          storeName: 'Matchae',
+          storeIcon: 'Coffee',
+          storeIconType: 'predefined'
+        },
+        'testcafe': {
+          storeName: 'Test Cafe',
+          storeIcon: 'Store',
+          storeIconType: 'predefined'
+        },
+        'demostore': {
+          storeName: 'Demo Store',
+          storeIcon: 'ShoppingBag',
+          storeIconType: 'predefined'
+        }
+      };
+
+      return tenantDefaults[tenantSlug] || {
+        storeName: tenantSlug.charAt(0).toUpperCase() + tenantSlug.slice(1).replace('-', ' '),
+        storeIcon: 'Coffee',
+        storeIconType: 'predefined'
+      };
+    };
+
+    const defaultConfig = getDefaultConfigForTenant(currentTenant.tenant_slug);
+    setFormData(defaultConfig);
     setUploadedIconUrl(null);
+
+    // Update the config context as well
+    updateConfig(defaultConfig);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -80,7 +116,7 @@ export function SettingsTab() {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !currentTenant) return;
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -97,28 +133,15 @@ export function SettingsTab() {
     setUploading(true);
 
     try {
-      // Check if user is authenticated
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        showNotification('Error!', 'Anda harus login terlebih dahulu untuk upload icon.', 'error');
-        setUploading(false);
-        return;
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('User authenticated:', user.email);
-      }
-
-      // Create unique filename
+      // Create unique filename with tenant prefix
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `${currentTenant.tenant_slug}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('Uploading file:', fileName, 'to bucket: store-icons');
+        console.log('Uploading file:', fileName, 'to bucket: store-icons for tenant:', currentTenant.tenant_slug);
       }
 
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage with tenant organization
       const { data, error } = await supabase.storage
         .from('store-icons')
         .upload(fileName, file, {
@@ -183,7 +206,14 @@ export function SettingsTab() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-6">Pengaturan Toko</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-slate-900">Pengaturan Toko</h2>
+          {currentTenant && (
+            <div className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+              {currentTenant.tenant_name}
+            </div>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Store Name */}
@@ -348,10 +378,10 @@ export function SettingsTab() {
           <div className="text-sm text-blue-800">
             <p className="font-medium mb-1">Catatan:</p>
             <ul className="space-y-1 text-blue-700">
-              <li>• Pilih icon dari pilihan yang tersedia atau upload icon custom</li>
-              <li>• Icon custom akan disimpan di Supabase Storage</li>
-              <li>• Pengaturan disimpan secara lokal di browser</li>
-              <li>• Jika diperlukan, pengaturan dapat direset ke default</li>
+              <li>• Setiap tenant memiliki pengaturan toko yang terpisah</li>
+              <li>• Pengaturan disimpan secara lokal per tenant</li>
+              <li>• Icon custom diupload ke Supabase Storage dengan organisasi per tenant</li>
+              <li>• Jika diperlukan, pengaturan dapat direset ke default tenant</li>
             </ul>
           </div>
         </div>

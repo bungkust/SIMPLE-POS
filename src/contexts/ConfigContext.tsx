@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
 
 interface AppConfig {
   storeName: string;
@@ -14,35 +15,81 @@ interface ConfigContextType {
 
 const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
-const DEFAULT_CONFIG: AppConfig = {
-  storeName: 'Kopi Pendekar',
-  storeIcon: 'Coffee',
-  storeIconType: 'predefined'
+const getDefaultConfigForTenant = (tenantSlug: string): AppConfig => {
+  // Default configurations for different tenants
+  const tenantDefaults: Record<string, AppConfig> = {
+    'kopipendekar': {
+      storeName: 'Kopi Pendekar',
+      storeIcon: 'Coffee',
+      storeIconType: 'predefined'
+    },
+    'matchae': {
+      storeName: 'Matchae',
+      storeIcon: 'Coffee',
+      storeIconType: 'predefined'
+    },
+    'testcafe': {
+      storeName: 'Test Cafe',
+      storeIcon: 'Store',
+      storeIconType: 'predefined'
+    },
+    'demostore': {
+      storeName: 'Demo Store',
+      storeIcon: 'ShoppingBag',
+      storeIconType: 'predefined'
+    }
+  };
+
+  return tenantDefaults[tenantSlug] || {
+    storeName: tenantSlug.charAt(0).toUpperCase() + tenantSlug.slice(1).replace('-', ' '),
+    storeIcon: 'Coffee',
+    storeIconType: 'predefined'
+  };
 };
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+  const { currentTenant } = useAuth();
+  const [config, setConfig] = useState<AppConfig>({
+    storeName: 'Loading...',
+    storeIcon: 'Coffee',
+    storeIconType: 'predefined'
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load config from localStorage
-    const savedConfig = localStorage.getItem('kopi-pendekar-config');
-    if (savedConfig) {
-      try {
-        setConfig({ ...DEFAULT_CONFIG, ...JSON.parse(savedConfig) });
-      } catch (error) {
-        console.error('Error loading config:', error);
+    if (currentTenant) {
+      const tenantSlug = currentTenant.tenant_slug;
+      const defaultConfig = getDefaultConfigForTenant(tenantSlug);
+
+      // Create tenant-specific localStorage key
+      const storageKey = `tenant-config-${tenantSlug}`;
+
+      // Load config from localStorage for this tenant
+      const savedConfig = localStorage.getItem(storageKey);
+      if (savedConfig) {
+        try {
+          const parsedConfig = JSON.parse(savedConfig);
+          setConfig({ ...defaultConfig, ...parsedConfig });
+        } catch (error) {
+          console.error('Error loading tenant config:', error);
+          setConfig(defaultConfig);
+        }
+      } else {
+        setConfig(defaultConfig);
       }
+      setLoading(false);
     }
-    setLoading(false);
-  }, []);
+  }, [currentTenant]);
 
   const updateConfig = (newConfig: Partial<AppConfig>) => {
+    if (!currentTenant) return;
+
     const updatedConfig = { ...config, ...newConfig };
     setConfig(updatedConfig);
 
-    // Save to localStorage
-    localStorage.setItem('kopi-pendekar-config', JSON.stringify(updatedConfig));
+    // Save to localStorage with tenant-specific key
+    const storageKey = `tenant-config-${currentTenant.tenant_slug}`;
+    localStorage.setItem(storageKey, JSON.stringify(updatedConfig));
   };
 
   return (

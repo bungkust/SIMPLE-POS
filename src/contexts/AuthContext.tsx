@@ -52,16 +52,27 @@ const getTenantSlugFromURL = (): string | null => {
   const path = window.location.pathname;
   const pathParts = path.split('/').filter(Boolean);
 
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 URL parsing:', { fullPath: path, pathParts });
+  }
+
   if (pathParts.length >= 1 &&
       !pathParts[0].includes('admin') &&
       !pathParts[0].includes('login') &&
       pathParts[0] !== 'checkout' &&
       pathParts[0] !== 'orders' &&
       pathParts[0] !== 'invoice' &&
-      pathParts[0] !== 'success') {
+      pathParts[0] !== 'success' &&
+      pathParts[0] !== 'sadmin') {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎯 Found tenant slug in URL:', pathParts[0]);
+    }
     return pathParts[0];
   }
 
+  if (process.env.NODE_ENV === 'development') {
+    console.log('❌ No tenant slug found in URL');
+  }
   return null;
 };
 
@@ -170,7 +181,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             tenant_slug: 'kopipendekar',
             tenant_name: 'Kopi Pendekar',
             role: (isDev ? 'super_admin' : 'admin') as const
-          }
+          },
+          // Add more tenants for development testing
+          ...(isDev ? [
+            {
+              tenant_id: 'test-tenant-1',
+              tenant_slug: 'testcafe',
+              tenant_name: 'Test Cafe',
+              role: 'admin' as const
+            },
+            {
+              tenant_id: 'test-tenant-2',
+              tenant_slug: 'demostore',
+              tenant_name: 'Demo Store',
+              role: 'admin' as const
+            }
+          ] : [])
         ],
         user_id: user?.id || '',
         user_email: user?.email || ''
@@ -183,7 +209,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Auto-select tenant from URL if user has access
       const urlSlug = getTenantSlugFromURL();
-      if (urlSlug && !currentTenant) {
+      let selectedTenant = null;
+
+      if (urlSlug) {
         const matchingMembership = fallbackAccessStatus.memberships.find(
           (m) => m.tenant_slug === urlSlug
         );
@@ -192,12 +220,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (process.env.NODE_ENV === 'development') {
             console.log('🎯 Auto-selected tenant:', matchingMembership);
           }
-          setCurrentTenant(matchingMembership);
+          selectedTenant = matchingMembership;
+        } else {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('⚠️ URL slug not found in memberships:', urlSlug);
+            console.log('Available slugs:', fallbackAccessStatus.memberships.map(m => m.tenant_slug));
+          }
+          // For development, create a dynamic tenant based on URL slug if it doesn't exist
+          if (isDev && urlSlug) {
+            const dynamicTenant = {
+              tenant_id: `dynamic-${urlSlug}`,
+              tenant_slug: urlSlug,
+              tenant_name: urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1).replace('-', ' '),
+              role: 'admin' as const
+            };
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔧 Created dynamic tenant for URL:', dynamicTenant);
+            }
+            selectedTenant = dynamicTenant;
+          }
         }
       }
 
-      // Set default tenant if none selected
-      if (!currentTenant && fallbackAccessStatus.memberships.length > 0) {
+      // Set the selected tenant (either from URL or default)
+      if (selectedTenant) {
+        setCurrentTenant(selectedTenant);
+      } else if (fallbackAccessStatus.memberships.length > 0) {
         if (process.env.NODE_ENV === 'development') {
           console.log('🎯 Set default tenant:', fallbackAccessStatus.memberships[0]);
         }
@@ -227,6 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const initializeAuth = async () => {
+      const isDev = process.env.NODE_ENV === 'development';
       try {
         if (process.env.NODE_ENV === 'development') {
           console.log('🚀 Initializing auth...');
@@ -247,26 +296,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (process.env.NODE_ENV === 'development') {
             console.log('❌ No user session found');
           }
-          setUser(null);
-          setAccessStatus(null);
-          setCurrentTenant(null);
-
-          // Check for tenant-specific URL access (for non-authenticated users)
-          const tenantSlug = getTenantSlugFromURL();
-          if (tenantSlug) {
-            setCurrentTenant({
-              tenant_id: '',
-              tenant_slug: tenantSlug,
-              tenant_name: tenantSlug,
-              role: 'cashier'
-            });
-          }
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('❌ Auth initialization error:', error);
-        }
-        if (mounted) {
           setUser(null);
           setAccessStatus(null);
           setCurrentTenant(null);
@@ -304,15 +333,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             setUser(null);
             setAccessStatus(null);
-            setCurrentTenant(null);
+
+            // For non-authenticated users, create tenant based on URL
+            const urlSlug = getTenantSlugFromURL();
+            if (urlSlug) {
+              if (process.env.NODE_ENV === 'development') {
+                console.log('🔧 Creating tenant for non-authenticated user:', urlSlug);
+              }
+
+              // Create dynamic tenant for non-authenticated access
+              const dynamicTenant = {
+                tenant_id: `dynamic-${urlSlug}`,
+                tenant_slug: urlSlug,
+                tenant_name: urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1).replace('-', ' '),
+                role: 'cashier' as const
+              };
+
+              setCurrentTenant(dynamicTenant);
+            } else {
+              setCurrentTenant(null);
+            }
           }
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('❌ Auth state change error:', error);
-          }
-          setUser(null);
-          setAccessStatus(null);
-          setCurrentTenant(null);
         } finally {
           if (process.env.NODE_ENV === 'development') {
             console.log('✅ Auth state change complete');
