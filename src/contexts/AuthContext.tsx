@@ -172,18 +172,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Create fallback access status (development only - NOT for production)
-      const isDev = process.env.NODE_ENV === 'development';
       const fallbackAccessStatus = {
-        is_super_admin: isDev ? true : false, // Only super admin in development
+        is_super_admin: process.env.NODE_ENV === 'development' ? true : false, // Only super admin in development
         memberships: [
           {
             tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230',
             tenant_slug: 'kopipendekar',
             tenant_name: 'Kopi Pendekar',
-            role: (isDev ? 'super_admin' : 'admin') as const
+            role: (process.env.NODE_ENV === 'development' ? 'super_admin' : 'admin') as 'super_admin' | 'admin'
           },
           // Add more tenants for development testing
-          ...(isDev ? [
+          ...(process.env.NODE_ENV === 'development' ? [
             {
               tenant_id: 'test-tenant-1',
               tenant_slug: 'testcafe',
@@ -227,9 +226,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('Available slugs:', fallbackAccessStatus.memberships.map(m => m.tenant_slug));
           }
           // For development, create a dynamic tenant based on URL slug if it doesn't exist
-          if (isDev && urlSlug) {
+          if (process.env.NODE_ENV === 'development' && urlSlug) {
             const dynamicTenant = {
-              tenant_id: `dynamic-${urlSlug}`,
+              tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230', // Use real kopipendekar tenant_id
               tenant_slug: urlSlug,
               tenant_name: urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1).replace('-', ' '),
               role: 'admin' as const
@@ -275,7 +274,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const initializeAuth = async () => {
-      const isDev = process.env.NODE_ENV === 'development';
       try {
         if (process.env.NODE_ENV === 'development') {
           console.log('🚀 Initializing auth...');
@@ -298,7 +296,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           setUser(null);
           setAccessStatus(null);
-          setCurrentTenant(null);
+
+          // For non-authenticated users, create tenant based on URL for public access
+          const urlSlug = getTenantSlugFromURL();
+          if (urlSlug) {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔧 Creating tenant for non-authenticated user:', urlSlug);
+            }
+
+            // Create dynamic tenant for non-authenticated access
+            const dynamicTenant = {
+              tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230', // Use real kopipendekar tenant_id
+              tenant_slug: urlSlug,
+              tenant_name: urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1).replace('-', ' '),
+              role: 'cashier' as const
+            };
+
+            setCurrentTenant(dynamicTenant);
+          } else {
+            setCurrentTenant(null);
+          }
         }
       } finally {
         if (mounted) {
@@ -343,7 +360,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
               // Create dynamic tenant for non-authenticated access
               const dynamicTenant = {
-                tenant_id: `dynamic-${urlSlug}`,
+                tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230', // Use real kopipendekar tenant_id
                 tenant_slug: urlSlug,
                 tenant_name: urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1).replace('-', ' '),
                 role: 'cashier' as const
