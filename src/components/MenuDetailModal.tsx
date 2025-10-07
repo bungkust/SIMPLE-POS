@@ -63,24 +63,29 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
       }
 
       // Load options
+      console.log('🔍 MenuDetailModal: Loading options for menu item:', item.id, item.name);
       const { data: optionsData, error: optionsError } = await supabase
         .from('menu_options')
         .select('*')
         .eq('menu_item_id', item.id)
         .order('sort_order');
 
+      console.log('📊 MenuDetailModal: Options query result:', { optionsData, optionsError });
+
       if (optionsError) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Error loading options:', optionsError);
+          console.error('❌ MenuDetailModal: Error loading options:', optionsError);
         }
         // Don't throw error, just log it - options might not exist yet
         setOptions([]);
       } else if (optionsData) {
+        console.log('✅ MenuDetailModal: Loaded options:', optionsData.length, optionsData);
         setOptions(optionsData);
 
         // Load option items for all options
         const optionIds = optionsData.map(opt => opt.id);
         if (optionIds.length > 0) {
+          console.log('🔍 MenuDetailModal: Loading option items for option IDs:', optionIds);
           const { data: itemsData, error: itemsError } = await supabase
             .from('menu_option_items')
             .select('*')
@@ -88,21 +93,28 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
             .eq('is_available', true)
             .order('sort_order');
 
+          console.log('📊 MenuDetailModal: Option items query result:', { itemsData, itemsError });
+
           if (itemsError) {
             if (process.env.NODE_ENV === 'development') {
-              console.error('Error loading option items:', itemsError);
+              console.error('❌ MenuDetailModal: Error loading option items:', itemsError);
             }
             setOptionItems([]);
           } else if (itemsData) {
+            console.log('✅ MenuDetailModal: Loaded option items:', itemsData.length, itemsData);
             setOptionItems(itemsData);
           }
+        } else {
+          console.log('ℹ️ MenuDetailModal: No option IDs to load items for');
+          setOptionItems([]);
         }
       } else {
+        console.log('ℹ️ MenuDetailModal: No options data returned');
         setOptions([]);
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error loading data:', error);
+        console.error('❌ MenuDetailModal: Error loading data:', error);
       }
       // Set empty arrays to prevent crashes
       setOptions([]);
@@ -348,6 +360,8 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
                 const optionItemsForOption = getOptionItemsForOption(option.id);
                 const selectedItems = getSelectedItemsForOption(option.id);
 
+                console.log('🎯 MenuDetailModal: Rendering option:', option.label, 'with items:', optionItemsForOption.length);
+
                 return (
                   <div key={option.id} className="border-b border-slate-200 pb-4 last:border-b-0">
                     <div className="flex items-center justify-between mb-3">
@@ -363,48 +377,59 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
                     </div>
 
                     <div className="space-y-2">
-                      {optionItemsForOption.map((optionItem) => {
-                        const isSelected = isItemSelected(option.id, optionItem.id);
-                        const isDisabled = option.selection_type === 'multiple' &&
-                          !isSelected && selectedItems.length >= option.max_selections;
+                      {optionItemsForOption.length > 0 ? (
+                        optionItemsForOption.map((optionItem) => {
+                          const isSelected = isItemSelected(option.id, optionItem.id);
+                          const isDisabled = option.selection_type === 'multiple' &&
+                            !isSelected && selectedItems.length >= option.max_selections;
 
-                        return (
-                          <label
-                            key={optionItem.id}
-                            className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
-                              isSelected
-                                ? 'border-green-500 bg-green-50'
-                                : isDisabled
-                                  ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
-                                  : 'border-slate-200 hover:bg-slate-50'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <input
-                                type={
-                                  option.selection_type === 'multiple' ? 'checkbox' : 'radio'
-                                }
-                                name={`option-${option.id}`}
-                                checked={isSelected}
-                                disabled={isDisabled && !isSelected}
-                                onChange={(e) => handleOptionSelection(option, optionItem, e.target.checked)}
-                                className="w-4 h-4 text-green-500 focus:ring-green-500"
-                              />
-                              <span className="font-medium">{optionItem.name}</span>
-                            </div>
+                          return (
+                            <label
+                              key={optionItem.id}
+                              className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                                isSelected
+                                  ? 'border-green-500 bg-green-50'
+                                  : isDisabled
+                                    ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+                                    : 'border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type={
+                                    option.selection_type === 'multiple' ? 'checkbox' : 'radio'
+                                  }
+                                  name={`option-${option.id}`}
+                                  checked={isSelected}
+                                  disabled={isDisabled && !isSelected}
+                                  onChange={(e) => handleOptionSelection(option, optionItem, e.target.checked)}
+                                  className="w-4 h-4 text-green-500 focus:ring-green-500"
+                                />
+                                <span className="font-medium">{optionItem.name}</span>
+                              </div>
 
-                            {optionItem.additional_price > 0 && (
-                              <span className="text-green-600 font-medium">
-                                +{formatRupiah(optionItem.additional_price)}
-                              </span>
-                            )}
-                          </label>
-                        );
-                      })}
+                              {optionItem.additional_price > 0 && (
+                                <span className="text-green-600 font-medium">
+                                  +{formatRupiah(optionItem.additional_price)}
+                                </span>
+                              )}
+                            </label>
+                          );
+                        })
+                      ) : (
+                        <p className="text-slate-500 text-sm italic">No choices available for this option</p>
+                      )}
                     </div>
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Show message if no options */}
+          {options.length === 0 && !loading && (
+            <div className="text-center py-4 text-slate-500">
+              <p>No options available for this menu item</p>
             </div>
           )}
 

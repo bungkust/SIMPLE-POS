@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Settings, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmDialog } from '../ConfirmDialog';
+import { NotificationDialog } from '../NotificationDialog';
 import { formatRupiah } from '../../lib/utils';
 import { Database } from '../../lib/database.types';
 import { MenuFormModal } from './MenuFormModal';
@@ -25,11 +26,27 @@ export function MenuTab() {
   });
   const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
   const [showOptionsManager, setShowOptionsManager] = useState(false);
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  } | null>(null);
+
   const { user, currentTenant } = useAuth();
 
   useEffect(() => {
     loadData();
   }, [currentTenant]);
+
+  const showNotification = (title: string, message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({
+      isOpen: true,
+      title,
+      message,
+      type,
+    });
+  };
 
   const loadData = async () => {
     if (!currentTenant) {
@@ -137,10 +154,10 @@ export function MenuTab() {
       }
 
       await loadData();
-      alert('Menu berhasil dihapus');
+      showNotification('Success!', 'Menu berhasil dihapus', 'success');
     } catch (error) {
       console.error('Error deleting item:', error);
-      alert('Gagal menghapus menu. Pastikan Anda login sebagai admin.');
+      showNotification('Error!', 'Gagal menghapus menu. Pastikan Anda login sebagai admin.', 'error');
     } finally {
       setDeleteConfirm({ isOpen: false, itemId: null, itemName: '' });
     }
@@ -305,6 +322,18 @@ export function MenuTab() {
             setSelectedMenuItem(null);
             loadData();
           }}
+          showNotification={showNotification}
+        />
+      )}
+
+      {/* Notification Dialog */}
+      {notification && (
+        <NotificationDialog
+          isOpen={notification.isOpen}
+          onClose={() => setNotification(null)}
+          title={notification.title}
+          message={notification.message}
+          type={notification.type}
         />
       )}
     </div>
@@ -315,11 +344,13 @@ export function MenuTab() {
 function OptionsManagerModal({
   menuItem,
   currentTenant,
-  onClose
+  onClose,
+  showNotification
 }: {
   menuItem: MenuItem;
   currentTenant: any;
   onClose: () => void;
+  showNotification: (title: string, message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }) {
   const [options, setOptions] = useState<MenuOption[]>([]);
   const [optionItems, setOptionItems] = useState<MenuOptionItem[]>([]);
@@ -444,7 +475,7 @@ function OptionsManagerModal({
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ OptionsManager: Error saving option:', error);
       }
-      alert('Gagal menyimpan opsi');
+      showNotification('Error!', 'Gagal menyimpan opsi', 'error');
     }
   };
 
@@ -471,7 +502,11 @@ function OptionsManagerModal({
   };
 
   const handleDeleteOption = async (optionId: string, optionLabel: string) => {
-    if (!confirm(`Hapus opsi "${optionLabel}"?`)) return;
+    showNotification('Warning!', `Apakah Anda yakin ingin menghapus opsi "${optionLabel}"?`, 'warning');
+
+    // For now, we'll use a simple confirmation approach
+    const confirmed = window.confirm(`Hapus opsi "${optionLabel}"?`);
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase
@@ -482,9 +517,10 @@ function OptionsManagerModal({
       if (error) throw error;
 
       await loadOptions();
+      showNotification('Success!', 'Opsi berhasil dihapus', 'success');
     } catch (error) {
       console.error('Error deleting option:', error);
-      alert('Gagal menghapus opsi');
+      showNotification('Error!', 'Gagal menghapus opsi', 'error');
     }
   };
 
@@ -511,7 +547,11 @@ function OptionsManagerModal({
   };
 
   const handleDeleteOptionItem = async (optionItemId: string, optionItemName: string) => {
-    if (!confirm(`Hapus pilihan "${optionItemName}"?`)) return;
+    showNotification('Warning!', `Apakah Anda yakin ingin menghapus pilihan "${optionItemName}"?`, 'warning');
+
+    // For now, we'll use a simple confirmation approach
+    const confirmed = window.confirm(`Hapus pilihan "${optionItemName}"?`);
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase
@@ -522,13 +562,21 @@ function OptionsManagerModal({
       if (error) throw error;
 
       await loadOptions();
+      showNotification('Success!', 'Pilihan opsi berhasil dihapus', 'success');
     } catch (error) {
       console.error('Error deleting option item:', error);
-      alert('Gagal menghapus pilihan opsi');
+      showNotification('Error!', 'Gagal menghapus pilihan opsi', 'error');
     }
   };
 
   const handleAddOptionItem = (optionId: string) => {
+    // Reset form to defaults for new item
+    setEditingOptionItem(null);
+    setOptionItemFormData({
+      name: '',
+      additional_price: 0,
+      is_available: true  // Ensure it defaults to true for new items
+    });
     setSelectedOptionId(optionId);
     setShowOptionItemForm(true);
   };
@@ -583,16 +631,22 @@ function OptionsManagerModal({
           console.log('🔄 OptionsManager: Current tenant for option item:', currentTenant);
           console.log('🔄 OptionsManager: Current tenant ID for option item:', currentTenant?.tenant_id);
         }
+        const insertData = {
+          name: optionItemFormData.name,
+          additional_price: optionItemFormData.additional_price,
+          is_available: optionItemFormData.is_available,
+          menu_option_id: selectedOptionId,
+          tenant_id: currentTenant?.tenant_id,
+          sort_order: maxOrder + 1
+        };
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 OptionsManager: Inserting data:', insertData);
+        }
+
         const { error } = await supabase
           .from('menu_option_items')
-          .insert({
-            name: optionItemFormData.name,
-            additional_price: optionItemFormData.additional_price,
-            is_available: optionItemFormData.is_available,
-            menu_option_id: selectedOptionId,
-            tenant_id: currentTenant?.tenant_id,
-            sort_order: maxOrder + 1
-          });
+          .insert(insertData);
 
         if (error) {
           if (process.env.NODE_ENV === 'development') {
@@ -612,7 +666,7 @@ function OptionsManagerModal({
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ OptionsManager: Error saving option item:', error);
       }
-      alert('Gagal menyimpan pilihan opsi: ' + (error as Error).message);
+      showNotification('Error!', `Gagal menyimpan pilihan opsi: ${(error as Error).message}`, 'error');
     }
   };
 

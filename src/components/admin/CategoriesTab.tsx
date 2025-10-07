@@ -3,9 +3,15 @@ import { Plus, Edit, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmDialog } from '../ConfirmDialog';
-import { Database } from '../../lib/database.types';
+import { NotificationDialog } from '../NotificationDialog';
 
-type Category = Database['public']['Tables']['categories']['Row'];
+type Category = {
+  id: string;
+  tenant_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+};
 
 interface CategoryFormData {
   name: string;
@@ -23,6 +29,12 @@ export function CategoriesTab() {
     categoryId: null,
     categoryName: ''
   });
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  } | null>(null);
 
   const { currentTenant } = useAuth();
 
@@ -31,6 +43,15 @@ export function CategoriesTab() {
       loadCategories();
     }
   }, [currentTenant]);
+
+  const showNotification = (title: string, message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({
+      isOpen: true,
+      title,
+      message,
+      type,
+    });
+  };
 
   const loadCategories = async () => {
     if (!currentTenant) {
@@ -85,12 +106,12 @@ export function CategoriesTab() {
     e.preventDefault();
 
     if (!currentTenant) {
-      alert('Tidak dapat menyimpan kategori: Tenant tidak ditemukan');
+      showNotification('Error!', 'Tidak dapat menyimpan kategori: Tenant tidak ditemukan', 'error');
       return;
     }
 
     if (!formData.name.trim()) {
-      alert('Nama kategori tidak boleh kosong');
+      showNotification('Error!', 'Nama kategori tidak boleh kosong', 'error');
       return;
     }
 
@@ -127,7 +148,7 @@ export function CategoriesTab() {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error saving category:', error);
       }
-      alert('Gagal menyimpan kategori');
+      showNotification('Error!', 'Gagal menyimpan kategori', 'error');
     }
   };
 
@@ -160,12 +181,12 @@ export function CategoriesTab() {
       if (error) throw error;
 
       await loadCategories();
-      alert('Kategori berhasil dihapus');
+      showNotification('Success!', 'Kategori berhasil dihapus', 'success');
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error deleting category:', error);
       }
-      alert('Gagal menghapus kategori');
+      showNotification('Error!', 'Gagal menghapus kategori', 'error');
     } finally {
       setDeleteConfirm({ isOpen: false, categoryId: null, categoryName: '' });
     }
@@ -205,7 +226,7 @@ export function CategoriesTab() {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error moving category:', error);
       }
-      alert('Gagal mengubah urutan kategori');
+      showNotification('Error!', 'Gagal mengubah urutan kategori', 'error');
     }
   };
 
@@ -361,6 +382,17 @@ export function CategoriesTab() {
         cancelText="Batal"
         type="danger"
       />
+
+      {/* Notification Dialog */}
+      {notification && (
+        <NotificationDialog
+          isOpen={notification.isOpen}
+          onClose={() => setNotification(null)}
+          title={notification.title}
+          message={notification.message}
+          type={notification.type}
+        />
+      )}
     </div>
   );
 }

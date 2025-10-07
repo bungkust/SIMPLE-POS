@@ -73,13 +73,13 @@ function CheckoutPageWrapper() {
 
 function OrderHistoryPageWrapper() {
   const navigate = useNavigate();
-  return <OrderHistoryPage onBack={() => navigate('/')} onViewInvoice={(orderCode: string) => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)} />;
+  return <OrderHistoryPage onBack={() => navigate(`/${getCurrentTenantSlug()}`)} onViewInvoice={(orderCode: string) => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)} />;
 }
 
 function InvoicePageWrapper() {
   const { orderCode } = useParams<{ orderCode: string }>();
   const navigate = useNavigate();
-  return <InvoicePage orderCode={orderCode || ''} onBack={() => navigate(`/${getCurrentTenantSlug()}/orders`)} />;
+  return <InvoicePage orderCode={orderCode || ''} onBack={() => navigate(`/${getCurrentTenantSlug()}`)} />;
 }
 
 function OrderSuccessPageWrapper() {

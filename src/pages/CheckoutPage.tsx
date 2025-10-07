@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,6 +16,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   const { items, totalAmount, removeItem, clearCart } = useCart();
   const { currentTenant } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>(['TRANSFER', 'COD']);
   const [errorModal, setErrorModal] = useState({
     isOpen: false,
     message: '',
@@ -29,6 +30,44 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
     notes: '',
     paymentMethod: 'TRANSFER' as 'TRANSFER' | 'QRIS' | 'COD',
   });
+
+  // Load available payment methods on component mount
+  useEffect(() => {
+    loadAvailablePaymentMethods();
+  }, [currentTenant]);
+
+  const loadAvailablePaymentMethods = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data: paymentMethods, error } = await supabase
+        .from('payment_methods')
+        .select('payment_type, is_active')
+        .eq('tenant_id', currentTenant.tenant_id)
+        .eq('is_active', true);
+
+      if (error) {
+        console.warn('Error loading payment methods:', error);
+        return;
+      }
+
+      const availableMethods = ['TRANSFER', 'COD']; // Always available as fallback
+
+      // Add QRIS if there's an active QRIS payment method
+      if (paymentMethods?.some(pm => pm.payment_type === 'QRIS')) {
+        availableMethods.push('QRIS');
+      }
+
+      setAvailablePaymentMethods(availableMethods);
+
+      // If current selected method is not available, switch to first available
+      if (!availableMethods.includes(formData.paymentMethod)) {
+        setFormData(prev => ({ ...prev, paymentMethod: availableMethods[0] as 'TRANSFER' | 'QRIS' | 'COD' }));
+      }
+    } catch (error) {
+      console.warn('Error loading payment methods:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,20 +303,26 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                 Metode Pembayaran
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {(['TRANSFER', 'QRIS', 'COD'] as const).map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, paymentMethod: method })}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      formData.paymentMethod === method
-                        ? 'bg-green-500 text-white'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    {method}
-                  </button>
-                ))}
+                {(['TRANSFER', 'QRIS', 'COD'] as const).map((method) => {
+                  const isAvailable = availablePaymentMethods.includes(method);
+                  return (
+                    <button
+                      key={method}
+                      type="button"
+                      disabled={!isAvailable}
+                      onClick={() => isAvailable && setFormData({ ...formData, paymentMethod: method })}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        formData.paymentMethod === method
+                          ? 'bg-green-500 text-white'
+                          : isAvailable
+                            ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            : 'bg-slate-50 text-slate-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {method}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

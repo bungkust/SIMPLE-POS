@@ -860,6 +860,21 @@ end$$;
 create unique index if not exists tenant_settings_tenant_uniq on public.tenant_settings(tenant_id);
 create index if not exists tenant_settings_tenant_idx on public.tenant_settings(tenant_id);
 
+-- Enable RLS for tenant_settings
+ALTER TABLE public.tenant_settings ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for tenant_settings
+DROP POLICY IF EXISTS ts_select ON public.tenant_settings;
+CREATE POLICY ts_select ON public.tenant_settings
+FOR SELECT TO authenticated
+USING ( public.is_platform_admin() OR public.is_tenant_member(tenant_id) );
+
+DROP POLICY IF EXISTS ts_write ON public.tenant_settings;
+CREATE POLICY ts_write ON public.tenant_settings
+FOR ALL TO authenticated
+USING ( public.is_platform_admin() OR public.is_tenant_member_strict(tenant_id) )
+WITH CHECK ( public.is_platform_admin() OR public.is_tenant_member_strict(tenant_id) );
+
 -- =============== SEED ADMIN ==============================
 insert into public.admin_users (email, role, is_active)
 values ('kusbot114@gmail.com','super_admin',true)

@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 
 type Order = Database['public']['Tables']['orders']['Row'];
 type OrderItem = Database['public']['Tables']['order_items']['Row'];
+type PaymentMethod = Database['public']['Tables']['payment_methods']['Row'];
 
 interface InvoicePageProps {
   orderCode: string;
@@ -17,6 +18,7 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
   const [qrisImageUrl, setQrisImageUrl] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -46,7 +48,7 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
       // Load QRIS image if payment method is QRIS
       if (orderData.payment_method === 'QRIS') {
         try {
-          const { data: paymentMethods, error: pmError } = await (supabase as any)
+          const { data: paymentMethods, error: pmError } = await supabase
             .from('payment_methods')
             .select('qris_image_url')
             .eq('payment_type', 'QRIS')
@@ -58,6 +60,24 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
           }
         } catch (error) {
           console.warn('Could not load QRIS image:', error);
+        }
+      }
+
+      // Load payment method details if payment method is TRANSFER
+      if (orderData.payment_method === 'TRANSFER') {
+        try {
+          const { data: paymentMethods, error: pmError } = await supabase
+            .from('payment_methods')
+            .select('*')
+            .eq('payment_type', 'TRANSFER')
+            .eq('is_active', true)
+            .limit(1);
+
+          if (!pmError && paymentMethods && paymentMethods.length > 0) {
+            setPaymentMethod(paymentMethods[0]);
+          }
+        } catch (error) {
+          console.warn('Could not load payment method details:', error);
         }
       }
     } catch (error) {
@@ -176,6 +196,17 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
       doc.text(`Payment Method: ${order.payment_method}`, 20, y);
       y += 6;
 
+      // Add bank transfer details if payment method is TRANSFER
+      if (order.payment_method === 'TRANSFER' && paymentMethod) {
+        y += 4;
+        doc.text(`Bank: ${paymentMethod.bank_name}`, 20, y);
+        y += 5;
+        doc.text(`Account Number: ${paymentMethod.account_number}`, 20, y);
+        y += 5;
+        doc.text(`Account Holder: ${paymentMethod.account_holder}`, 20, y);
+        y += 8;
+      }
+
       if (order.status === 'SUDAH BAYAR') {
         doc.text(`Status: Lunas`, 20, y);
       } else {
@@ -255,9 +286,6 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
     'SUDAH BAYAR': 'bg-green-100 text-green-700',
     'DIBATALKAN': 'bg-red-100 text-red-700',
   };
-
-  const paymentInfo = import.meta.env.VITE_PAYMENT_INFO_TEXT || '';
-  const qrisUrl = import.meta.env.VITE_QRIS_IMAGE_URL || '';
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -395,15 +423,44 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
             </div>
           )}
 
-          {order.status === 'BELUM BAYAR' && order.payment_method !== 'QRIS' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <h4 className="font-semibold text-orange-900 mb-2">Instruksi Pembayaran</h4>
-              {paymentInfo && <p className="text-sm text-orange-800 mb-3">{paymentInfo}</p>}
+          {order.status === 'BELUM BAYAR' && order.payment_method === 'TRANSFER' && paymentMethod && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-semibold text-green-900 mb-2">Bank Transfer Instructions</h4>
+
+              <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
+                <h5 className="font-medium text-green-900 mb-3">Transfer ke rekening berikut:</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Bank:</span>
+                    <span className="font-medium text-green-900">{paymentMethod.bank_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">No. Rekening:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-green-900">{paymentMethod.account_number}</span>
+                      <button
+                        onClick={() => copyToClipboard(paymentMethod.account_number || '', 'account')}
+                        className="p-1 hover:bg-green-100 rounded transition-colors"
+                      >
+                        {copied === 'account' ? (
+                          <Check className="w-3 h-3 text-green-600" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Atas Nama:</span>
+                    <span className="font-medium text-green-900">{paymentMethod.account_holder}</span>
+                  </div>
+                </div>
+              </div>
 
               <div className="flex gap-2 mb-3">
                 <button
                   onClick={() => copyToClipboard(order.total.toString(), 'amount')}
-                  className="flex items-center gap-2 px-3 py-2 bg-white border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-white border border-green-200 rounded-lg hover:bg-green-50 transition-colors text-sm"
                 >
                   {copied === 'amount' ? (
                     <Check className="w-4 h-4 text-green-600" />
@@ -412,18 +469,22 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
                   )}
                   <span>Salin Nominal</span>
                 </button>
+                <button
+                  onClick={() => copyToClipboard(paymentMethod.account_number || '', 'account')}
+                  className="flex items-center gap-2 px-3 py-2 bg-white border border-green-200 rounded-lg hover:bg-green-50 transition-colors text-sm"
+                >
+                  {copied === 'account' ? (
+                    <Check className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                  <span>Salin No. Rek</span>
+                </button>
               </div>
 
-              {qrisUrl && (
-                <div className="text-center">
-                  <p className="text-sm text-slate-600 mb-2">Scan QRIS:</p>
-                  <img
-                    src={qrisUrl}
-                    alt="QRIS Code"
-                    className="w-48 h-48 mx-auto border border-slate-200 rounded-lg"
-                  />
-                </div>
-              )}
+              <p className="text-xs text-green-600">
+                Transfer sesuai nominal yang tertera. Konfirmasi pembayaran setelah transfer berhasil.
+              </p>
             </div>
           )}
         </div>

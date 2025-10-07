@@ -63,7 +63,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       // Try to load from database if user is authenticated
       if (user && currentTenant) {
         const { data, error } = await supabase
-          .from('tenant_settings' as any)
+          .from('tenant_settings')
           .select('*')
           .eq('tenant_id', currentTenant.tenant_id)
           .single();
@@ -110,7 +110,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       // Save to database if user is authenticated
       if (user && currentTenant) {
         const { error } = await supabase
-          .from('tenant_settings' as any)
+          .from('tenant_settings')
           .upsert({
             tenant_id: currentTenant.tenant_id,
             store_name: newConfig.storeName,

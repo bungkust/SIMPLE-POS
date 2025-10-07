@@ -43,26 +43,47 @@ export function MenuBrowser() {
   const { currentTenant } = useAuth();
 
   useEffect(() => {
-    if (currentTenant) {
-      loadData();
-    }
+    console.log('🔄 MenuBrowser: useEffect triggered, currentTenant:', currentTenant);
+    loadData();
   }, [currentTenant]);
 
   const loadData = async () => {
-    if (!currentTenant) return;
+    if (!currentTenant) {
+      console.log('❌ MenuBrowser: No current tenant available');
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
+      console.log('🔄 MenuBrowser: Loading data for tenant:', currentTenant.tenant_slug, currentTenant.tenant_id);
+
       const [categoriesRes, itemsRes] = await Promise.all([
         supabase.from('categories').select('*').eq('tenant_id', currentTenant.tenant_id).order('sort_order'),
         supabase.from('menu_items').select('*').eq('tenant_id', currentTenant.tenant_id).eq('is_active', true),
       ]);
 
-      if (categoriesRes.data) setCategories(categoriesRes.data);
-      if (itemsRes.data) setMenuItems(itemsRes.data);
+      console.log('📊 MenuBrowser: Categories response:', categoriesRes);
+      console.log('📊 MenuBrowser: Menu items response:', itemsRes);
+
+      if (categoriesRes.data) {
+        console.log('✅ MenuBrowser: Loaded categories:', categoriesRes.data.length);
+        setCategories(categoriesRes.data);
+      }
+      if (itemsRes.data) {
+        console.log('✅ MenuBrowser: Loaded menu items:', itemsRes.data.length);
+        setMenuItems(itemsRes.data);
+      }
+
+      if (categoriesRes.error) {
+        console.error('❌ MenuBrowser: Categories error:', categoriesRes.error);
+      }
+      if (itemsRes.error) {
+        console.error('❌ MenuBrowser: Menu items error:', itemsRes.error);
+      }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error loading data:', error);
+        console.error('❌ MenuBrowser: Error loading data:', error);
       }
     } finally {
       setLoading(false);
@@ -93,6 +114,21 @@ export function MenuBrowser() {
               <div key={i} className="h-48 sm:h-64 bg-slate-200 rounded-xl"></div>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentTenant) {
+    return (
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <div className="text-center py-8 sm:py-12">
+          <p className="text-slate-500 text-base sm:text-lg">
+            Tidak dapat memuat menu: Tenant tidak tersedia
+          </p>
+          <p className="text-sm text-slate-400 mt-2">
+            Silakan refresh halaman atau hubungi admin jika masalah berlanjut
+          </p>
         </div>
       </div>
     );
@@ -143,7 +179,17 @@ export function MenuBrowser() {
 
       {filteredItems.length === 0 ? (
         <div className="text-center py-8 sm:py-12">
-          <p className="text-slate-500 text-base sm:text-lg">Tidak ada menu yang ditemukan</p>
+          <p className="text-slate-500 text-base sm:text-lg">
+            {menuItems.length === 0
+              ? 'Belum ada menu untuk tenant ini. Silakan hubungi admin untuk menambahkan menu.'
+              : 'Tidak ada menu yang ditemukan'
+            }
+          </p>
+          {menuItems.length === 0 && currentTenant && (
+            <p className="text-sm text-slate-400 mt-2">
+              Tenant: {currentTenant.tenant_slug}
+            </p>
+          )}
         </div>
       ) : (
         <>
