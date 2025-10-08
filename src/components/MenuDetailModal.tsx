@@ -42,6 +42,12 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
     loadData();
   }, [item.id]);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 MenuDetailModal: selectedOptions changed:', selectedOptions);
+    }
+  }, [selectedOptions]);
+
   const loadData = async () => {
     try {
       // Load discount
@@ -85,6 +91,13 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
       } else if (optionsData) {
         if (process.env.NODE_ENV === 'development') {
           console.log('✅ MenuDetailModal: Loaded options:', optionsData.length, optionsData);
+          console.log('📋 MenuDetailModal: Options details:', optionsData.map(opt => ({
+            id: opt.id,
+            label: opt.label,
+            selection_type: opt.selection_type,
+            is_required: opt.is_required,
+            max_selections: opt.max_selections
+          })));
         }
         setOptions(optionsData);
 
@@ -113,6 +126,12 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
           } else if (itemsData) {
             if (process.env.NODE_ENV === 'development') {
               console.log('✅ MenuDetailModal: Loaded option items:', itemsData.length, itemsData);
+              console.log('📦 MenuDetailModal: Option items details:', itemsData.map(item => ({
+                id: item.id,
+                menu_option_id: item.menu_option_id,
+                name: item.name,
+                additional_price: item.additional_price
+              })));
             }
             setOptionItems(itemsData);
           }
@@ -171,6 +190,15 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
   };
 
   const handleOptionSelection = (option: MenuOption, optionItem: MenuOptionItem, isSelected: boolean) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔘 handleOptionSelection:', {
+        option: option.label,
+        optionItem: optionItem.name,
+        isSelected,
+        currentSelectedOptions: selectedOptions
+      });
+    }
+
     setSelectedOptions(prev => {
       const existingOptionIndex = prev.findIndex(opt => opt.optionId === option.id);
 
@@ -190,6 +218,10 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
 
           const newOptions = [...prev];
           newOptions[existingOptionIndex] = newOption;
+
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ handleOptionSelection: Updated single option:', newOptions);
+          }
           return newOptions;
         } else {
           // Multiple selection
@@ -208,12 +240,16 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
 
           const newOptions = [...prev];
           newOptions[existingOptionIndex] = newOption;
+
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ handleOptionSelection: Updated multiple option:', newOptions);
+          }
           return newOptions;
         }
       } else {
         // New option
         if (isSelected) {
-          return [...prev, {
+          const newOption = {
             optionId: option.id,
             optionName: option.label,
             selectedItems: [{
@@ -221,7 +257,14 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
               itemName: optionItem.name,
               additionalPrice: optionItem.additional_price
             }]
-          }];
+          };
+
+          const newOptions = [...prev, newOption];
+
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ handleOptionSelection: Added new option:', newOptions);
+          }
+          return newOptions;
         }
         return prev;
       }
@@ -243,6 +286,11 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
   };
 
   const handleAddToCart = () => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🛒 handleAddToCart: selectedOptions:', selectedOptions);
+      console.log('📝 handleAddToCart: user notes:', notes);
+    }
+
     // Validate required options if any exist
     const requiredOptions = options.filter(opt => opt.is_required);
     const hasAllRequired = requiredOptions.every(opt => {
@@ -257,15 +305,48 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
 
     const totalPrice = calculateTotalPrice();
 
+    // Format selected options into a readable string
+    const formatSelectedOptions = () => {
+      if (selectedOptions.length === 0) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('⚠️ handleAddToCart: No selectedOptions found');
+        }
+        return '';
+      }
+
+      const optionStrings = selectedOptions.map(option => {
+        const itemNames = option.selectedItems.map(item => item.itemName).join(', ');
+        return `${option.optionName}: ${itemNames}`;
+      });
+
+      const result = optionStrings.join('; ');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ handleAddToCart: Formatted options:', result);
+      }
+      return result;
+    };
+
+    // Combine selected options and user notes
+    const selectedOptionsText = formatSelectedOptions();
+    const allNotes = [selectedOptionsText, notes].filter(Boolean).join('; ');
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎯 handleAddToCart: Final allNotes:', allNotes);
+    }
+
     // Create cart item with all details
     const cartItem = {
       id: item.id,
       name: item.name,
       price: totalPrice / qty, // Price per item (excluding quantity multiplier)
       qty: qty,
-      notes: notes || undefined,
+      notes: allNotes || undefined,
       photo_url: item.photo_url,
     };
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🛒 handleAddToCart: Creating cart item:', cartItem);
+    }
 
     // Add to cart using the context
     addItem(cartItem);

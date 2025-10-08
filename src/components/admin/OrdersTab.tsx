@@ -409,6 +409,32 @@ Kopi Pendekar Team`;
     ).join(', ');
   };
 
+  const formatOrderOptions = (orderId: string) => {
+    const items = getOrderItemsForOrder(orderId);
+    if (items.length === 0) return '-';
+
+    const optionsList = items
+      .filter(item => item.notes && item.notes.trim() !== '')
+      .map(item => {
+        // Parse the notes field which contains formatted options
+        // Format: "Size: Large; Sugar Level: Less Sugar; Temperature: Hot"
+        if (item.notes.includes(':') && item.notes.includes(';')) {
+          // Multiple options format
+          return item.notes.split(';').map(opt => opt.trim()).filter(opt => opt.length > 0);
+        } else if (item.notes.includes(':')) {
+          // Single option format
+          return [item.notes];
+        } else {
+          // Simple note without option format
+          return [`Note: ${item.notes}`];
+        }
+      })
+      .flat() // Flatten the array of arrays
+      .filter(option => option && option.trim() !== '');
+
+    return optionsList.length > 0 ? optionsList.join('; ') : '-';
+  };
+
   const filteredOrders = orders.filter((order) => {
     if (!filterStatus) return true;
     return order.status === filterStatus;
@@ -547,6 +573,9 @@ Kopi Pendekar Team`;
                     Items
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Options
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Metode Pembayaran
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
@@ -584,6 +613,11 @@ Kopi Pendekar Team`;
                     <td className="px-6 py-4 text-sm text-slate-600 max-w-xs">
                       <div className="truncate" title={formatOrderItems(order.id)}>
                         {formatOrderItems(order.id)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600 max-w-xs">
+                      <div className="truncate" title={formatOrderOptions(order.id)}>
+                        {formatOrderOptions(order.id)}
                       </div>
                     </td>
                     <td className="px-6 py-4">
