@@ -6,6 +6,7 @@ import { formatRupiah, normalizePhone, getTomorrowDate } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { generateOrderCode } from '../lib/orderUtils';
 import { ErrorModal } from '../components/ErrorModal';
+import { getTenantInfo, getTenantId } from '../lib/tenantUtils';
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -14,7 +15,40 @@ interface CheckoutPageProps {
 
 export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   const { items, totalAmount, removeItem, clearCart } = useCart();
-  const { currentTenant } = useAuth();
+  
+  // Get tenant info - use currentTenant if available (authenticated), otherwise use URL
+  const getTenantInfoLocal = () => {
+    try {
+      const { currentTenant } = useAuth();
+      if (currentTenant) {
+        return currentTenant;
+      }
+    } catch (error) {
+      // AuthContext not available, use URL fallback
+    }
+    
+    // Fallback: get tenant slug from URL
+    const path = window.location.pathname;
+    const pathParts = path.split('/').filter(Boolean);
+    
+    if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'auth') {
+      return {
+        tenant_slug: pathParts[0],
+        tenant_id: null,
+        tenant_name: pathParts[0].charAt(0).toUpperCase() + pathParts[0].slice(1).replace('-', ' '),
+        role: 'public' as const
+      };
+    }
+    
+    return {
+      tenant_slug: 'kopipendekar',
+      tenant_id: null,
+      tenant_name: 'Kopi Pendekar',
+      role: 'public' as const
+    };
+  };
+
+  const currentTenant = getTenantInfoLocal();
   const [loading, setLoading] = useState(false);
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>(['TRANSFER', 'COD']);
   const [errorModal, setErrorModal] = useState({
@@ -40,10 +74,21 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
     if (!currentTenant) return;
 
     try {
+      // Get tenant ID dynamically from database
+      let tenantId = currentTenant.tenant_id;
+      if (!tenantId) {
+        tenantId = await getTenantId(currentTenant.tenant_slug);
+        
+        if (!tenantId) {
+          console.warn('Could not resolve tenant ID for payment methods:', currentTenant.tenant_slug);
+          return;
+        }
+      }
+
       const { data: paymentMethods, error } = await supabase
         .from('payment_methods')
         .select('payment_type, is_active')
-        .eq('tenant_id', currentTenant.tenant_id)
+        .eq('tenant_id', tenantId)
         .eq('is_active', true);
 
       if (error) {
@@ -81,8 +126,15 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       const serviceFee = 0;
       const total = subtotal - discount + serviceFee;
 
-      // Ensure we have a valid tenant_id - fallback to default Kopi Pendekar tenant if needed
-      const tenantId = currentTenant?.tenant_id || 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230';
+      // Get tenant ID dynamically from database
+      let tenantId = currentTenant?.tenant_id;
+      if (!tenantId) {
+        tenantId = await getTenantId(currentTenant?.tenant_slug);
+        
+        if (!tenantId) {
+          throw new Error('Could not resolve tenant ID for order creation');
+        }
+      }
 
       if (process.env.NODE_ENV === 'development') {
         console.log('Creating order with tenant_id:', tenantId);

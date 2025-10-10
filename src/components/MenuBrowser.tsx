@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { MenuCard } from './MenuCard';
 import { MenuDetailModal } from './MenuDetailModal';
 import { MenuListItem } from './MenuListItem';
+import { getTenantInfo, getTenantId } from '../lib/tenantUtils';
 
 type MenuItem = {
   id: string;
@@ -40,19 +41,51 @@ export function MenuBrowser() {
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { currentTenant } = useAuth();
+  // Get tenant info - use currentTenant if available (authenticated), otherwise use URL
+  const getTenantInfoLocal = () => {
+    try {
+      const { currentTenant } = useAuth();
+      if (currentTenant) {
+        return currentTenant;
+      }
+    } catch (error) {
+      // AuthContext not available, use URL fallback
+    }
+    
+    // Fallback: get tenant slug from URL
+    const path = window.location.pathname;
+    const pathParts = path.split('/').filter(Boolean);
+    
+    if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'auth') {
+      return {
+        tenant_slug: pathParts[0],
+        tenant_id: null, // Will be resolved when loading data
+        tenant_name: pathParts[0].charAt(0).toUpperCase() + pathParts[0].slice(1).replace('-', ' '),
+        role: 'public' as const
+      };
+    }
+    
+    return {
+      tenant_slug: 'kopipendekar',
+      tenant_id: null,
+      tenant_name: 'Kopi Pendekar',
+      role: 'public' as const
+    };
+  };
+
+  const tenantInfo = getTenantInfoLocal();
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 MenuBrowser: useEffect triggered, currentTenant:', currentTenant);
+      console.log('🔄 MenuBrowser: useEffect triggered, tenantInfo:', tenantInfo);
     }
     loadData();
-  }, [currentTenant]);
+  }, [tenantInfo.tenant_slug]);
 
   const loadData = async () => {
-    if (!currentTenant) {
+    if (!tenantInfo.tenant_slug) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('❌ MenuBrowser: No current tenant available');
+        console.log('❌ MenuBrowser: No tenant slug available');
       }
       setLoading(false);
       return;
@@ -61,12 +94,24 @@ export function MenuBrowser() {
     try {
       setLoading(true);
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 MenuBrowser: Loading data for tenant:', currentTenant.tenant_slug, currentTenant.tenant_id);
+        console.log('🔄 MenuBrowser: Loading data for tenant:', tenantInfo.tenant_slug, tenantInfo.tenant_id);
+      }
+
+      // Get tenant ID dynamically from database
+      let tenantId = tenantInfo.tenant_id;
+      if (!tenantId) {
+        tenantId = await getTenantId(tenantInfo.tenant_slug);
+        
+        if (!tenantId) {
+          console.error('❌ MenuBrowser: Could not resolve tenant ID for slug:', tenantInfo.tenant_slug);
+          setLoading(false);
+          return;
+        }
       }
 
       const [categoriesRes, itemsRes] = await Promise.all([
-        supabase.from('categories').select('*').eq('tenant_id', currentTenant.tenant_id).order('sort_order'),
-        supabase.from('menu_items').select('*').eq('tenant_id', currentTenant.tenant_id).eq('is_active', true),
+        supabase.from('categories').select('*').eq('tenant_id', tenantId).order('sort_order'),
+        supabase.from('menu_items').select('*').eq('tenant_id', tenantId).eq('is_active', true),
       ]);
 
       if (process.env.NODE_ENV === 'development') {
@@ -135,7 +180,7 @@ export function MenuBrowser() {
     );
   }
 
-  if (!currentTenant) {
+  if (!tenantInfo.tenant_slug) {
     return (
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <div className="text-center py-8 sm:py-12">
@@ -177,7 +222,6 @@ export function MenuBrowser() {
           Semua
         </button>
         {categories
-          .filter(cat => cat.tenant_id === currentTenant?.tenant_id)
           .map((cat) => (
             <button
               key={cat.id}
@@ -201,9 +245,9 @@ export function MenuBrowser() {
               : 'Tidak ada menu yang ditemukan'
             }
           </p>
-          {menuItems.length === 0 && currentTenant && (
+          {menuItems.length === 0 && tenantInfo.tenant_slug && (
             <p className="text-sm text-slate-400 mt-2">
-              Tenant: {currentTenant.tenant_slug}
+              Tenant: {tenantInfo.tenant_slug}
             </p>
           )}
         </div>

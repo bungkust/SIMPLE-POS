@@ -128,42 +128,58 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
-        <AuthProvider>
-          <ConfigProvider>
-            <CartProvider>
-              <div className="min-h-screen bg-slate-50">
-                <Routes>
-                  {/* Public Routes - Landing Page and Customer Interface */}
-                  <Route path="/" element={<LandingPageWrapper />} />
-                  <Route path="/:tenantSlug" element={<MenuPageWrapper />} />
-                  <Route path="/auth/callback" element={<AuthCallback />} />
-                  <Route path="/login" element={<AdminLoginPageWrapper />} />
-                  <Route path="/:tenantSlug/admin/login" element={<AdminLoginPageWrapper />} />
-                  <Route path="/:tenantSlug/checkout" element={<CheckoutPageWrapper />} />
-                  <Route path="/:tenantSlug/orders" element={<OrderHistoryPageWrapper />} />
-                  <Route path="/:tenantSlug/invoice/:orderCode" element={<InvoicePageWrapper />} />
-                  <Route path="/:tenantSlug/success/:orderCode" element={<OrderSuccessPageWrapper />} />
+        <ConfigProvider>
+          <CartProvider>
+            <div className="min-h-screen bg-slate-50">
+              <Routes>
+                {/* Public Routes - Landing Page and Customer Interface */}
+                <Route path="/" element={<LandingPageWrapper />} />
+                <Route path="/:tenantSlug" element={<MenuPageWrapper />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/:tenantSlug/checkout" element={<CheckoutPageWrapper />} />
+                <Route path="/:tenantSlug/orders" element={<OrderHistoryPageWrapper />} />
+                <Route path="/:tenantSlug/invoice/:orderCode" element={<InvoicePageWrapper />} />
+                <Route path="/:tenantSlug/success/:orderCode" element={<OrderSuccessPageWrapper />} />
 
-                  {/* Legacy routes - redirect to tenant-specific versions */}
-                  <Route path="/checkout" element={<Navigate to={`/${getCurrentTenantSlug()}/checkout`} replace />} />
-                  <Route path="/orders" element={<Navigate to={`/${getCurrentTenantSlug()}/orders`} replace />} />
-                  <Route path="/invoice/:orderCode" element={<Navigate to={`/${getCurrentTenantSlug()}/invoice/${getOrderCode()}`} replace />} />
-                  <Route path="/success/:orderCode" element={<Navigate to={`/${getCurrentTenantSlug()}/success/${getOrderCode()}`} replace />} />
+                {/* Legacy routes - redirect to tenant-specific versions */}
+                <Route path="/checkout" element={<Navigate to={`/${getCurrentTenantSlug()}/checkout`} replace />} />
+                <Route path="/orders" element={<Navigate to={`/${getCurrentTenantSlug()}/orders`} replace />} />
+                <Route path="/invoice/:orderCode" element={<Navigate to={`/${getCurrentTenantSlug()}/invoice/${getOrderCode()}`} replace />} />
+                <Route path="/success/:orderCode" element={<Navigate to={`/${getCurrentTenantSlug()}/success/${getOrderCode()}`} replace />} />
 
-                  {/* Super Admin Routes */}
-                  <Route path="/sadmin/login" element={<SuperAdminLoginPageWrapper />} />
-                  <Route path="/sadmin/dashboard" element={<SuperAdminDashboardWrapper />} />
+                {/* Admin Routes - Protected with AuthProvider */}
+                <Route path="/login" element={
+                  <AuthProvider>
+                    <AdminLoginPageWrapper />
+                  </AuthProvider>
+                } />
+                <Route path="/:tenantSlug/admin/login" element={
+                  <AuthProvider>
+                    <AdminLoginPageWrapper />
+                  </AuthProvider>
+                } />
+                <Route path="/sadmin/login" element={
+                  <AuthProvider>
+                    <SuperAdminLoginPageWrapper />
+                  </AuthProvider>
+                } />
+                <Route path="/sadmin/dashboard" element={
+                  <AuthProvider>
+                    <SuperAdminDashboardWrapper />
+                  </AuthProvider>
+                } />
+                <Route path="/:tenantSlug/admin/dashboard" element={
+                  <AuthProvider>
+                    <AdminDashboardWrapper />
+                  </AuthProvider>
+                } />
 
-                  {/* Tenant Admin Routes */}
-                  <Route path="/:tenantSlug/admin/dashboard" element={<AdminDashboardWrapper />} />
-
-                  {/* Catch all - redirect to home */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </div>
-            </CartProvider>
-          </ConfigProvider>
-        </AuthProvider>
+                {/* Catch all - redirect to home */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </CartProvider>
+        </ConfigProvider>
       </Router>
     </ErrorBoundary>
   );

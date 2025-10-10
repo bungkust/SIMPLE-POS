@@ -3,14 +3,48 @@ import { ShoppingCart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatRupiah } from '../lib/utils';
+import { getTenantInfo } from '../lib/tenantUtils';
 
 export function CartBar() {
   const navigate = useNavigate();
   const { totalItems, totalAmount } = useCart();
-  const { tenant } = useAuth();
+  
+  // Get tenant info - use currentTenant if available (authenticated), otherwise use URL
+  const getTenantInfoLocal = () => {
+    try {
+      const { currentTenant } = useAuth();
+      if (currentTenant) {
+        return currentTenant;
+      }
+    } catch (error) {
+      // AuthContext not available, use URL fallback
+    }
+    
+    // Fallback: get tenant slug from URL
+    const path = window.location.pathname;
+    const pathParts = path.split('/').filter(Boolean);
+    
+    if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'auth') {
+      return {
+        tenant_slug: pathParts[0],
+        tenant_id: null,
+        tenant_name: pathParts[0].charAt(0).toUpperCase() + pathParts[0].slice(1).replace('-', ' '),
+        role: 'public' as const
+      };
+    }
+    
+    return {
+      tenant_slug: 'kopipendekar',
+      tenant_id: null,
+      tenant_name: 'Kopi Pendekar',
+      role: 'public' as const
+    };
+  };
+
+  const tenantInfo = getTenantInfoLocal();
 
   const handleCheckoutClick = () => {
-    const tenantSlug = tenant?.slug || 'kopipendekar';
+    const tenantSlug = tenantInfo.tenant_slug;
     navigate(`/${tenantSlug}/checkout`);
   };
 

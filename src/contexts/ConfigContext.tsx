@@ -69,6 +69,19 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
 
+  // Get tenant slug from URL for public pages
+  const getTenantSlugFromUrl = (): string => {
+    const path = window.location.pathname;
+    const pathParts = path.split('/').filter(Boolean);
+    
+    // Check if path starts with tenant slug pattern
+    if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'auth') {
+      return pathParts[0];
+    }
+    
+    return 'kopipendekar'; // Default tenant
+  };
+
   // Load config from database first, then localStorage as fallback
   const loadConfig = async (tenantSlug: string) => {
     try {
@@ -146,20 +159,21 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (currentTenant) {
-      loadConfig(currentTenant.tenant_slug);
-      setLoading(false);
-    }
+    // Use currentTenant if available (for authenticated users), otherwise use URL
+    const tenantSlug = currentTenant?.tenant_slug || getTenantSlugFromUrl();
+    loadConfig(tenantSlug);
+    setLoading(false);
   }, [currentTenant, user]);
 
   const updateConfig = async (newConfig: Partial<AppConfig>) => {
-    if (!currentTenant) return;
-
+    // Use currentTenant if available (for authenticated users), otherwise use URL
+    const tenantSlug = currentTenant?.tenant_slug || getTenantSlugFromUrl();
+    
     const updatedConfig = { ...config, ...newConfig };
     setConfig(updatedConfig);
 
     // Save to both database and localStorage
-    await saveConfig(currentTenant.tenant_slug, updatedConfig);
+    await saveConfig(tenantSlug, updatedConfig);
   };
 
   return (
