@@ -16,7 +16,7 @@ interface AdminDashboardProps {
 export function AdminDashboard({}: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'payment' | 'kasir' | 'settings' | 'sheets'>('orders');
   const [loadingTimeout, setLoadingTimeout] = useState(false);
-  const { signOut, user, currentTenant, isTenantAdmin, loading, accessStatus } = useAuth();
+  const { signOut, user, currentTenant, isTenantOwner, loading } = useAuth();
 
   // Debug logging
   useEffect(() => {
@@ -24,11 +24,10 @@ export function AdminDashboard({}: AdminDashboardProps) {
     console.log('🔄 AdminDashboard: Auth state:', {
       loading,
       user: user?.email || 'no user',
-      currentTenant: currentTenant?.tenant_name || 'no tenant',
-      isTenantAdmin,
-      accessStatus: accessStatus ? 'has status' : 'no status'
+      currentTenant: currentTenant?.name || 'no tenant',
+      isTenantOwner
     });
-  }, [loading, user, currentTenant, isTenantAdmin, accessStatus]);
+  }, [loading, user, currentTenant, isTenantOwner]);
 
   // Show error if loading takes too long
   useEffect(() => {
@@ -68,14 +67,14 @@ export function AdminDashboard({}: AdminDashboardProps) {
   }
 
   // Show error if no access
-  if (!accessStatus && user) {
+  if (user && !isTenantOwner) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center p-8 bg-white rounded-xl shadow-sm max-w-md">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Error</h2>
           <p className="text-slate-600 mb-4">
-            Unable to load user permissions. Check console for details.
+            You don't have permission to access this tenant dashboard.
           </p>
           <button
             onClick={() => window.location.reload()}
@@ -93,8 +92,8 @@ export function AdminDashboard({}: AdminDashboardProps) {
       await signOut();
 
       // Redirect to specific tenant login page instead of calling onBack()
-      if (currentTenant?.tenant_slug) {
-        window.location.href = `/${currentTenant.tenant_slug}/admin/login`;
+      if (currentTenant?.slug) {
+        window.location.href = `/login`;
       } else {
         // Fallback to generic login if no tenant info
         window.location.href = '/kopipendekar/admin/login';
@@ -104,8 +103,8 @@ export function AdminDashboard({}: AdminDashboardProps) {
         console.error('Sign out error:', error);
       }
       // Even if sign out fails, redirect to login page
-      if (currentTenant?.tenant_slug) {
-        window.location.href = `/${currentTenant.tenant_slug}/admin/login`;
+      if (currentTenant?.slug) {
+        window.location.href = `/login`;
       } else {
         window.location.href = '/kopipendekar/admin/login';
       }
@@ -118,7 +117,7 @@ export function AdminDashboard({}: AdminDashboardProps) {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
             <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              Admin Dashboard
+              {currentTenant?.name ? `${currentTenant.name} Admin Dashboard` : 'Admin Dashboard'}
             </h1>
             <div className="flex items-center gap-2 sm:gap-3">
               <span className="text-xs sm:text-sm text-slate-600 truncate max-w-[120px] sm:max-w-none">{user?.email}</span>

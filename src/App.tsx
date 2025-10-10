@@ -106,7 +106,7 @@ function SuperAdminDashboardWrapper() {
   const navigate = useNavigate();
   return (
     <ProtectedRoute requireSuperAdmin={true}>
-      <SuperAdminDashboard onBack={() => navigate('/sadmin/login')} />
+      <SuperAdminDashboard onBack={() => navigate('/super-admin/login')} />
     </ProtectedRoute>
   );
 }
@@ -147,28 +147,23 @@ function App() {
                 <Route path="/invoice/:orderCode" element={<Navigate to={`/${getCurrentTenantSlug()}/invoice/${getOrderCode()}`} replace />} />
                 <Route path="/success/:orderCode" element={<Navigate to={`/${getCurrentTenantSlug()}/success/${getOrderCode()}`} replace />} />
 
-                {/* Admin Routes - Protected with AuthProvider */}
+                {/* Admin Routes - Following Test Login pattern */}
                 <Route path="/login" element={
                   <AuthProvider>
                     <AdminLoginPageWrapper />
                   </AuthProvider>
                 } />
-                <Route path="/:tenantSlug/admin/login" element={
-                  <AuthProvider>
-                    <AdminLoginPageWrapper />
-                  </AuthProvider>
-                } />
-                <Route path="/sadmin/login" element={
+                <Route path="/super-admin/login" element={
                   <AuthProvider>
                     <SuperAdminLoginPageWrapper />
                   </AuthProvider>
                 } />
-                <Route path="/sadmin/dashboard" element={
+                <Route path="/super-admin/dashboard" element={
                   <AuthProvider>
                     <SuperAdminDashboardWrapper />
                   </AuthProvider>
                 } />
-                <Route path="/:tenantSlug/admin/dashboard" element={
+                <Route path="/:tenantSlug/dashboard" element={
                   <AuthProvider>
                     <AdminDashboardWrapper />
                   </AuthProvider>

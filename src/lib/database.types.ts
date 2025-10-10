@@ -2,17 +2,24 @@
 export interface Database {
   public: {
     Tables: {
-      admin_users: {
+      user_roles: {
         Row: {
           id: string;
-          email: string;
-          role: 'super_admin' | 'manager' | 'staff';
-          is_active: boolean;
-          last_login: string | null;
-          created_at: string;
           user_id: string;
-          platform_role: 'staff' | 'manager' | 'super_admin';
-          updated_at: string;
+          role: 'super_admin' | 'tenant';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          role: 'super_admin' | 'tenant';
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          role?: 'super_admin' | 'tenant';
+          created_at?: string;
         };
       };
       categories: {
@@ -102,6 +109,40 @@ export interface Database {
           updated_at: string;
           tenant_id: string | null;
         };
+        Insert: {
+          id?: string;
+          order_code?: string | null;
+          customer_name: string;
+          phone: string;
+          pickup_date: string;
+          notes?: string | null;
+          payment_method: 'TRANSFER' | 'QRIS' | 'COD';
+          status?: 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN';
+          subtotal: number;
+          discount?: number;
+          service_fee?: number;
+          total: number;
+          created_at?: string;
+          updated_at?: string;
+          tenant_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          order_code?: string | null;
+          customer_name?: string;
+          phone?: string;
+          pickup_date?: string;
+          notes?: string | null;
+          payment_method?: 'TRANSFER' | 'QRIS' | 'COD';
+          status?: 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN';
+          subtotal?: number;
+          discount?: number;
+          service_fee?: number;
+          total?: number;
+          created_at?: string;
+          updated_at?: string;
+          tenant_id?: string | null;
+        };
       };
       order_items: {
         Row: {
@@ -114,6 +155,28 @@ export interface Database {
           notes: string | null;
           line_total: number;
           tenant_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          order_id?: string | null;
+          menu_id?: string | null;
+          name_snapshot: string;
+          price_snapshot: number;
+          qty: number;
+          notes?: string | null;
+          line_total: number;
+          tenant_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          order_id?: string | null;
+          menu_id?: string | null;
+          name_snapshot?: string;
+          price_snapshot?: number;
+          qty?: number;
+          notes?: string | null;
+          line_total?: number;
+          tenant_id?: string | null;
         };
       };
       payment_methods: {
@@ -146,23 +209,35 @@ export interface Database {
           created_by: string | null;
           created_at: string;
           updated_at: string;
+          owner_id: string | null;
         };
-      };
-      tenant_users: {
-        Row: {
-          id: string;
-          tenant_id: string;
-          user_email: string;
-          role: 'super_admin' | 'admin' | 'manager' | 'cashier';
-          permissions: any;
-          is_active: boolean;
-          invited_by: string | null;
-          invited_at: string;
-          joined_at: string | null;
-          created_at: string;
-          user_id: string | null;
-          tenant_role: 'cashier' | 'manager' | 'admin' | 'super_admin';
-          updated_at: string;
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          subdomain: string;
+          domain?: string | null;
+          email_domain?: string | null;
+          settings?: any;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          owner_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          subdomain?: string;
+          domain?: string | null;
+          email_domain?: string | null;
+          settings?: any;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          owner_id?: string | null;
         };
       };
     };
@@ -171,15 +246,22 @@ export interface Database {
         Args: Record<string, never>;
         Returns: {
           is_super_admin: boolean;
-          memberships: Array<{
-            tenant_id: string;
-            tenant_slug: string;
-            tenant_name: string;
-            role: 'super_admin' | 'admin' | 'manager' | 'cashier';
-          }>;
+          tenant: {
+            id: string;
+            name: string;
+            slug: string;
+            domain: string | null;
+          } | null;
           user_id: string;
           user_email: string;
         };
+      };
+      has_role: {
+        Args: {
+          _user_id: string;
+          _role: 'super_admin' | 'tenant';
+        };
+        Returns: boolean;
       };
     };
   };

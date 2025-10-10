@@ -57,20 +57,20 @@ export function CashierTab() {
   }, [notification.show]);
 
   const loadData = async () => {
-    if (!currentTenant?.tenant_id) return;
+    if (!currentTenant?.id) return;
 
     try {
       const [itemsRes, categoriesRes] = await Promise.all([
         supabase
           .from('menu_items')
           .select('*')
-          .eq('tenant_id', currentTenant.tenant_id)
+          .eq('tenant_id', currentTenant.id)
           .eq('is_active', true)
           .order('created_at'),
         supabase
           .from('categories')
           .select('*')
-          .eq('tenant_id', currentTenant.tenant_id)
+          .eq('tenant_id', currentTenant.id)
           .order('sort_order')
       ]);
 
@@ -132,7 +132,7 @@ export function CashierTab() {
     }
 
     // Ensure we have a valid tenant_id - fallback to default Kopi Pendekar tenant if needed
-    const tenantId = currentTenant?.tenant_id || 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230';
+    const tenantId = currentTenant?.id || 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230';
 
     if (process.env.NODE_ENV === 'development') {
       console.log('Creating order with tenant_id:', tenantId);
@@ -157,7 +157,7 @@ export function CashierTab() {
           total: getTotal(),
           status: 'SUDAH BAYAR', // Set to paid since this is a direct cashier transaction
           payment_method: paymentMethod // ✅ Now properly setting the selected payment method
-        })
+        } as any)
         .select()
         .single();
 
@@ -166,7 +166,7 @@ export function CashierTab() {
       // Create order items
       const orderItems = cart.map(cartItem => ({
         tenant_id: tenantId, // ✅ Use the same validated/fallback tenant_id
-        order_id: orderData.id,
+        order_id: (orderData as any).id,
         menu_id: cartItem.menu_item_id,
         name_snapshot: cartItem.name,
         price_snapshot: cartItem.price,
@@ -176,7 +176,7 @@ export function CashierTab() {
 
       const { error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItems);
+        .insert(orderItems as any);
 
       if (itemsError) throw itemsError;
 

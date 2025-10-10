@@ -29,7 +29,7 @@ interface SuperAdminDashboardProps {
 }
 
 export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
-  const { signOut, user, accessStatus, loading } = useAuth();
+  const { signOut, user, isSuperAdmin, loading } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantAdmins, setTenantAdmins] = useState<{[tenantId: string]: TenantAdmin[]}>({});
   const [componentLoading, setComponentLoading] = useState(true);
@@ -43,8 +43,8 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
       console.log('🔍 SuperAdminDashboard:', {
         loading,
         user: user?.email,
-        isSuperAdmin: accessStatus?.is_super_admin,
-        adminRole: accessStatus?.is_super_admin ? 'super_admin' : null
+        isSuperAdmin,
+        adminRole: isSuperAdmin ? 'super_admin' : null
       });
     }
 
@@ -64,7 +64,7 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
       return;
     }
 
-    if (!accessStatus?.is_super_admin) {
+    if (!isSuperAdmin) {
       if (process.env.NODE_ENV === 'development') {
         console.log('⛔ Access denied (not super admin)');
       }
@@ -78,7 +78,7 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
     }
     setComponentLoading(false);
     loadTenants();
-  }, [user, accessStatus, loading]);
+  }, [user, isSuperAdmin, loading]);
 
   const loadTenants = async () => {
     try {
@@ -107,29 +107,53 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
       }
       setTenants(tenants);
 
-      // Load tenant admins for each tenant
+      // Load tenant owners for each tenant
       const adminsMap: {[tenantId: string]: TenantAdmin[]} = {};
 
       for (const tenant of tenants) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 SuperAdminDashboard: Loading admins for tenant:', tenant.name);
+          console.log('🔄 SuperAdminDashboard: Loading owner for tenant:', tenant.name);
         }
-        const { data: adminsData, error: adminsError } = await (supabase as any)
-          .from('tenant_users')
-          .select('*')
-          .eq('tenant_id', tenant.id)
-          .eq('is_active', true)
-          .limit(1); // Get only the first admin for display
+        
+        if (tenant.owner_id) {
+          // Get owner info from auth.users
+          const { data: ownerData, error: ownerError } = await (supabase as any)
+            .from('auth.users')
+            .select('id, email, created_at')
+            .eq('id', tenant.owner_id)
+            .single();
 
-        if (!adminsError && adminsData) {
-          adminsMap[tenant.id] = adminsData;
-          if (process.env.NODE_ENV === 'development') {
-            console.log('✅ SuperAdminDashboard: Loaded admins for tenant:', tenant.name, adminsData.length);
+          if (!ownerError && ownerData) {
+            // Create a mock TenantAdmin object for compatibility
+            const ownerAdmin: TenantAdmin = {
+              id: ownerData.id,
+              user_id: ownerData.id,
+              user_email: ownerData.email,
+              tenant_id: tenant.id,
+              role: 'admin',
+              is_active: true,
+              created_at: ownerData.created_at,
+              invited_by: null,
+              invited_at: ownerData.created_at,
+              joined_at: ownerData.created_at,
+              permissions: [],
+              tenant_role: 'admin',
+              updated_at: ownerData.created_at
+            };
+            adminsMap[tenant.id] = [ownerAdmin];
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ SuperAdminDashboard: Loaded owner for tenant:', tenant.name, ownerData.email);
+            }
+          } else {
+            adminsMap[tenant.id] = [];
+            if (process.env.NODE_ENV === 'development') {
+              console.log('⚠️ SuperAdminDashboard: No owner found for tenant:', tenant.name);
+            }
           }
         } else {
           adminsMap[tenant.id] = [];
           if (process.env.NODE_ENV === 'development') {
-            console.log('⚠️ SuperAdminDashboard: No admins found for tenant:', tenant.name);
+            console.log('⚠️ SuperAdminDashboard: No owner set for tenant:', tenant.name);
           }
         }
       }
@@ -543,18 +567,43 @@ function TenantFormModal({
     if (!tenant) return;
 
     try {
-      const { data, error } = await (supabase as any)
-        .from('tenant_users')
-        .select('*')
-        .eq('tenant_id', tenant.id)
-        .eq('is_active', true);
+      // In the new system, each tenant has only one owner
+      if (tenant.owner_id) {
+        const { data: ownerData, error: ownerError } = await (supabase as any)
+          .from('auth.users')
+          .select('id, email, created_at')
+          .eq('id', tenant.owner_id)
+          .single();
 
-      if (error) throw error;
-      setTenantAdmins(data || []);
+        if (!ownerError && ownerData) {
+          // Create a mock TenantAdmin object for compatibility
+          const ownerAdmin: TenantAdmin = {
+            id: ownerData.id,
+            user_id: ownerData.id,
+            user_email: ownerData.email,
+            tenant_id: tenant.id,
+            role: 'admin',
+            is_active: true,
+            created_at: ownerData.created_at,
+            invited_by: null,
+            invited_at: ownerData.created_at,
+            joined_at: ownerData.created_at,
+            permissions: [],
+            tenant_role: 'admin',
+            updated_at: ownerData.created_at
+          };
+          setTenantAdmins([ownerAdmin]);
+        } else {
+          setTenantAdmins([]);
+        }
+      } else {
+        setTenantAdmins([]);
+      }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error loading tenant admins:', error);
+        console.error('Error loading tenant owner:', error);
       }
+      setTenantAdmins([]);
     }
   };
 
@@ -573,16 +622,22 @@ function TenantFormModal({
       if (authError) throw authError;
 
       if (authData.user) {
-        // Then, link user to tenant
-        const { error: tenantError } = await (supabase as any)
-          .from('tenant_users')
+        // Create user role
+        const { error: roleError } = await (supabase as any)
+          .from('user_roles')
           .insert({
-            tenant_id: tenant.id,
             user_id: authData.user.id,
-            user_email: newAdminEmail.trim(),
-            role: newAdminRole,
-            is_active: true,
+            role: 'tenant',
+            created_at: new Date().toISOString()
           });
+
+        if (roleError) throw roleError;
+
+        // Set user as tenant owner
+        const { error: tenantError } = await (supabase as any)
+          .from('tenants')
+          .update({ owner_id: authData.user.id })
+          .eq('id', tenant.id);
 
         if (tenantError) throw tenantError;
 
@@ -606,12 +661,22 @@ function TenantFormModal({
     if (!confirm('Apakah Anda yakin ingin menghapus admin ini?')) return;
 
     try {
-      const { error } = await (supabase as any)
-        .from('tenant_users')
-        .update({ is_active: false })
-        .eq('id', adminId);
+      // Remove user role
+      const { error: roleError } = await (supabase as any)
+        .from('user_roles')
+        .delete()
+        .eq('user_id', adminId)
+        .eq('role', 'tenant');
 
-      if (error) throw error;
+      if (roleError) throw roleError;
+
+      // Remove tenant owner
+      const { error: tenantError } = await (supabase as any)
+        .from('tenants')
+        .update({ owner_id: null })
+        .eq('owner_id', adminId);
+
+      if (tenantError) throw tenantError;
 
       loadTenantAdmins();
       alert('Admin berhasil dihapus');

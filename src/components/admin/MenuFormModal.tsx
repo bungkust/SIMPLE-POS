@@ -136,7 +136,7 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
 
         const { error } = await supabase.from('menu_items').insert({
           ...formData,
-          tenant_id: currentTenant.tenant_id
+          tenant_id: currentTenant.id
         });
 
         if (error) throw error;

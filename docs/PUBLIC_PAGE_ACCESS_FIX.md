@@ -124,3 +124,4 @@ if (!tenantId) {
 
 ## Status
 ✅ **FIXED** - Public pages are now accessible without login
+

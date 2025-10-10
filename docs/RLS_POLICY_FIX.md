@@ -80,3 +80,4 @@ tenantId = tenantIdMap[tenantInfo.tenant_slug];
 
 ## Status
 ✅ **FIXED** - Public pages are now accessible without RLS policy issues
+

@@ -15,7 +15,7 @@ export function ProtectedRoute({
   requireSuperAdmin = false,
   requireAuth = false
 }: ProtectedRouteProps) {
-  const { user, loading, isTenantAdmin, isSuperAdmin } = useAuth();
+  const { user, loading, isTenantOwner, isSuperAdmin } = useAuth();
   const [hasChecked, setHasChecked] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -145,7 +145,7 @@ export function ProtectedRoute({
   }
 
   // Check admin requirement
-  if (requireAdmin && !isTenantAdmin) {
+  if (requireAdmin && !isTenantOwner) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-3 sm:p-4">
         <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 max-w-sm sm:max-w-md w-full text-center">

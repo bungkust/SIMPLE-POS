@@ -54,13 +54,13 @@ export function MenuTab() {
       return;
     }
 
-    console.log('🔄 MenuTab: Starting to load menu data for tenant:', currentTenant.tenant_id);
+    console.log('🔄 MenuTab: Starting to load menu data for tenant:', currentTenant.id);
     try {
       console.log('🔄 MenuTab: Starting to load menu data...');
 
       const [itemsRes, categoriesRes] = await Promise.all([
-        supabase.from('menu_items').select('*').eq('tenant_id', currentTenant.tenant_id).order('created_at'),
-        supabase.from('categories').select('*').eq('tenant_id', currentTenant.tenant_id).order('sort_order'),
+        supabase.from('menu_items').select('*').eq('tenant_id', currentTenant.id).order('created_at'),
+        supabase.from('categories').select('*').eq('tenant_id', currentTenant.id).order('sort_order'),
       ]);
 
       if (process.env.NODE_ENV === 'development') {
@@ -446,14 +446,14 @@ function OptionsManagerModal({
         if (process.env.NODE_ENV === 'development') {
           console.log('🔄 OptionsManager: Creating new option for menu item:', menuItem.id);
           console.log('🔄 OptionsManager: Current tenant:', currentTenant);
-          console.log('🔄 OptionsManager: Current tenant ID:', currentTenant?.tenant_id);
+          console.log('🔄 OptionsManager: Current tenant ID:', currentTenant?.id);
         }
         const { error } = await supabase
           .from('menu_options')
           .insert({
             ...optionFormData,
             menu_item_id: menuItem.id,
-            tenant_id: currentTenant?.tenant_id,
+            tenant_id: currentTenant?.id,
             sort_order: maxOrder + 1
           });
 
@@ -629,14 +629,14 @@ function OptionsManagerModal({
         if (process.env.NODE_ENV === 'development') {
           console.log('🔄 OptionsManager: Creating new option item for option:', selectedOptionId);
           console.log('🔄 OptionsManager: Current tenant for option item:', currentTenant);
-          console.log('🔄 OptionsManager: Current tenant ID for option item:', currentTenant?.tenant_id);
+          console.log('🔄 OptionsManager: Current tenant ID for option item:', currentTenant?.id);
         }
         const insertData = {
           name: optionItemFormData.name,
           additional_price: optionItemFormData.additional_price,
           is_available: optionItemFormData.is_available,
           menu_option_id: selectedOptionId,
-          tenant_id: currentTenant?.tenant_id,
+          tenant_id: currentTenant?.id,
           sort_order: maxOrder + 1
         };
 

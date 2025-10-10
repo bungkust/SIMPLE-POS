@@ -275,3 +275,4 @@ If browser blocking issues persist:
 5. **Verify firewall settings** allow localhost connections
 
 The issue is browser-side, not application-side, so backend functionality remains intact.
+

@@ -32,8 +32,8 @@ export function OrdersTab() {
       let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
 
       // Only filter by tenant_id if currentTenant exists and has a valid tenant_id
-      if (currentTenant?.tenant_id) {
-        query = query.eq('tenant_id', currentTenant.tenant_id);
+      if (currentTenant?.id) {
+        query = query.eq('tenant_id', currentTenant.id);
       }
 
       const { data: ordersData, error: ordersError } = await query;
@@ -64,8 +64,8 @@ export function OrdersTab() {
         // Build order items query with tenant_id filter if available
         let itemsQuery = supabase.from('order_items').select('*').in('order_id', orderIds).order('order_id');
 
-        if (currentTenant?.tenant_id) {
-          itemsQuery = itemsQuery.eq('tenant_id', currentTenant.tenant_id);
+        if (currentTenant?.id) {
+          itemsQuery = itemsQuery.eq('tenant_id', currentTenant.id);
         }
 
         const { data: itemsData, error: itemsError } = await itemsQuery;
@@ -115,8 +115,8 @@ export function OrdersTab() {
       };
 
       // Only set tenant_id if currentTenant exists and order doesn't have one
-      if (currentTenant?.tenant_id) {
-        updateData.tenant_id = currentTenant.tenant_id;
+      if (currentTenant?.id) {
+        updateData.tenant_id = currentTenant.id;
       }
 
       const { error } = await supabase

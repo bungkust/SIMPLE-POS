@@ -13,71 +13,68 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-async function createAdminUser(userId: string, email: string) {
-  console.log(`🔧 Creating admin user for ${email} (${userId})...`);
+async function createAdminUser(userId: string, email: string, role: 'super_admin' | 'tenant' = 'super_admin') {
+  console.log(`🔧 Creating ${role} user for ${email} (${userId})...`);
   
   try {
-    // Create super admin user
-    const { data: adminUser, error: adminError } = await supabase
-      .from('admin_users')
+    // Create user role
+    const { data: userRole, error: roleError } = await supabase
+      .from('user_roles')
       .insert({
         user_id: userId,
-        email: email,
-        role: 'super_admin',
-        is_active: true,
+        role: role,
         created_at: new Date().toISOString()
       })
       .select()
       .single();
     
-    if (adminError) {
-      console.error('❌ Admin user creation error:', adminError);
+    if (roleError) {
+      console.error('❌ User role creation error:', roleError);
       return false;
     } else {
-      console.log('✅ Super admin user created:', adminUser);
+      console.log(`✅ ${role} role created:`, userRole);
     }
     
-    // Get kopipendekar tenant
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('id, name, slug')
-      .eq('slug', 'kopipendekar')
-      .single();
-    
-    if (tenantError) {
-      console.error('❌ Tenant query error:', tenantError);
-      return false;
-    } else {
-      console.log('✅ Found tenant:', tenant);
-      
-      // Create tenant admin user
-      const { data: tenantUser, error: tenantUserError } = await supabase
-        .from('tenant_users')
-        .insert({
-          user_id: userId,
-          user_email: email,
-          tenant_id: tenant.id,
-          role: 'admin',
-          is_active: true,
-          created_at: new Date().toISOString()
-        })
-        .select()
+    // If creating a tenant user, also set them as tenant owner
+    if (role === 'tenant') {
+      // Get kopipendekar tenant
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('id, name, slug')
+        .eq('slug', 'kopipendekar')
         .single();
       
-      if (tenantUserError) {
-        console.error('❌ Tenant user creation error:', tenantUserError);
+      if (tenantError) {
+        console.error('❌ Tenant query error:', tenantError);
         return false;
       } else {
-        console.log('✅ Tenant admin user created:', tenantUser);
+        console.log('✅ Found tenant:', tenant);
+        
+        // Set user as tenant owner
+        const { data: updatedTenant, error: updateError } = await supabase
+          .from('tenants')
+          .update({ owner_id: userId })
+          .eq('id', tenant.id)
+          .select()
+          .single();
+        
+        if (updateError) {
+          console.error('❌ Tenant owner update error:', updateError);
+          return false;
+        } else {
+          console.log('✅ Tenant owner set:', updatedTenant);
+        }
       }
     }
     
-    console.log('🎉 Admin user setup completed successfully!');
+    console.log('🎉 User setup completed successfully!');
     console.log('📋 Summary:');
     console.log(`   - Email: ${email}`);
     console.log(`   - User ID: ${userId}`);
-    console.log(`   - Super Admin: ✅`);
-    console.log(`   - Tenant Admin (kopipendekar): ✅`);
+    console.log(`   - Role: ${role}`);
+    if (role === 'tenant') {
+      console.log(`   - Tenant Owner (kopipendekar): ✅`);
+    }
     
     return true;
   } catch (error) {
@@ -89,7 +86,11 @@ async function createAdminUser(userId: string, email: string) {
 // Get command line arguments
 const args = process.argv.slice(2);
 if (args.length < 2) {
-  console.log('Usage: npx tsx scripts/create-admin-user.ts <user_id> <email>');
+  console.log('Usage: npx tsx scripts/create-admin-user.ts <user_id> <email> [role]');
+  console.log('');
+  console.log('Roles:');
+  console.log('  super_admin - Platform super admin (default)');
+  console.log('  tenant      - Tenant owner');
   console.log('');
   console.log('To get the user_id:');
   console.log('1. Login with your email in the browser');
@@ -97,12 +98,15 @@ if (args.length < 2) {
   console.log('3. Run: supabase.auth.getUser().then(u => console.log(u.data.user.id))');
   console.log('4. Copy the user_id and run this script');
   console.log('');
-  console.log('Example:');
-  console.log('npx tsx scripts/create-admin-user.ts 12345678-1234-1234-1234-123456789012 kusbot114@gmail.com');
+  console.log('Examples:');
+  console.log('npx tsx scripts/create-admin-user.ts 12345678-1234-1234-1234-123456789012 kusbot114@gmail.com super_admin');
+  console.log('npx tsx scripts/create-admin-user.ts 12345678-1234-1234-1234-123456789012 tenant@example.com tenant');
   process.exit(1);
 }
 
-const [userId, email] = args;
-createAdminUser(userId, email).then(success => {
+const [userId, email, role] = args;
+const userRole = (role as 'super_admin' | 'tenant') || 'super_admin';
+createAdminUser(userId, email, userRole).then(success => {
   process.exit(success ? 0 : 1);
 });
+

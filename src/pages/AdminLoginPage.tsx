@@ -1,245 +1,269 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { ArrowLeft, Coffee, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { toast } from 'sonner';
+import { User, Session } from '@supabase/supabase-js';
 
-interface AdminLoginPageProps {
-  onBack: () => void;
-}
-
-export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
-  const [loading, setLoading] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<'email' | 'google'>('email');
-  const [tenantInfo, setTenantInfo] = useState<{ name: string; slug: string } | null>(null);
-
-  // Email login state
+export function AdminLoginPage({ onBack }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+
+  const isSuperAdmin = location.pathname === '/super-admin/login';
 
   useEffect(() => {
-    // Get tenant information from URL path
-    const pathParts = window.location.pathname.split('/').filter(Boolean);
-    const tenantSlug = pathParts.length > 0 ? pathParts[0] : 'kopipendekar';
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
 
-    // For now, set mock tenant info based on slug
-    // In production, this would query the database
-    const tenantInfoMap: Record<string, { name: string; slug: string }> = {
-      kopipendekar: { name: 'Kopi Pendekar', slug: 'kopipendekar' }
-    };
+        if (session?.user) {
+          setTimeout(async () => {
+            await checkUserRoleAndRedirect(session.user.id);
+          }, 0);
+        }
+      }
+    );
 
-    setTenantInfo(tenantInfoMap[tenantSlug] || { name: 'Tenant', slug: tenantSlug });
-  }, []);
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+      if (session?.user) {
+        checkUserRoleAndRedirect(session.user.id);
+      }
+    });
 
-    if (!email || !password) {
-      alert('Silakan masukkan email dan password');
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const checkUserRoleAndRedirect = async (userId: string) => {
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+
+    if (roleError) {
+      console.error('Error fetching user roles:', roleError);
       return;
     }
 
-    setLoading(true);
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Attempting email login for:', email);
-      }
+    if (roleData && roleData.length > 0) {
+      // If user has multiple roles, prioritize super_admin
+      const hasSuperAdmin = roleData.some(role => role.role === 'super_admin');
+      const hasTenant = roleData.some(role => role.role === 'tenant');
+      
+      if (hasSuperAdmin) {
+        navigate('/super-admin/dashboard');
+      } else if (hasTenant) {
+        // Get user's tenant domain for slug-based routing
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('slug')
+          .eq('owner_id', userId)
+          .single();
 
-      // Simple email login without complex auth context
+        if (tenantError) {
+          console.error('Error fetching tenant data:', tenantError);
+          navigate('/tenant/dashboard');
+        } else if (tenantData?.slug) {
+          navigate(`/${tenantData.slug}/dashboard`);
+        } else {
+          // Fallback to old URL if no domain found
+          navigate('/tenant/dashboard');
+        }
+      }
+    }
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Supabase auth error:', error);
-        }
-        throw new Error(`Login gagal: ${error.message}`);
+        toast.error(error.message);
+        return;
       }
 
       if (data.user) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Login successful, redirecting...');
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id);
+
+        if (roleError) {
+          console.error('Error fetching user roles:', roleError);
+          toast.error('Error checking user role. Please try again.');
+          await supabase.auth.signOut();
+          return;
         }
 
-        // Get tenant slug and redirect
-        const pathParts = window.location.pathname.split('/').filter(Boolean);
-        const tenantSlug = pathParts.length > 0 ? pathParts[0] : 'kopipendekar';
-        window.location.href = `/${tenantSlug}/admin/dashboard`;
+        if (roleData && roleData.length > 0) {
+          // If user has multiple roles, prioritize super_admin
+          const hasSuperAdmin = roleData.some(role => role.role === 'super_admin');
+          const hasTenant = roleData.some(role => role.role === 'tenant');
+          
+          if (hasSuperAdmin) {
+            navigate('/super-admin/dashboard');
+          } else if (hasTenant) {
+            const { data: tenantData, error: tenantError } = await supabase
+              .from('tenants')
+              .select('slug')
+              .eq('owner_id', data.user.id)
+              .single();
+
+            if (tenantError) {
+              console.error('Error fetching tenant data:', tenantError);
+              navigate('/tenant/dashboard');
+            } else if (tenantData?.slug) {
+              navigate(`/${tenantData.slug}/dashboard`);
+            } else {
+              navigate('/tenant/dashboard');
+            }
+          }
+        } else {
+          toast.error('User role not found. Please contact administrator.');
+          await supabase.auth.signOut();
+        }
       }
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Email login error:', error);
-      }
-      alert(error instanceof Error ? error.message : 'Login gagal. Periksa email dan password Anda.');
+      console.error('Login error:', error);
+      toast.error('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Get tenant slug from current URL path
-      const pathParts = window.location.pathname.split('/').filter(Boolean);
-      const tenantSlug = pathParts.length > 0 ? pathParts[0] : 'kopipendekar';
-
-      const redirectTo = `${window.location.origin}/${tenantSlug}/admin/dashboard`;
-
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectTo
+          redirectTo: `${window.location.origin}${window.location.pathname}`
         }
       });
 
       if (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Google login error:', error);
-        }
-        alert('Gagal login dengan Google. Silakan coba lagi.');
+        toast.error(error.message);
       }
-      // OAuth will handle redirect automatically
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Google login error:', error);
-      }
-      alert('Terjadi kesalahan saat login dengan Google.');
+      console.error('Google sign in error:', error);
+      toast.error('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Kembali</span>
-          </button>
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Coffee className="w-8 h-8 text-green-500" />
-            <h1 className="text-2xl font-bold text-slate-900">
-              {tenantInfo ? tenantInfo.name : 'Loading...'}
-            </h1>
+          <div className="flex items-center justify-center mb-4">
+            <Coffee className="h-12 w-12 text-slate-600" />
           </div>
-          <p className="text-slate-600">Login Admin</p>
-          {tenantInfo && (
-            <p className="text-sm text-slate-500 mt-1">
-              Tenant: {tenantInfo.name} ({tenantInfo.slug})
-            </p>
-          )}
+          <h1 className="text-2xl font-bold text-slate-900">
+            {isSuperAdmin ? 'Super Admin Login' : 'Admin Login'}
+          </h1>
+          <p className="text-slate-600 mt-2">
+            {isSuperAdmin 
+              ? 'Access the super admin dashboard' 
+              : 'Access your tenant dashboard'
+            }
+          </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          {/* Login Method Toggle */}
-          <div className="flex mb-6 bg-slate-100 rounded-lg p-1">
-            <button
-              onClick={() => setLoginMethod('email')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                loginMethod === 'email'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              <Mail className="w-4 h-4 inline mr-2" />
-              Email
-            </button>
-            <button
-              onClick={() => setLoginMethod('google')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                loginMethod === 'google'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              <svg className="w-4 h-4 inline mr-2" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Google
-            </button>
-          </div>
-
-          {loginMethod === 'email' ? (
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div className="text-center mb-6">
-                <p className="text-slate-600 text-sm">
-                  Login dengan email untuk mengakses dashboard admin {tenantInfo?.name}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Email
-                </label>
-                <input
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">Sign In</CardTitle>
+            <CardDescription className="text-center">
+              Enter your credentials to continue
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form onSubmit={handleSignIn} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
                   type="email"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="admin@tenant.com"
                   required
+                  disabled={loading}
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Password
-                </label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
                   type="password"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Masukkan password"
                   required
+                  disabled={loading}
                 />
               </div>
-
-              <button
+              <Button
                 type="submit"
+                className="w-full"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
               >
-                <Mail className="w-4 h-4" />
-                {loading ? 'Login...' : 'Login dengan Email'}
-              </button>
-
-              <p className="text-xs text-slate-500 text-center mt-4">
-                Pastikan email Anda terdaftar sebagai admin untuk {tenantInfo?.name}
-              </p>
+                {loading ? 'Signing in...' : 'Sign In'}
+              </Button>
             </form>
-          ) : (
-            <div className="text-center">
-              <p className="text-slate-600 text-sm mb-4">
-                Login dengan Google untuk mengakses dashboard admin {tenantInfo?.name}
-              </p>
 
-              <button
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                {loading ? 'Menghubungkan ke Google...' : 'Login dengan Google'}
-              </button>
-
-              <p className="text-xs text-slate-500 mt-4">
-                Pastikan email Google Anda terdaftar sebagai admin untuk {tenantInfo?.name}
-              </p>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
             </div>
-          )}
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              Google
+            </Button>
+          </CardContent>
+        </Card>
+
+        <div className="text-center mt-6">
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="text-slate-600 hover:text-slate-900"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
         </div>
       </div>
     </div>

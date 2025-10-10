@@ -327,3 +327,4 @@ If email login issues persist:
 5. **Review console logs** for the debug messages above
 
 The enhanced logging and session validation will help identify any remaining issues quickly.
+

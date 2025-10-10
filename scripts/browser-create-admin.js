@@ -1,8 +1,8 @@
 // Browser script to create admin user
 // Run this in browser console after logging in
 
-async function createAdminUser() {
-  console.log('🔧 Creating admin user...');
+async function createAdminUser(role = 'super_admin') {
+  console.log(`🔧 Creating ${role} user...`);
   
   try {
     // Get current user
@@ -15,64 +15,61 @@ async function createAdminUser() {
     
     console.log('✅ Current user:', user.email, user.id);
     
-    // Create super admin user
-    const { data: adminUser, error: adminError } = await supabase
-      .from('admin_users')
+    // Create user role
+    const { data: userRole, error: roleError } = await supabase
+      .from('user_roles')
       .insert({
         user_id: user.id,
-        email: user.email,
-        role: 'super_admin',
-        is_active: true,
+        role: role,
         created_at: new Date().toISOString()
       })
       .select()
       .single();
     
-    if (adminError) {
-      console.error('❌ Admin user creation error:', adminError);
+    if (roleError) {
+      console.error('❌ User role creation error:', roleError);
     } else {
-      console.log('✅ Super admin user created:', adminUser);
+      console.log(`✅ ${role} role created:`, userRole);
     }
     
-    // Get kopipendekar tenant
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('id, name, slug')
-      .eq('slug', 'kopipendekar')
-      .single();
-    
-    if (tenantError) {
-      console.error('❌ Tenant query error:', tenantError);
-    } else {
-      console.log('✅ Found tenant:', tenant);
-      
-      // Create tenant admin user
-      const { data: tenantUser, error: tenantUserError } = await supabase
-        .from('tenant_users')
-        .insert({
-          user_id: user.id,
-          user_email: user.email,
-          tenant_id: tenant.id,
-          role: 'admin',
-          is_active: true,
-          created_at: new Date().toISOString()
-        })
-        .select()
+    // If creating a tenant user, also set them as tenant owner
+    if (role === 'tenant') {
+      // Get kopipendekar tenant
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('id, name, slug')
+        .eq('slug', 'kopipendekar')
         .single();
       
-      if (tenantUserError) {
-        console.error('❌ Tenant user creation error:', tenantUserError);
+      if (tenantError) {
+        console.error('❌ Tenant query error:', tenantError);
       } else {
-        console.log('✅ Tenant admin user created:', tenantUser);
+        console.log('✅ Found tenant:', tenant);
+        
+        // Set user as tenant owner
+        const { data: updatedTenant, error: updateError } = await supabase
+          .from('tenants')
+          .update({ owner_id: user.id })
+          .eq('id', tenant.id)
+          .select()
+          .single();
+        
+        if (updateError) {
+          console.error('❌ Tenant owner update error:', updateError);
+        } else {
+          console.log('✅ Tenant owner set:', updatedTenant);
+        }
       }
     }
     
-    console.log('🎉 Admin user setup completed!');
+    console.log('🎉 User setup completed!');
     console.log('📋 Summary:');
     console.log(`   - Email: ${user.email}`);
     console.log(`   - User ID: ${user.id}`);
-    console.log(`   - Super Admin: ✅`);
-    console.log(`   - Tenant Admin (kopipendekar): ✅`);
+    console.log(`   - Role: ${role}`);
+    if (role === 'tenant') {
+      console.log(`   - Tenant Owner (kopipendekar): ✅`);
+    }
     console.log('');
     console.log('🔄 Now refresh the page and try accessing admin dashboard again!');
     
@@ -81,5 +78,8 @@ async function createAdminUser() {
   }
 }
 
-// Run the function
-createAdminUser();
+// Run the function - change role as needed
+// createAdminUser('super_admin'); // For super admin
+// createAdminUser('tenant');      // For tenant owner
+createAdminUser('super_admin');
+

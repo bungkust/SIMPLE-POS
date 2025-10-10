@@ -69,7 +69,7 @@ export function CategoriesTab() {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .eq('tenant_id', currentTenant.tenant_id)
+        .eq('tenant_id', currentTenant.id)
         .order('sort_order');
 
       if (process.env.NODE_ENV === 'development') {
@@ -136,7 +136,7 @@ export function CategoriesTab() {
           .insert({
             name: formData.name.trim(),
             sort_order: maxOrder + 1,
-            tenant_id: currentTenant.tenant_id
+            tenant_id: currentTenant.id
           });
 
         if (error) throw error;
