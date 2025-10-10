@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Auth Issues</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .error { color: red; }
+        .success { color: green; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Authentication Debugging Tool</h1>
+
+    <div class="test-section">
+        <h2>1. Check Environment & Connection</h2>
+        <button onclick="checkEnvironment()">Check Environment</button>
+        <button onclick="testConnection()">Test Supabase Connection</button>
+        <pre id="env-output"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Check Authentication State</h2>
+        <button onclick="checkSession()">Check Current Session</button>
+        <button onclick="checkUser()">Check Current User</button>
+        <pre id="auth-output"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test RPC Function</h2>
+        <button onclick="testRPC()">Test get_user_access_status()</button>
+        <button onclick="testWithEmail()">Test with Email Override</button>
+        <pre id="rpc-output"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Check Database Tables</h2>
+        <button onclick="checkTables()">Check Tables Structure</button>
+        <button onclick="checkAdminUsers()">Check admin_users Table</button>
+        <button onclick="checkTenantUsers()">Check tenant_users Table</button>
+        <pre id="db-output"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Manual Testing</h2>
+        <input type="email" id="test-email" placeholder="Enter email to test" />
+        <button onclick="testWithCustomEmail()">Test with Custom Email</button>
+        <pre id="manual-output"></pre>
+    </div>
+
+    <script>
+        // You'll need to replace these with your actual values
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function log(section, message, isError = false) {
+            const output = document.getElementById(section + '-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            output.textContent += `[${timestamp}] ${message}\n`;
+        }
+
+        async function checkEnvironment() {
+            const output = document.getElementById('env-output');
+            output.textContent = '';
+
+            log('env', 'Checking environment variables...');
+            log('env', `Supabase URL: ${SUPABASE_URL ? 'SET' : 'NOT SET'}`);
+            log('env', `Supabase Key: ${SUPABASE_ANON_KEY ? 'SET' : 'NOT SET'}`);
+            log('env', `Current URL: ${window.location.href}`);
+        }
+
+        async function testConnection() {
+            const output = document.getElementById('env-output');
+            output.textContent = '';
+
+            try {
+                log('env', 'Testing Supabase connection...');
+                const { data, error } = await supabase.from('tenants').select('count').limit(1);
+                if (error) throw error;
+                log('env', '✅ Connection successful');
+            } catch (error) {
+                log('env', `❌ Connection failed: ${error.message}`, true);
+            }
+        }
+
+        async function checkSession() {
+            const output = document.getElementById('auth-output');
+            output.textContent = '';
+
+            try {
+                log('auth', 'Checking session...');
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
+
+                if (session) {
+                    log('auth', `✅ Session exists`);
+                    log('auth', `User ID: ${session.user.id}`);
+                    log('auth', `Email: ${session.user.email}`);
+                    log('auth', `Expires: ${session.expires_at}`);
+                } else {
+                    log('auth', '❌ No active session');
+                }
+            } catch (error) {
+                log('auth', `❌ Session check failed: ${error.message}`, true);
+            }
+        }
+
+        async function checkUser() {
+            const output = document.getElementById('auth-output');
+            output.textContent = '';
+
+            try {
+                log('auth', 'Getting current user...');
+                const { data: { user }, error } = await supabase.auth.getUser();
+                if (error) throw error;
+
+                if (user) {
+                    log('auth', `✅ User exists`);
+                    log('auth', `User ID: ${user.id}`);
+                    log('auth', `Email: ${user.email}`);
+                    log('auth', `Email confirmed: ${user.email_confirmed_at ? 'YES' : 'NO'}`);
+                } else {
+                    log('auth', '❌ No user found');
+                }
+            } catch (error) {
+                log('auth', `❌ User check failed: ${error.message}`, true);
+            }
+        }
+
+        async function testRPC() {
+            const output = document.getElementById('rpc-output');
+            output.textContent = '';
+
+            try {
+                log('rpc', 'Testing RPC function...');
+
+                // Check session first
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    log('rpc', '❌ No active session - cannot test RPC');
+                    return;
+                }
+
+                log('rpc', `Session: ${session.user.email}`);
+                log('rpc', 'Calling get_user_access_status()...');
+
+                const { data, error } = await supabase.rpc('get_user_access_status');
+
+                if (error) {
+                    log('rpc', `❌ RPC Error: ${error.message}`, true);
+                    log('rpc', `Error details: ${JSON.stringify(error, null, 2)}`, true);
+                } else {
+                    log('rpc', '✅ RPC call successful');
+                    log('rpc', `Is Super Admin: ${data.is_super_admin}`);
+                    log('rpc', `Memberships: ${data.memberships.length} tenants`);
+                    log('rpc', `User ID: ${data.user_id}`);
+                    log('rpc', `Email: ${data.user_email}`);
+                    log('rpc', 'Full response: ' + JSON.stringify(data, null, 2));
+                }
+            } catch (err) {
+                log('rpc', `❌ Test failed: ${err.message}`, true);
+            }
+        }
+
+        async function testWithEmail() {
+            const output = document.getElementById('rpc-output');
+            output.textContent = '';
+
+            // This would require a service key or admin access
+            log('rpc', 'Email override test requires admin privileges');
+        }
+
+        async function checkTables() {
+            const output = document.getElementById('db-output');
+            output.textContent = '';
+
+            try {
+                log('db', 'Checking table structures...');
+
+                // Check admin_users
+                const { data: adminData, error: adminError } = await supabase
+                    .from('admin_users')
+                    .select('*')
+                    .limit(1);
+
+                if (adminError) {
+                    log('db', `❌ admin_users error: ${adminError.message}`, true);
+                } else {
+                    log('db', `✅ admin_users: ${adminData.length} records`);
+                }
+
+                // Check tenants
+                const { data: tenantData, error: tenantError } = await supabase
+                    .from('tenants')
+                    .select('*')
+                    .limit(1);
+
+                if (tenantError) {
+                    log('db', `❌ tenants error: ${tenantError.message}`, true);
+                } else {
+                    log('db', `✅ tenants: ${tenantData.length} records`);
+                }
+
+                // Check tenant_users
+                const { data: tuData, error: tuError } = await supabase
+                    .from('tenant_users')
+                    .select('*')
+                    .limit(1);
+
+                if (tuError) {
+                    log('db', `❌ tenant_users error: ${tuError.message}`, true);
+                } else {
+                    log('db', `✅ tenant_users: ${tuData.length} records`);
+                }
+
+            } catch (err) {
+                log('db', `❌ Check failed: ${err.message}`, true);
+            }
+        }
+
+        async function checkAdminUsers() {
+            const output = document.getElementById('db-output');
+            output.textContent = '';
+
+            try {
+                log('db', 'Checking admin_users table...');
+                const { data, error } = await supabase
+                    .from('admin_users')
+                    .select('*');
+
+                if (error) {
+                    log('db', `❌ Error: ${error.message}`, true);
+                } else {
+                    log('db', `Found ${data.length} admin users:`);
+                    data.forEach(user => {
+                        log('db', `  - ${user.email} (${user.role}) - ${user.is_active ? 'Active' : 'Inactive'}`);
+                    });
+                }
+            } catch (err) {
+                log('db', `❌ Check failed: ${err.message}`, true);
+            }
+        }
+
+        async function checkTenantUsers() {
+            const output = document.getElementById('db-output');
+            output.textContent = '';
+
+            try {
+                log('db', 'Checking tenant_users table...');
+                const { data, error } = await supabase
+                    .from('tenant_users')
+                    .select('*');
+
+                if (error) {
+                    log('db', `❌ Error: ${error.message}`, true);
+                } else {
+                    log('db', `Found ${data.length} tenant users:`);
+                    data.forEach(user => {
+                        log('db', `  - ${user.user_email} (Tenant: ${user.tenant_id}) - ${user.role} - ${user.is_active ? 'Active' : 'Inactive'}`);
+                    });
+                }
+            } catch (err) {
+                log('db', `❌ Check failed: ${err.message}`, true);
+            }
+        }
+
+        async function testWithCustomEmail() {
+            const output = document.getElementById('manual-output');
+            output.textContent = '';
+
+            const email = document.getElementById('test-email').value;
+            if (!email) {
+                log('manual', '❌ Please enter an email address');
+                return;
+            }
+
+            log('manual', `Testing with email: ${email}`);
+            log('manual', 'Note: This requires admin access or service key');
+        }
+
+        // Auto-run environment check on load
+        window.addEventListener('load', () => {
+            checkEnvironment();
+        });
+    </script>
+</body>
+</html>

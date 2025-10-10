@@ -49,7 +49,19 @@ const getDefaultConfigForTenant = (tenantSlug: string): AppConfig => {
 };
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
-  const { currentTenant, user } = useAuth();
+  // Add error boundary for useAuth
+  let authContext;
+  try {
+    authContext = useAuth();
+  } catch (error) {
+    console.warn('ConfigProvider: AuthContext not available yet, using fallback');
+    authContext = {
+      currentTenant: null,
+      user: null
+    };
+  }
+
+  const { currentTenant, user } = authContext;
   const [config, setConfig] = useState<AppConfig>({
     storeName: 'Loading...',
     storeIcon: 'Coffee',

@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -19,22 +19,15 @@ interface UserAccessStatus {
 }
 
 interface AuthContextType {
-  // Authentication State
   user: User | null;
   loading: boolean;
-
-  // Authorization State
   accessStatus: UserAccessStatus | null;
   currentTenant: TenantMembership | null;
-
-  // Actions
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: (redirectTo?: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   setCurrentTenant: (tenant: TenantMembership | null) => void;
   refreshAccessStatus: () => Promise<void>;
-
-  // Computed Properties
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
   hasTenantAccess: boolean;
@@ -44,352 +37,194 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ========================================
-// UTILITY FUNCTIONS
-// ========================================
-
-const getTenantSlugFromURL = (): string | null => {
-  const path = window.location.pathname;
-  const pathParts = path.split('/').filter(Boolean);
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 URL parsing:', { fullPath: path, pathParts });
-  }
-
-  if (pathParts.length >= 1 &&
-      !pathParts[0].includes('admin') &&
-      !pathParts[0].includes('login') &&
-      pathParts[0] !== 'checkout' &&
-      pathParts[0] !== 'orders' &&
-      pathParts[0] !== 'invoice' &&
-      pathParts[0] !== 'success' &&
-      pathParts[0] !== 'sadmin') {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 Found tenant slug in URL:', pathParts[0]);
-    }
-    return pathParts[0];
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log('❌ No tenant slug found in URL');
-  }
-  return null;
-};
-
-// ========================================
-// AUTH PROVIDER COMPONENT
-// ========================================
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Authentication State
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Authorization State
   const [accessStatus, setAccessStatus] = useState<UserAccessStatus | null>(null);
   const [currentTenant, setCurrentTenant] = useState<TenantMembership | null>(null);
-
-  // ========================================
-  // AUTHENTICATION FUNCTIONS
-  // ========================================
+  const isInitializing = useRef(false);
+  const isRefreshing = useRef(false);
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error('Email login error:', error);
-        throw new Error(`Login gagal: ${error.message}`);
-      }
-
-      console.log('Login successful for user:', user?.id?.substring(0, 8) + '...');
-    } catch (error) {
-      console.error('Sign in error:', error);
-      throw error;
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
   };
 
-  const signInWithGoogle = async (redirectTo?: string) => {
-    try {
-      // Use environment-specific redirect URLs for production compatibility
-      const isProduction = process.env.NODE_ENV === 'production';
-      const currentOrigin = isProduction
-        ? 'https://your-production-domain.com' // Replace with your actual production domain
-        : window.location.origin;
-
-      const defaultRedirect = `${currentOrigin}/sadmin/dashboard`;
-      const finalRedirect = redirectTo || defaultRedirect;
-
-      console.log('🔐 OAuth redirect URL:', finalRedirect);
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: finalRedirect
-        }
-      });
-
-      if (error) {
-        console.error('Google OAuth error:', error);
-        throw new Error('Gagal login dengan Google');
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'http://localhost:5173/auth/callback'
       }
-    } catch (error) {
-      console.error('Google sign in error:', error);
-      throw error;
-    }
+    });
+    if (error) throw error;
   };
 
   const signOut = async () => {
-    try {
-      setUser(null);
-      setAccessStatus(null);
-      setCurrentTenant(null);
-
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
-      console.log('Sign out successful');
-    } catch (error) {
-      console.error('Sign out error:', error);
-      throw error;
-    }
+    setUser(null);
+    setAccessStatus(null);
+    setCurrentTenant(null);
+    await supabase.auth.signOut();
   };
 
-  // ========================================
-  // AUTHORIZATION FUNCTIONS
-  // ========================================
-
   const refreshAccessStatus = async () => {
+    if (isRefreshing.current) {
+      console.log('🔄 AuthContext: Already refreshing, skipping RPC call');
+      return;
+    }
+
+    isRefreshing.current = true;
+    console.log('🔄 AuthContext: Starting refreshAccessStatus');
+    setLoading(true);
+    
     try {
-      // Skip RPC call for now - use fallback data
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ Skipping RPC call, using fallback access data');
-      }
-
-      // Create fallback access status (development only - NOT for production)
-      const fallbackAccessStatus = {
-        is_super_admin: process.env.NODE_ENV === 'development' ? true : false, // Only super admin in development
-        memberships: [
-          {
-            tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230',
-            tenant_slug: 'kopipendekar',
-            tenant_name: 'Kopi Pendekar',
-            role: (process.env.NODE_ENV === 'development' ? 'super_admin' : 'admin') as 'super_admin' | 'admin'
-          },
-          // Add more tenants for development testing
-          ...(process.env.NODE_ENV === 'development' ? [
-            {
-              tenant_id: 'test-tenant-1',
-              tenant_slug: 'testcafe',
-              tenant_name: 'Test Cafe',
-              role: 'admin' as const
-            },
-            {
-              tenant_id: 'test-tenant-2',
-              tenant_slug: 'demostore',
-              tenant_name: 'Demo Store',
-              role: 'admin' as const
-            }
-          ] : [])
-        ],
-        user_id: user?.id || '',
-        user_email: user?.email || ''
-      };
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Using fallback access status');
-      }
-      setAccessStatus(fallbackAccessStatus);
-
-      // Auto-select tenant from URL if user has access
-      const urlSlug = getTenantSlugFromURL();
-      let selectedTenant = null;
-
-      if (urlSlug) {
-        const matchingMembership = fallbackAccessStatus.memberships.find(
-          (m) => m.tenant_slug === urlSlug
-        );
-
-        if (matchingMembership) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🎯 Auto-selected tenant:', matchingMembership);
+      console.log('🔄 AuthContext: Calling get_user_access_status RPC...');
+      
+      // Try RPC call with retry logic
+      let data, error;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          const rpcPromise = supabase.rpc('get_user_access_status');
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('RPC timeout after 5 seconds')), 5000)
+          );
+          
+          const result = await Promise.race([rpcPromise, timeoutPromise]) as any;
+          data = result.data;
+          error = result.error;
+          break;
+        } catch (retryError) {
+          retryCount++;
+          console.log(`🔄 AuthContext: RPC attempt ${retryCount} failed:`, retryError);
+          
+          if (retryCount >= maxRetries) {
+            throw retryError;
           }
-          selectedTenant = matchingMembership;
-        } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('⚠️ URL slug not found in memberships:', urlSlug);
-            console.log('Available slugs:', fallbackAccessStatus.memberships.map(m => m.tenant_slug));
-          }
-          // For development, create a dynamic tenant based on URL slug if it doesn't exist
-          if (process.env.NODE_ENV === 'development' && urlSlug) {
-            const dynamicTenant = {
-              tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230', // Use real kopipendekar tenant_id
-              tenant_slug: urlSlug,
-              tenant_name: urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1).replace('-', ' '),
-              role: 'admin' as const
-            };
-            if (process.env.NODE_ENV === 'development') {
-              console.log('🔧 Created dynamic tenant for URL:', dynamicTenant);
-            }
-            selectedTenant = dynamicTenant;
-          }
+          
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
         }
       }
-
-      // Set the selected tenant (either from URL or default)
-      if (selectedTenant) {
-        setCurrentTenant(selectedTenant);
-      } else if (fallbackAccessStatus.memberships.length > 0) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🎯 Set default tenant:', fallbackAccessStatus.memberships[0]);
-        }
-        setCurrentTenant(fallbackAccessStatus.memberships[0]);
+      
+      if (error) {
+        console.error('❌ AuthContext: RPC error:', error);
+        throw error;
       }
 
+      console.log('✅ AuthContext: RPC success:', data);
+      const status = data as UserAccessStatus;
+      setAccessStatus(status);
+
+      // Select first tenant or default
+      const selected = status.memberships[0] || null;
+      setCurrentTenant(selected);
+      
+      console.log('✅ AuthContext: Access status updated:', {
+        is_super_admin: status.is_super_admin,
+        memberships: status.memberships.length,
+        selected_tenant: selected?.tenant_name || 'none'
+      });
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Error in refreshAccessStatus:', error);
-      }
-
-      // Set minimal fallback access status
+      console.error('❌ AuthContext: RPC error:', error);
+      // Use fallback data
       setAccessStatus({
-        is_super_admin: false, // No super admin access in production fallback
+        is_super_admin: false,
         memberships: [],
         user_id: user?.id || '',
         user_email: user?.email || ''
       });
+      setCurrentTenant(null);
+    } finally {
+      console.log('✅ AuthContext: Setting loading to false');
+      setLoading(false);
+      isRefreshing.current = false;
     }
   };
-
-  // ========================================
-  // INITIALIZATION & LISTENERS
-  // ========================================
 
   useEffect(() => {
     let mounted = true;
 
-    const initializeAuth = async () => {
+    const initAuth = async () => {
+      if (isInitializing.current) {
+        console.log('🔄 AuthContext: Already initializing, skipping');
+        return;
+      }
+
+      isInitializing.current = true;
       try {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🚀 Initializing auth...');
+        console.log('🔄 AuthContext: Initializing auth...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ AuthContext: Session error:', error);
+          if (mounted) {
+            setLoading(false);
+          }
+          return;
         }
-        setLoading(true);
 
-        // Get current session
-        const { data: { session } } = await supabase.auth.getSession();
-        const currentUser = session?.user ?? null;
-
-        if (currentUser && mounted) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('👤 User found:', currentUser.id?.substring(0, 8) + '...');
-          }
-          setUser(currentUser);
-          await refreshAccessStatus();
-        } else if (mounted) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('❌ No user session found');
-          }
-          setUser(null);
-          setAccessStatus(null);
-
-          // For non-authenticated users, create tenant based on URL for public access
-          const urlSlug = getTenantSlugFromURL();
-          if (urlSlug) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('🔧 Creating tenant for non-authenticated user:', urlSlug);
-            }
-
-            // Create dynamic tenant for non-authenticated access
-            const dynamicTenant = {
-              tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230', // Use real kopipendekar tenant_id
-              tenant_slug: urlSlug,
-              tenant_name: urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1).replace('-', ' '),
-              role: 'cashier' as const
-            };
-
-            setCurrentTenant(dynamicTenant);
-          } else {
-            setCurrentTenant(null);
-          }
-        }
-      } finally {
+        console.log('🔄 AuthContext: Session check result:', session?.user?.email || 'no session');
+        
         if (mounted) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Auth initialization complete');
+          setUser(session?.user ?? null);
+
+          if (session?.user) {
+            console.log('🔄 AuthContext: User found, refreshing access status...');
+            await refreshAccessStatus();
+          } else {
+            console.log('🔄 AuthContext: No user, setting loading to false');
+            setLoading(false);
           }
+        }
+      } catch (error) {
+        console.error('❌ AuthContext: Init auth error:', error);
+        if (mounted) {
           setLoading(false);
         }
+      } finally {
+        isInitializing.current = false;
       }
     };
 
-    initializeAuth();
+    initAuth();
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 Auth state changed:', _event);
-        }
-        const currentUser = session?.user ?? null;
-
+      async (event, session) => {
+        if (!mounted) return;
+        
         try {
-          if (currentUser) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('👤 Setting user:', currentUser.id?.substring(0, 8) + '...');
-            }
-            setUser(currentUser);
+          console.log('🔄 AuthContext: Auth state change:', event, session?.user?.email || 'no user');
+          setUser(session?.user ?? null);
+
+          if (event === 'SIGNED_IN' && session?.user) {
+            console.log('🔄 AuthContext: User signed in, refreshing access status...');
             await refreshAccessStatus();
-          } else {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('❌ Clearing user session');
-            }
-            setUser(null);
+          } else if (event === 'SIGNED_OUT') {
+            console.log('🔄 AuthContext: User signed out, clearing state...');
             setAccessStatus(null);
-
-            // For non-authenticated users, create tenant based on URL
-            const urlSlug = getTenantSlugFromURL();
-            if (urlSlug) {
-              if (process.env.NODE_ENV === 'development') {
-                console.log('🔧 Creating tenant for non-authenticated user:', urlSlug);
-              }
-
-              // Create dynamic tenant for non-authenticated access
-              const dynamicTenant = {
-                tenant_id: 'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230', // Use real kopipendekar tenant_id
-                tenant_slug: urlSlug,
-                tenant_name: urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1).replace('-', ' '),
-                role: 'cashier' as const
-              };
-
-              setCurrentTenant(dynamicTenant);
-            } else {
-              setCurrentTenant(null);
-            }
+            setCurrentTenant(null);
+            setLoading(false);
+          } else if (event === 'TOKEN_REFRESHED') {
+            console.log('🔄 AuthContext: Token refreshed');
+            // Don't call refreshAccessStatus here to avoid loops
           }
-        } finally {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Auth state change complete');
+        } catch (error) {
+          console.error('❌ AuthContext: Auth state change error:', error);
+          if (mounted) {
+            setLoading(false);
           }
-          setLoading(false);
         }
       }
     );
 
     return () => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🛑 Cleaning up auth listeners');
-      }
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
-
-  // ========================================
-  // COMPUTED PROPERTIES
-  // ========================================
+  }, []); // Empty dependency array is correct here
 
   const isAuthenticated = !!user;
   const isSuperAdmin = accessStatus?.is_super_admin ?? false;
@@ -397,44 +232,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isTenantAdmin = currentTenant?.role === 'admin' || currentTenant?.role === 'super_admin';
   const isTenantSuperAdmin = currentTenant?.role === 'super_admin';
 
-  // ========================================
-  // CONTEXT VALUE
-  // ========================================
-
   const value: AuthContextType = {
-    // Authentication State
-    user,
-    loading,
-
-    // Authorization State
-    accessStatus,
-    currentTenant,
-
-    // Actions
-    signIn,
-    signInWithGoogle,
-    signOut,
-    setCurrentTenant,
-    refreshAccessStatus,
-
-    // Computed Properties
-    isAuthenticated,
-    isSuperAdmin,
-    hasTenantAccess,
-    isTenantAdmin,
-    isTenantSuperAdmin,
+    user, loading, accessStatus, currentTenant,
+    signIn, signInWithGoogle, signOut, setCurrentTenant, refreshAccessStatus,
+    isAuthenticated, isSuperAdmin, hasTenantAccess, isTenantAdmin, isTenantSuperAdmin,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-// ========================================
-// HOOK
-// ========================================
 
 export function useAuth() {
   const context = useContext(AuthContext);

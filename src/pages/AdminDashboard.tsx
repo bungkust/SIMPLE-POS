@@ -18,6 +18,18 @@ export function AdminDashboard({}: AdminDashboardProps) {
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const { signOut, user, currentTenant, isTenantAdmin, loading, accessStatus } = useAuth();
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔄 AdminDashboard: Component mounted/updated');
+    console.log('🔄 AdminDashboard: Auth state:', {
+      loading,
+      user: user?.email || 'no user',
+      currentTenant: currentTenant?.tenant_name || 'no tenant',
+      isTenantAdmin,
+      accessStatus: accessStatus ? 'has status' : 'no status'
+    });
+  }, [loading, user, currentTenant, isTenantAdmin, accessStatus]);
+
   // Show error if loading takes too long
   useEffect(() => {
     const timer = setTimeout(() => {

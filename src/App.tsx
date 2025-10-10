@@ -2,23 +2,23 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParam
 import React from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Header } from './components/Header';
-import { MenuBrowser } from './components/MenuBrowser';
-import { CartBar } from './components/CartBar';
+import { ConfigProvider } from './contexts/ConfigContext';
+import { CartProvider } from './contexts/CartContext';
 import { LandingPage } from './components/LandingPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { InvoicePage } from './pages/InvoicePage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
 import { OrderSuccessPage } from './pages/OrderSuccessPage';
+import { MenuBrowser } from './components/MenuBrowser';
+import { CartBar } from './components/CartBar';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { SuperAdminLoginPage } from './pages/SuperAdminLoginPage';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { AuthProvider } from './contexts/AuthContext';
-import { ConfigProvider } from './contexts/ConfigContext';
-import { CartProvider } from './contexts/CartContext';
 import { handleOAuthError } from './lib/auth-utils';
-import './lib/disable-service-worker';
+import AuthCallback from './pages/AuthCallback';
 
 // Helper function to get current tenant slug from URL
 const getCurrentTenantSlug = (): string => {
@@ -136,6 +136,7 @@ function App() {
                   {/* Public Routes - Landing Page and Customer Interface */}
                   <Route path="/" element={<LandingPageWrapper />} />
                   <Route path="/:tenantSlug" element={<MenuPageWrapper />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/login" element={<AdminLoginPageWrapper />} />
                   <Route path="/:tenantSlug/admin/login" element={<AdminLoginPageWrapper />} />
                   <Route path="/:tenantSlug/checkout" element={<CheckoutPageWrapper />} />
