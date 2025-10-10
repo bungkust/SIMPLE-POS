@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
 import { Coffee, Store, ShoppingBag, Utensils } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,7 +17,7 @@ export function Header() {
   const { config } = useConfig();
   
   // Get tenant info - use currentTenant if available (authenticated), otherwise use URL
-  const getTenantInfoLocal = () => {
+  const tenantInfo = useMemo(() => {
     try {
       const { currentTenant } = useAuth();
       if (currentTenant) {
@@ -45,9 +46,7 @@ export function Header() {
       tenant_name: 'Kopi Pendekar',
       role: 'public' as const
     };
-  };
-
-  const tenantInfo = getTenantInfoLocal();
+  }, []); // Empty dependency array since we only want to calculate this once
 
   const handleHistoryClick = () => {
     const tenantSlug = tenantInfo.tenant_slug;

@@ -40,6 +40,7 @@ export function MenuBrowser() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
 
   // Get tenant info - use currentTenant if available (authenticated), otherwise use URL
   const getTenantInfoLocal = () => {
@@ -75,17 +76,34 @@ export function MenuBrowser() {
 
   const tenantInfo = getTenantInfoLocal();
 
+  // Resolve tenant ID once when component mounts
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 MenuBrowser: useEffect triggered, tenantInfo:', tenantInfo);
+    const resolveTenantId = async () => {
+      if (tenantInfo.tenant_id) {
+        setResolvedTenantId(tenantInfo.tenant_id);
+      } else if (tenantInfo.tenant_slug) {
+        const tenantId = await getTenantId(tenantInfo.tenant_slug);
+        setResolvedTenantId(tenantId);
+      }
+    };
+    
+    resolveTenantId();
+  }, [tenantInfo.tenant_slug, tenantInfo.tenant_id]);
+
+  // Load data when tenant ID is resolved
+  useEffect(() => {
+    if (resolvedTenantId) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 MenuBrowser: useEffect triggered, resolvedTenantId:', resolvedTenantId);
+      }
+      loadData();
     }
-    loadData();
-  }, [tenantInfo.tenant_slug]);
+  }, [resolvedTenantId]);
 
   const loadData = async () => {
-    if (!tenantInfo.tenant_slug) {
+    if (!resolvedTenantId) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('❌ MenuBrowser: No tenant slug available');
+        console.log('❌ MenuBrowser: No resolved tenant ID available');
       }
       setLoading(false);
       return;
@@ -94,24 +112,12 @@ export function MenuBrowser() {
     try {
       setLoading(true);
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 MenuBrowser: Loading data for tenant:', tenantInfo.tenant_slug, tenantInfo.tenant_id);
-      }
-
-      // Get tenant ID dynamically from database
-      let tenantId = tenantInfo.tenant_id;
-      if (!tenantId) {
-        tenantId = await getTenantId(tenantInfo.tenant_slug);
-        
-        if (!tenantId) {
-          console.error('❌ MenuBrowser: Could not resolve tenant ID for slug:', tenantInfo.tenant_slug);
-          setLoading(false);
-          return;
-        }
+        console.log('🔄 MenuBrowser: Loading data for tenant ID:', resolvedTenantId);
       }
 
       const [categoriesRes, itemsRes] = await Promise.all([
-        supabase.from('categories').select('*').eq('tenant_id', tenantId).order('sort_order'),
-        supabase.from('menu_items').select('*').eq('tenant_id', tenantId).eq('is_active', true),
+        supabase.from('categories').select('*').eq('tenant_id', resolvedTenantId).order('sort_order'),
+        supabase.from('menu_items').select('*').eq('tenant_id', resolvedTenantId).eq('is_active', true),
       ]);
 
       if (process.env.NODE_ENV === 'development') {

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
 import { ShoppingCart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +11,7 @@ export function CartBar() {
   const { totalItems, totalAmount } = useCart();
   
   // Get tenant info - use currentTenant if available (authenticated), otherwise use URL
-  const getTenantInfoLocal = () => {
+  const tenantInfo = useMemo(() => {
     try {
       const { currentTenant } = useAuth();
       if (currentTenant) {
@@ -39,9 +40,7 @@ export function CartBar() {
       tenant_name: 'Kopi Pendekar',
       role: 'public' as const
     };
-  };
-
-  const tenantInfo = getTenantInfoLocal();
+  }, []); // Empty dependency array since we only want to calculate this once
 
   const handleCheckoutClick = () => {
     const tenantSlug = tenantInfo.tenant_slug;

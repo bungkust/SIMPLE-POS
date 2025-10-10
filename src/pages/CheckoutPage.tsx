@@ -50,6 +50,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
 
   const currentTenant = getTenantInfoLocal();
   const [loading, setLoading] = useState(false);
+  const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>(['TRANSFER', 'COD']);
   const [errorModal, setErrorModal] = useState({
     isOpen: false,
@@ -65,30 +66,36 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
     paymentMethod: 'TRANSFER' as 'TRANSFER' | 'QRIS' | 'COD',
   });
 
-  // Load available payment methods on component mount
+  // Resolve tenant ID once when component mounts
   useEffect(() => {
-    loadAvailablePaymentMethods();
-  }, [currentTenant]);
+    const resolveTenantId = async () => {
+      if (currentTenant.tenant_id) {
+        setResolvedTenantId(currentTenant.tenant_id);
+      } else if (currentTenant.tenant_slug) {
+        const tenantId = await getTenantId(currentTenant.tenant_slug);
+        setResolvedTenantId(tenantId);
+      }
+    };
+    
+    resolveTenantId();
+  }, [currentTenant.tenant_slug, currentTenant.tenant_id]);
+
+  // Load available payment methods when tenant ID is resolved
+  useEffect(() => {
+    if (resolvedTenantId) {
+      loadAvailablePaymentMethods();
+    }
+  }, [resolvedTenantId]);
 
   const loadAvailablePaymentMethods = async () => {
-    if (!currentTenant) return;
+    if (!resolvedTenantId) return;
 
     try {
-      // Get tenant ID dynamically from database
-      let tenantId = currentTenant.tenant_id;
-      if (!tenantId) {
-        tenantId = await getTenantId(currentTenant.tenant_slug);
-        
-        if (!tenantId) {
-          console.warn('Could not resolve tenant ID for payment methods:', currentTenant.tenant_slug);
-          return;
-        }
-      }
 
       const { data: paymentMethods, error } = await supabase
         .from('payment_methods')
         .select('payment_type, is_active')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', resolvedTenantId)
         .eq('is_active', true);
 
       if (error) {
@@ -126,14 +133,10 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       const serviceFee = 0;
       const total = subtotal - discount + serviceFee;
 
-      // Get tenant ID dynamically from database
-      let tenantId = currentTenant?.tenant_id;
+      // Use resolved tenant ID
+      const tenantId = resolvedTenantId;
       if (!tenantId) {
-        tenantId = await getTenantId(currentTenant?.tenant_slug);
-        
-        if (!tenantId) {
-          throw new Error('Could not resolve tenant ID for order creation');
-        }
+        throw new Error('Could not resolve tenant ID for order creation');
       }
 
       if (process.env.NODE_ENV === 'development') {
