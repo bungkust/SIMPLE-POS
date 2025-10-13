@@ -1,12 +1,13 @@
 import { supabase } from '../lib/supabase';
 
 /**
- * Create a simple admin authentication system that doesn't require Supabase Auth
- * Just checks if the email is in the admin list
+ * SECURITY FIX: Proper admin authentication with password verification
+ * This function is now deprecated and should not be used for authentication
+ * All authentication must go through Supabase Auth with proper password verification
  */
 export async function simpleAdminLogin(email: string): Promise<boolean> {
-  const adminEmails = import.meta.env.VITE_ADMIN_EMAILS?.split(',') || [];
-  return adminEmails.includes(email);
+  console.warn('⚠️ SECURITY WARNING: simpleAdminLogin is deprecated and insecure. Use Supabase Auth instead.');
+  throw new Error('Insecure authentication method disabled. Use proper Supabase Auth with password verification.');
 }
 
 /**

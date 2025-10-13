@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { formatRupiah, formatDateTime } from '../lib/utils';
 import { Database } from '../lib/database.types';
 import jsPDF from 'jspdf';
+import { getTenantId } from '../lib/tenantUtils';
 
 type Order = Database['public']['Tables']['orders']['Row'];
 type OrderItem = Database['public']['Tables']['order_items']['Row'];
@@ -21,10 +22,21 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
+  const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
 
   useEffect(() => {
     loadOrder();
   }, [orderCode]);
+
+  useEffect(() => {
+    const resolveTenant = async () => {
+      const path = window.location.pathname;
+      const slug = path.split('/').filter(Boolean)[0] || 'kopipendekar';
+      const tenantId = await getTenantId(slug);
+      setResolvedTenantId(tenantId);
+    };
+    resolveTenant();
+  }, []);
 
   const loadOrder = async () => {
     try {
@@ -46,12 +58,13 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
       setItems(itemsData || []);
 
       // Load QRIS image if payment method is QRIS
-      if (orderData.payment_method === 'QRIS') {
+      if (orderData.payment_method === 'QRIS' && resolvedTenantId) {
         try {
           const { data: paymentMethods, error: pmError } = await supabase
             .from('payment_methods')
             .select('qris_image_url')
             .eq('payment_type', 'QRIS')
+            .eq('tenant_id', resolvedTenantId)
             .eq('is_active', true)
             .limit(1);
 
@@ -64,12 +77,13 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
       }
 
       // Load payment method details if payment method is TRANSFER
-      if (orderData.payment_method === 'TRANSFER') {
+      if (orderData.payment_method === 'TRANSFER' && resolvedTenantId) {
         try {
           const { data: paymentMethods, error: pmError } = await supabase
             .from('payment_methods')
             .select('*')
             .eq('payment_type', 'TRANSFER')
+            .eq('tenant_id', resolvedTenantId)
             .eq('is_active', true)
             .limit(1);
 
@@ -114,7 +128,7 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
       doc.setFontSize(12);
       doc.text('Jl. Contoh No. 123, Jakarta', pageWidth / 2, y, { align: 'center' });
       y += 6;
-      doc.text('Telp: (021) 12345678 | Email: info@kopipendekar.com', pageWidth / 2, y, { align: 'center' });
+      doc.text('Telp: [YOUR_PHONE] | Email: [YOUR_EMAIL]', pageWidth / 2, y, { align: 'center' });
       y += 15;
 
       // Bill number and cashier

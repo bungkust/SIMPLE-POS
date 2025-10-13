@@ -90,7 +90,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase
           .from('tenant_settings')
           .select('*')
-          .eq('tenant_id', currentTenant.tenant_id)
+          .eq('tenant_id', currentTenant.id)
           .single();
 
         if (data && !error) {
@@ -137,7 +137,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase
           .from('tenant_settings')
           .upsert({
-            tenant_id: currentTenant.tenant_id,
+            tenant_id: currentTenant.id,
             store_name: newConfig.storeName,
             store_icon: newConfig.storeIcon,
             store_icon_type: newConfig.storeIconType,
@@ -160,14 +160,14 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Use currentTenant if available (for authenticated users), otherwise use URL
-    const tenantSlug = currentTenant?.tenant_slug || getTenantSlugFromUrl();
+    const tenantSlug = currentTenant?.slug || getTenantSlugFromUrl();
     loadConfig(tenantSlug);
     setLoading(false);
   }, [currentTenant, user]);
 
   const updateConfig = async (newConfig: Partial<AppConfig>) => {
     // Use currentTenant if available (for authenticated users), otherwise use URL
-    const tenantSlug = currentTenant?.tenant_slug || getTenantSlugFromUrl();
+    const tenantSlug = currentTenant?.slug || getTenantSlugFromUrl();
     
     const updatedConfig = { ...config, ...newConfig };
     setConfig(updatedConfig);

@@ -24,16 +24,16 @@ The login system was not working for both:
 
 ### 1. Created Super Admin User
 ```typescript
-Email: admin@kopipendekar.com
-Password: admin123456
+Email: [YOUR_ADMIN_EMAIL]
+Password: [YOUR_ADMIN_PASSWORD]
 Role: super_admin
 Access: Platform-wide + Tenant admin
 ```
 
 ### 2. Created Tenant Admin User  
 ```typescript
-Email: manager@kopipendekar.com
-Password: manager123456
+Email: [YOUR_TENANT_EMAIL]
+Password: [YOUR_TENANT_PASSWORD]
 Role: manager
 Access: Tenant-specific (Kopi Pendekar)
 ```
@@ -79,8 +79,8 @@ Status: Active
 ### 🔐 Super Admin Access
 ```
 URL: http://localhost:5173/sadmin/login
-Email: admin@kopipendekar.com
-Password: admin123456
+Email: [YOUR_ADMIN_EMAIL]
+Password: [YOUR_ADMIN_PASSWORD]
 
 Features:
 - Manage all tenants
@@ -92,8 +92,8 @@ Features:
 ### 🔐 Tenant Admin Access
 ```
 URL: http://localhost:5173/kopipendekar/admin/login
-Email: manager@kopipendekar.com
-Password: manager123456
+Email: [YOUR_TENANT_EMAIL]
+Password: [YOUR_TENANT_PASSWORD]
 
 Features:
 - Manage Kopi Pendekar tenant
@@ -115,7 +115,7 @@ Features:
      id, email, role, is_active, user_id, platform_role
    ) VALUES (
      'd8a2b046-7980-4f07-b32d-2fe65b03616d',
-     'admin@kopipendekar.com', 
+     '[YOUR_ADMIN_EMAIL]', 
      'super_admin',
      true,
      'd8a2b046-7980-4f07-b32d-2fe65b03616d',
@@ -146,7 +146,7 @@ Features:
      '2b2c0a3c-da01-4c13-882e-f9189340273e',
      'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230',
      'd8a2b046-7980-4f07-b32d-2fe65b03616d',
-     'admin@kopipendekar.com',
+     '[YOUR_ADMIN_EMAIL]',
      'admin',
      true
    );
@@ -158,7 +158,7 @@ Features:
      '2503fb69-c5c5-4c3e-bc01-b180176857ec',
      'd9c9a0f5-72d4-4ee2-aba9-6bf89f43d230',
      'ccd422c2-a10c-4262-a6ac-9ee0418694a3',
-     'manager@kopipendekar.com',
+     '[YOUR_TENANT_EMAIL]',
      'manager',
      true
    );
@@ -182,11 +182,11 @@ Features:
 
 ### User Roles Hierarchy
 ```
-Super Admin (admin@kopipendekar.com)
+Super Admin ([YOUR_ADMIN_EMAIL])
 ├── Platform Access (all tenants)
 └── Tenant Access (Kopi Pendekar - admin role)
 
-Tenant Manager (manager@kopipendekar.com)  
+Tenant Manager ([YOUR_TENANT_EMAIL])  
 └── Tenant Access (Kopi Pendekar - manager role)
 ```
 
@@ -258,4 +258,5 @@ npx tsx scripts/detailed-schema-report.ts
 **Status:** 🎉 **LOGIN SYSTEM FULLY OPERATIONAL**
 
 Both tenant admin and super admin login systems are now working correctly with proper authentication, authorization, and database relationships established.
+
 

@@ -260,3 +260,4 @@ tenant_role_enum    → 'super_admin', 'admin', 'manager', 'cashier'
 **Status:** Fully operational and processing orders
 
 
+

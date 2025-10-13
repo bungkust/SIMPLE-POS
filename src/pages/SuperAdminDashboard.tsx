@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit, Trash2, Shield, List, Grid3X3, Table, UserPlus, X, LogOut, User, Home } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Shield, List, Grid3X3, Table, UserPlus, X, LogOut, User, Home, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { ErrorPopup } from '../components/ErrorPopup';
+import { SuccessPopup } from '../components/SuccessPopup';
 type Tenant = {
   id: string;
   name: string;
   slug: string;
-  subdomain: string;
-  domain?: string;
-  email_domain?: string;
+  owner_email: string;
   settings?: any;
   is_active: boolean;
   created_by?: string;
@@ -37,6 +37,44 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
   const [showTenantForm, setShowTenantForm] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
+  const [errorPopup, setErrorPopup] = useState<{
+    isOpen: boolean;
+    error: {
+      title: string;
+      message: string;
+      details?: string;
+      setupUrl?: string;
+      ownerEmail?: string;
+    };
+  }>({
+    isOpen: false,
+    error: {
+      title: '',
+      message: ''
+    }
+  });
+
+  const [successPopup, setSuccessPopup] = useState<{
+    isOpen: boolean;
+    data: {
+      title: string;
+      message: string;
+      details?: {
+        email?: string;
+        password?: string;
+        url?: string;
+        setupUrl?: string;
+        ownerEmail?: string;
+      };
+      type?: 'success' | 'info' | 'warning';
+    };
+  }>({
+    isOpen: false,
+    data: {
+      title: '',
+      message: ''
+    }
+  });
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -88,17 +126,59 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
       setComponentLoading(true);
       setError(null);
 
-      // Load tenants
-      const { data: tenantsData, error: tenantsError } = await (supabase as any)
+      // Load tenants with retry mechanism
+      let tenantsData, tenantsError;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          // Add timeout to prevent hanging
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+          );
+          
+          const queryPromise = (supabase as any)
         .from('tenants')
         .select('*')
         .order('created_at', { ascending: false });
+          
+          const result = await Promise.race([queryPromise, timeoutPromise]);
+          
+          tenantsData = result.data;
+          tenantsError = result.error;
+          
+          if (!tenantsError) break;
+          
+          retryCount++;
+          if (retryCount < maxRetries) {
+            console.warn(`⚠️ Retry ${retryCount}/${maxRetries} for tenants query`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          }
+        } catch (err) {
+          tenantsError = err;
+          retryCount++;
+          if (retryCount < maxRetries) {
+            console.warn(`⚠️ Retry ${retryCount}/${maxRetries} for tenants query (catch)`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          }
+        }
+      }
 
       if (tenantsError) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('❌ SuperAdminDashboard: Tenants query error:', tenantsError);
+          console.error('❌ SuperAdminDashboard: Tenants query error after retries:', tenantsError);
         }
+        
+        // Check if it's a connection error
+        if (tenantsError.message?.includes('ERR_CONNECTION_CLOSED') || 
+            tenantsError.message?.includes('Failed to fetch') ||
+            tenantsError.message?.includes('timeout')) {
+          console.warn('🔄 Connection issue detected, using fallback data');
+          tenantsData = []; // Use empty array as fallback
+        } else {
         throw tenantsError;
+        }
       }
 
       const tenants = tenantsData || [];
@@ -116,38 +196,86 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
         }
         
         if (tenant.owner_id) {
-          // Get owner info from auth.users
-          const { data: ownerData, error: ownerError } = await (supabase as any)
-            .from('auth.users')
-            .select('id, email, created_at')
-            .eq('id', tenant.owner_id)
-            .single();
+          // Get real user email using RPC function
+          try {
+            const { data: userEmail, error: emailError } = await supabase
+              .rpc('get_user_email_by_id', { user_id: tenant.owner_id });
 
-          if (!ownerError && ownerData) {
-            // Create a mock TenantAdmin object for compatibility
+            if (!emailError && userEmail) {
+              // Create a TenantAdmin object with real email
             const ownerAdmin: TenantAdmin = {
-              id: ownerData.id,
-              user_id: ownerData.id,
-              user_email: ownerData.email,
+                id: tenant.owner_id,
+                user_id: tenant.owner_id,
+                user_email: userEmail, // Real email from auth.users
               tenant_id: tenant.id,
               role: 'admin',
               is_active: true,
-              created_at: ownerData.created_at,
+                created_at: new Date().toISOString(),
               invited_by: null,
-              invited_at: ownerData.created_at,
-              joined_at: ownerData.created_at,
+                invited_at: new Date().toISOString(),
+                joined_at: new Date().toISOString(),
               permissions: [],
               tenant_role: 'admin',
-              updated_at: ownerData.created_at
+                updated_at: new Date().toISOString()
             };
             adminsMap[tenant.id] = [ownerAdmin];
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ SuperAdminDashboard: Loaded owner for tenant:', tenant.name, ownerData.email);
+                console.log('✅ SuperAdminDashboard: Loaded owner for tenant:', tenant.name, ownerAdmin.user_email);
+              }
+            } else {
+              // Fallback: use owner_email from tenant table
+              if (tenant.owner_email) {
+                const ownerAdmin: TenantAdmin = {
+                  id: tenant.owner_id,
+                  user_id: tenant.owner_id,
+                  user_email: tenant.owner_email,
+                  tenant_id: tenant.id,
+                  role: 'admin',
+                  is_active: true,
+                  created_at: new Date().toISOString(),
+                  invited_by: null,
+                  invited_at: new Date().toISOString(),
+                  joined_at: new Date().toISOString(),
+                  permissions: [],
+                  tenant_role: 'admin',
+                  updated_at: new Date().toISOString()
+                };
+                adminsMap[tenant.id] = [ownerAdmin];
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('✅ SuperAdminDashboard: Using fallback email for tenant:', tenant.name, tenant.owner_email);
             }
           } else {
             adminsMap[tenant.id] = [];
             if (process.env.NODE_ENV === 'development') {
-              console.log('⚠️ SuperAdminDashboard: No owner found for tenant:', tenant.name);
+                  console.log('⚠️ SuperAdminDashboard: No email found for tenant owner:', tenant.name);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error loading tenant owner email:', error);
+            // Fallback: use owner_email from tenant table
+            if (tenant.owner_email) {
+              const ownerAdmin: TenantAdmin = {
+                id: tenant.owner_id,
+                user_id: tenant.owner_id,
+                user_email: tenant.owner_email,
+                tenant_id: tenant.id,
+                role: 'admin',
+                is_active: true,
+                created_at: new Date().toISOString(),
+                invited_by: null,
+                invited_at: new Date().toISOString(),
+                joined_at: new Date().toISOString(),
+                permissions: [],
+                tenant_role: 'admin',
+                updated_at: new Date().toISOString()
+              };
+              adminsMap[tenant.id] = [ownerAdmin];
+              if (process.env.NODE_ENV === 'development') {
+                console.log('✅ SuperAdminDashboard: Using fallback email after error for tenant:', tenant.name, tenant.owner_email);
+              }
+            } else {
+              adminsMap[tenant.id] = [];
             }
           }
         } else {
@@ -192,14 +320,59 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
 
       if (error) throw error;
 
-      alert('Tenant berhasil dihapus');
+      setSuccessPopup({
+        isOpen: true,
+        data: {
+          title: 'Tenant Berhasil Dihapus',
+          message: 'Tenant telah berhasil dihapus dari sistem.',
+          type: 'success'
+        }
+      });
       loadTenants();
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error deleting tenant:', error);
       }
-      alert('Gagal menghapus tenant');
+      setErrorPopup({
+        isOpen: true,
+        error: {
+          title: 'Gagal Menghapus Tenant',
+          message: 'Terjadi error saat menghapus tenant. Silakan coba lagi.',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }
+      });
     }
+  };
+
+  const handleResendEmail = async (tenant: Tenant) => {
+    if (!tenant.owner_email) {
+      setErrorPopup({
+        isOpen: true,
+        error: {
+          title: 'Owner Email Tidak Ditemukan',
+          message: 'Tenant tidak memiliki owner email yang valid.',
+          details: 'Silakan update tenant dengan owner email yang benar.'
+        }
+      });
+      return;
+    }
+
+    // Generate setup URL
+    const setupUrl = `${window.location.origin}/${tenant.slug}/admin/setup?token=${tenant.id}`;
+    
+    // Show setup URL (no email sending)
+    setSuccessPopup({
+      isOpen: true,
+      data: {
+        title: 'Setup URL untuk Tenant',
+        message: `Silakan kirim setup URL ini ke ${tenant.owner_email} untuk setup password.`,
+        details: {
+          ownerEmail: tenant.owner_email,
+          setupUrl: setupUrl
+        },
+        type: 'info'
+      }
+    });
   };
 
   const handleSignOut = async () => {
@@ -355,7 +528,7 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                         <div className="flex-1">
                           <h3 className="font-semibold text-slate-900">{tenant.name}</h3>
                           <p className="text-sm text-slate-500">Slug: {tenant.slug}</p>
-                          <p className="text-sm text-slate-500">Subdomain: {tenant.subdomain}</p>
+                          <p className="text-sm text-slate-500">Owner: {tenantAdmins[tenant.id]?.[0]?.user_email || tenant.owner_email || 'admin@' + tenant.slug + '.com'}</p>
                         </div>
                         <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                           tenant.is_active
@@ -373,6 +546,14 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                         >
                           <Edit className="w-4 h-4" />
                           <span className="text-sm">Edit</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleResendEmail(tenant)}
+                          className="flex items-center justify-center px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                          title="Get Setup URL"
+                        >
+                          <Mail className="w-4 h-4" />
                         </button>
 
                         <button
@@ -397,7 +578,7 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                               <h3 className="font-semibold text-slate-900">{tenant.name}</h3>
                               <div className="flex items-center gap-4 text-sm text-slate-500">
                                 <span>Slug: {tenant.slug}</span>
-                                <span>Subdomain: {tenant.subdomain}</span>
+                                <span>Owner: {tenantAdmins[tenant.id]?.[0]?.user_email || tenant.owner_email || 'admin@' + tenant.slug + '.com'}</span>
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   tenant.is_active
                                     ? 'bg-green-100 text-green-700'
@@ -420,6 +601,15 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                           </button>
 
                           <button
+                            onClick={() => handleResendEmail(tenant)}
+                            className="flex items-center gap-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                            title="Get Setup URL"
+                          >
+                            <Mail className="w-4 h-4" />
+                            <span className="text-sm">Setup URL</span>
+                          </button>
+
+                          <button
                             onClick={() => handleDeleteTenant(tenant)}
                             className="flex items-center px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
                           >
@@ -437,9 +627,8 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Tenant</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Slug</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Subdomain</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Domain</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Admin Email</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Owner Email</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Created</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
                         <th className="px-4 py-3 text-center text-sm font-semibold text-slate-900">Actions</th>
                       </tr>
@@ -454,12 +643,11 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-600">{tenant.slug}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{tenant.subdomain}</td>
                           <td className="px-4 py-3 text-sm text-slate-600">
-                            {tenant.domain || '-'}
+                            {tenantAdmins[tenant.id]?.[0]?.user_email || tenant.owner_email || 'admin@' + tenant.slug + '.com'}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-600">
-                            {tenantAdmins[tenant.id]?.[0]?.user_email || '-'}
+                            {new Date(tenant.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`px-2 py-1 text-xs rounded-full font-medium ${
@@ -480,6 +668,13 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                                 <Edit className="w-4 h-4" />
                               </button>
                               <button
+                                onClick={() => handleResendEmail(tenant)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                title="Get Setup URL"
+                              >
+                                <Mail className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => handleDeleteTenant(tenant)}
                                 className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
                                 title="Delete Tenant"
@@ -487,7 +682,7 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                               <a
-                                href={`/${tenant.subdomain}/admin/login`}
+                                href={`/${tenant.slug}/admin/login`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
@@ -496,7 +691,7 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                                 <User className="w-4 h-4" />
                               </a>
                               <a
-                                href={`/${tenant.subdomain}`}
+                                href={`/${tenant.slug}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
@@ -526,8 +721,34 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
             setEditingTenant(null);
             loadTenants();
           }}
+          onSuccess={(data) => {
+            setSuccessPopup({
+              isOpen: true,
+              data: data
+            });
+          }}
+          onError={(error) => {
+            setErrorPopup({
+              isOpen: true,
+              error: error
+            });
+          }}
         />
       )}
+
+      {/* Error Popup */}
+      <ErrorPopup
+        isOpen={errorPopup.isOpen}
+        onClose={() => setErrorPopup(prev => ({ ...prev, isOpen: false }))}
+        error={errorPopup.error}
+      />
+
+      {/* Success Popup */}
+      <SuccessPopup
+        isOpen={successPopup.isOpen}
+        onClose={() => setSuccessPopup(prev => ({ ...prev, isOpen: false }))}
+        data={successPopup.data}
+      />
     </div>
   );
 }
@@ -535,20 +756,26 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
 // Tenant Form Modal Component
 function TenantFormModal({
   tenant,
-  onClose
+  onClose,
+  onSuccess,
+  onError
 }: {
   tenant: Tenant | null;
   onClose: () => void;
+  onSuccess: (data: any) => void;
+  onError: (error: any) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: tenant?.name || '',
     slug: tenant?.slug || '',
-    subdomain: tenant?.subdomain || '',
-    domain: tenant?.domain || '',
-    email_domain: tenant?.email_domain || '',
+    owner_email: tenant?.owner_email || '',
+    owner_password: '', // Password untuk user account
     is_active: tenant?.is_active ?? true,
   });
+
+  // Email invitation system state
+  const [createMethod, setCreateMethod] = useState<'auto' | 'invite'>('auto');
 
   // Tenant admin management state
   const [tenantAdmins, setTenantAdmins] = useState<TenantAdmin[]>([]);
@@ -569,28 +796,29 @@ function TenantFormModal({
     try {
       // In the new system, each tenant has only one owner
       if (tenant.owner_id) {
-        const { data: ownerData, error: ownerError } = await (supabase as any)
-          .from('auth.users')
-          .select('id, email, created_at')
-          .eq('id', tenant.owner_id)
+        // SECURITY FIX: Use proper Supabase Auth API instead of direct auth.users access
+        const { data: userRoleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .eq('user_id', tenant.owner_id)
           .single();
 
-        if (!ownerError && ownerData) {
+        if (!roleError && userRoleData) {
           // Create a mock TenantAdmin object for compatibility
           const ownerAdmin: TenantAdmin = {
-            id: ownerData.id,
-            user_id: ownerData.id,
-            user_email: ownerData.email,
+            id: tenant.owner_id,
+            user_id: tenant.owner_id,
+            user_email: `user-${tenant.owner_id.slice(0, 8)}@tenant.com`, // Placeholder email
             tenant_id: tenant.id,
             role: 'admin',
             is_active: true,
-            created_at: ownerData.created_at,
+            created_at: new Date().toISOString(),
             invited_by: null,
-            invited_at: ownerData.created_at,
-            joined_at: ownerData.created_at,
+            invited_at: new Date().toISOString(),
+            joined_at: new Date().toISOString(),
             permissions: [],
             tenant_role: 'admin',
-            updated_at: ownerData.created_at
+            updated_at: new Date().toISOString()
           };
           setTenantAdmins([ownerAdmin]);
         } else {
@@ -645,13 +873,25 @@ function TenantFormModal({
         setNewAdminPassword('');
         setShowAddAdminForm(false);
         loadTenantAdmins();
-        alert('Admin berhasil ditambahkan dengan akun baru');
+        onSuccess({
+          title: 'Admin Berhasil Ditambahkan',
+          message: 'Admin baru telah berhasil ditambahkan dengan akun baru.',
+          details: {
+            email: newAdminEmail,
+            password: newAdminPassword
+          },
+          type: 'success'
+        });
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error adding admin:', error);
       }
-      alert(`Gagal menambahkan admin: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      onError({
+        title: 'Gagal Menambahkan Admin',
+        message: 'Terjadi error saat menambahkan admin baru.',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     } finally {
       setLoading(false);
     }
@@ -679,12 +919,20 @@ function TenantFormModal({
       if (tenantError) throw tenantError;
 
       loadTenantAdmins();
-      alert('Admin berhasil dihapus');
+      onSuccess({
+        title: 'Admin Berhasil Dihapus',
+        message: 'Admin telah berhasil dihapus dari tenant.',
+        type: 'success'
+      });
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error removing admin:', error);
       }
-      alert('Gagal menghapus admin');
+      onError({
+        title: 'Gagal Menghapus Admin',
+        message: 'Terjadi error saat menghapus admin.',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   };
 
@@ -704,15 +952,145 @@ function TenantFormModal({
           .eq('id', tenant.id);
 
         if (error) throw error;
-        alert('Tenant berhasil diperbarui');
+        onSuccess({
+          title: 'Tenant Berhasil Diperbarui',
+          message: 'Data tenant telah berhasil diperbarui.',
+          type: 'success'
+        });
       } else {
         // Create new tenant
-        const { error } = await (supabase as any)
-          .from('tenants')
-          .insert(formData);
+        if (createMethod === 'auto') {
+          // Auto Create Account Method
+          if (!formData.owner_password) {
+            onError({
+              title: 'Password Owner Diperlukan',
+              message: 'Password owner harus diisi untuk auto create account.',
+              details: 'Silakan isi password untuk membuat akun otomatis.'
+            });
+            return;
+          }
 
-        if (error) throw error;
-        alert('Tenant berhasil ditambahkan');
+          // Step 1: Create user account in Supabase Auth
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: formData.owner_email,
+            password: formData.owner_password,
+          });
+
+          if (authError) {
+            console.error('Auth error:', authError);
+            onError({
+              title: 'Gagal Membuat User Account',
+              message: 'Terjadi error saat membuat user account.',
+              details: authError.message
+            });
+            return;
+          }
+
+          if (!authData.user) {
+            onError({
+              title: 'Gagal Membuat User Account',
+              message: 'User account tidak berhasil dibuat.',
+              details: 'Silakan coba lagi atau gunakan metode email invitation.'
+            });
+            return;
+          }
+
+          // Step 2: Create user role
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: authData.user.id,
+              role: 'tenant',
+              created_at: new Date().toISOString()
+            });
+
+          if (roleError) {
+            console.error('Role error:', roleError);
+            onError({
+              title: 'Gagal Membuat User Role',
+              message: 'Terjadi error saat membuat user role.',
+              details: roleError.message
+            });
+            return;
+          }
+
+          // Step 3: Create tenant with owner_id
+          const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+            .insert({
+              name: formData.name,
+              slug: formData.slug,
+              owner_email: formData.owner_email,
+              owner_id: authData.user.id,
+              is_active: formData.is_active,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (tenantError) {
+            console.error('Tenant error:', tenantError);
+            onError({
+              title: 'Gagal Membuat Tenant',
+              message: 'Terjadi error saat membuat tenant.',
+              details: tenantError.message
+            });
+            return;
+          }
+
+          onSuccess({
+            title: 'Tenant Berhasil Ditambahkan!',
+            message: 'Tenant baru telah berhasil dibuat dengan akun otomatis.',
+            details: {
+              email: formData.owner_email,
+              password: formData.owner_password,
+              url: `/${formData.slug}/admin/login`
+            },
+            type: 'success'
+          });
+
+        } else {
+          // Manual Setup URL Method
+          // Step 1: Create tenant without owner_id first
+          const { data: tenantData, error: tenantError } = await supabase
+            .from('tenants')
+            .insert({
+              name: formData.name,
+              slug: formData.slug,
+              owner_email: formData.owner_email,
+              owner_id: null, // Will be set after user accepts invitation
+              is_active: formData.is_active,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (tenantError) {
+            console.error('Tenant error:', tenantError);
+            onError({
+              title: 'Gagal Membuat Tenant',
+              message: 'Terjadi error saat membuat tenant.',
+              details: tenantError.message
+            });
+            return;
+          }
+
+          // Step 2: Generate setup URL
+          const setupUrl = `${window.location.origin}/${formData.slug}/admin/setup?token=${tenantData.id}`;
+          
+          // Show success with setup URL (no email sending)
+          onSuccess({
+            title: 'Tenant Berhasil Ditambahkan!',
+            message: 'Tenant baru telah berhasil dibuat. Silakan kirim setup URL ke owner email untuk setup password.',
+            details: {
+              ownerEmail: formData.owner_email,
+              setupUrl: setupUrl
+            },
+            type: 'info'
+          });
+        }
       }
 
       onClose();
@@ -720,7 +1098,11 @@ function TenantFormModal({
       if (process.env.NODE_ENV === 'development') {
         console.error('Error saving tenant:', error);
       }
-      alert('Gagal menyimpan tenant');
+      onError({
+        title: 'Gagal Menyimpan Tenant',
+        message: 'Terjadi error saat menyimpan tenant.',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     } finally {
       setLoading(false);
     }
@@ -776,43 +1158,95 @@ function TenantFormModal({
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Subdomain <span className="text-red-500">*</span>
+                Owner Email <span className="text-red-500">*</span>
               </label>
               <input
-                type="text"
+                type="email"
                 required
-                value={formData.subdomain}
-                onChange={(e) => setFormData({ ...formData, subdomain: e.target.value.toLowerCase() })}
+                value={formData.owner_email}
+                onChange={(e) => setFormData({ ...formData, owner_email: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="tenant"
+                placeholder="owner@tenant.com"
               />
+              <p className="text-xs text-slate-500 mt-1">Email pemilik tenant</p>
             </div>
 
+            {!tenant && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Domain (Opsional)
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  Metode Pembuatan User Account
               </label>
+                <div className="space-y-3">
+                  <div className="flex items-center">
               <input
-                type="text"
-                value={formData.domain}
-                onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="tenant.com"
-              />
+                      type="radio"
+                      id="auto-create"
+                      name="createMethod"
+                      value="auto"
+                      checked={createMethod === 'auto'}
+                      onChange={(e) => setCreateMethod(e.target.value as 'auto')}
+                      className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                    />
+                    <label htmlFor="auto-create" className="ml-2 text-sm text-slate-700">
+                      <span className="font-medium">Auto Create Account</span>
+                      <p className="text-xs text-slate-500">Buat user account langsung dengan password</p>
+                    </label>
             </div>
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      id="email-invite"
+                      name="createMethod"
+                      value="invite"
+                      checked={createMethod === 'invite'}
+                      onChange={(e) => setCreateMethod(e.target.value as 'invite')}
+                      className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                    />
+                    <label htmlFor="email-invite" className="ml-2 text-sm text-slate-700">
+                      <span className="font-medium">Manual Setup URL</span>
+                      <p className="text-xs text-slate-500">Dapatkan setup URL untuk dikirim ke owner</p>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
 
+            {!tenant && createMethod === 'auto' && (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Email Domain (Opsional)
+                  Owner Password <span className="text-red-500">*</span>
               </label>
               <input
-                type="text"
-                value={formData.email_domain}
-                onChange={(e) => setFormData({ ...formData, email_domain: e.target.value })}
+                  type="password"
+                  required={createMethod === 'auto'}
+                  value={formData.owner_password}
+                  onChange={(e) => setFormData({ ...formData, owner_password: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="@tenant.com"
+                  placeholder="Password untuk login"
               />
+                <p className="text-xs text-slate-500 mt-1">Password untuk login sebagai owner tenant</p>
             </div>
+            )}
+
+            {!tenant && createMethod === 'invite' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">Manual Setup URL</h3>
+                    <div className="mt-2 text-sm text-blue-700">
+                      <p>Setelah tenant dibuat, Anda akan mendapat setup URL yang bisa dikirim ke:</p>
+                      <p className="font-medium">{formData.owner_email || 'owner@tenant.com'}</p>
+                      <p className="mt-1">Owner tenant akan menggunakan URL tersebut untuk membuat password dan login ke sistem.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <input

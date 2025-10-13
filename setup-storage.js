@@ -3,7 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://fheaayyooebdsppcymce.supabase.co';
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // You'll need to set this environment variable
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);

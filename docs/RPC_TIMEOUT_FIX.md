@@ -10,8 +10,8 @@
 After successful login, the admin dashboard was stuck at the RPC call step:
 
 ```
-Attempting email login for: manager@kopipendekar.com
-AuthContext.tsx:152 🔄 AuthContext: Auth state change: SIGNED_IN manager@kopipendekar.com
+Attempting email login for: [YOUR_TENANT_EMAIL]
+AuthContext.tsx:152 🔄 AuthContext: Auth state change: SIGNED_IN [YOUR_TENANT_EMAIL]
 AuthContext.tsx:156 🔄 AuthContext: User signed in, refreshing access status...
 AuthContext.tsx:71 🔄 AuthContext: Calling get_user_access_status RPC...
 ```
@@ -186,8 +186,8 @@ console.log('✅ AuthContext: Access status updated:', {
 2. **Login to Admin Dashboard**
    ```
    URL: http://localhost:5173/kopipendekar/admin/login
-   Email: manager@kopipendekar.com
-   Password: manager123456
+   Email: [YOUR_TENANT_EMAIL]
+   Password: [YOUR_TENANT_PASSWORD]
    ```
 
 3. **Check Console Logs**
@@ -209,13 +209,13 @@ console.log('✅ AuthContext: Access status updated:', {
 
 **Successful Flow:**
 ```
-🔄 AuthContext: Auth state change: SIGNED_IN manager@kopipendekar.com
+🔄 AuthContext: Auth state change: SIGNED_IN [YOUR_TENANT_EMAIL]
 🔄 AuthContext: User signed in, refreshing access status...
 🔄 AuthContext: Calling get_user_access_status RPC...
 ✅ AuthContext: RPC success: {is_super_admin: true, memberships: [...]}
 ✅ AuthContext: Access status updated: {is_super_admin: true, memberships: 1, selected_tenant: "Kopi Pendekar"}
 ✅ AuthContext: Setting loading to false
-🔄 AdminDashboard: Auth state: {loading: false, user: "manager@kopipendekar.com", ...}
+🔄 AdminDashboard: Auth state: {loading: false, user: "[YOUR_TENANT_EMAIL]", ...}
 ```
 
 **Error Indicators:**
@@ -313,4 +313,5 @@ If RPC timeout issues persist:
 5. **Review console logs** for the debug messages above
 
 The enhanced logging and timeout protection will help identify any remaining issues quickly.
+
 

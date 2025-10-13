@@ -145,7 +145,7 @@ try {
 ### Comprehensive Testing Performed:
 
 1. **Email/Password Login Test** ✅ PASS
-   - Login successful: manager@kopipendekar.com
+   - Login successful: [YOUR_TENANT_EMAIL]
    - Provider: email
    - Session: Present with access and refresh tokens
    - Expires: 1 hour from login
@@ -195,13 +195,13 @@ try {
 2. **Test Email Login**
    ```
    URL: http://localhost:5173/kopipendekar/admin/login
-   Email: manager@kopipendekar.com
-   Password: manager123456
+   Email: [YOUR_TENANT_EMAIL]
+   Password: [YOUR_TENANT_PASSWORD]
    ```
 
 3. **Check Console Logs**
    - Should see: `🔄 AuthContext: Starting email/password login...`
-   - Should see: `✅ AuthContext: Email login successful: manager@kopipendekar.com`
+   - Should see: `✅ AuthContext: Email login successful: [YOUR_TENANT_EMAIL]`
    - Should see: `🔄 AuthContext: Email login detected, adding delay...`
    - Should see: `✅ AuthContext: Session validated, proceeding with RPC call`
    - Should see: `✅ AuthContext: RPC success:`
@@ -220,8 +220,8 @@ try {
 **Successful Email Login Flow:**
 ```
 🔄 AuthContext: Starting email/password login...
-✅ AuthContext: Email login successful: manager@kopipendekar.com
-🔄 AuthContext: Auth state change: SIGNED_IN manager@kopipendekar.com
+✅ AuthContext: Email login successful: [YOUR_TENANT_EMAIL]
+🔄 AuthContext: Auth state change: SIGNED_IN [YOUR_TENANT_EMAIL]
 🔄 AuthContext: User signed in, refreshing access status...
 🔄 AuthContext: Email login detected, adding delay...
 🔄 AuthContext: Starting refreshAccessStatus
@@ -327,4 +327,5 @@ If email login issues persist:
 5. **Review console logs** for the debug messages above
 
 The enhanced logging and session validation will help identify any remaining issues quickly.
+
 

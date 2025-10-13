@@ -3,12 +3,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { secureAuthenticate, validateSession, secureLogout, hasPermission } from '../lib/secureAuth';
 
 interface Tenant {
   id: string;
   name: string;
   slug: string;
-  domain: string | null;
+  owner_email: string;
 }
 
 interface AuthContextType {
@@ -22,6 +23,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
   isTenantOwner: boolean;
+  // Secure permission checking
+  checkPermission: (permission: 'super_admin' | 'tenant_admin' | 'tenant_access') => Promise<boolean>;
+  validateAuth: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,8 +38,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<'super_admin' | 'tenant' | null>(null);
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    console.log('🔐 SECURE AUTH: Starting secure authentication...');
+    
+    // Use secure authentication with server-side validation
+    const authResult = await secureAuthenticate(email, password);
+    
+    if (!authResult.success) {
+      throw new Error(authResult.error || 'Authentication failed');
+    }
+
+    console.log('✅ SECURE AUTH: Authentication successful');
+    
+    // Update state with validated data
+    setUser(authResult.user);
+    setUserRole(authResult.role || null);
+    
+    if (authResult.tenant) {
+      setCurrentTenant(authResult.tenant);
+    }
   };
 
   const signInWithGoogle = async () => {
@@ -49,61 +69,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    console.log('🔐 SECURE AUTH: Starting secure logout...');
+    
+    // Use secure logout
+    await secureLogout();
+    
+    // Clear all state
     setUser(null);
     setSession(null);
     setCurrentTenant(null);
     setUserRole(null);
-    await supabase.auth.signOut();
+    
+    console.log('✅ SECURE AUTH: Logout successful');
   };
 
+  // SECURITY FIX: Use secure server-side role validation
   const checkUserRoleAndLoadTenant = async (userId: string) => {
     try {
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-
-      if (roleError) {
-        console.error('Error fetching user roles:', roleError);
+      console.log('🔐 SECURE AUTH: Validating user role server-side...');
+      
+      // Use secure role validation
+      const authResult = await validateSession();
+      
+      if (!authResult.success) {
+        console.error('❌ SECURE AUTH: Role validation failed:', authResult.error);
         setUserRole(null);
         setCurrentTenant(null);
         return;
       }
 
-      if (roleData && roleData.length > 0) {
-        // If user has multiple roles, prioritize super_admin
-        const hasSuperAdmin = roleData.some(role => role.role === 'super_admin');
-        const hasTenant = roleData.some(role => role.role === 'tenant');
-        
-        if (hasSuperAdmin) {
-          setUserRole('super_admin');
-          setCurrentTenant(null);
-        } else if (hasTenant) {
-          setUserRole('tenant');
-          
-          // Get user's tenant info
-          const { data: tenantData, error: tenantError } = await supabase
-            .from('tenants')
-            .select('id, name, slug, domain')
-            .eq('owner_id', userId)
-            .single();
-
-          if (tenantError) {
-            console.error('Error fetching tenant data:', tenantError);
-            setCurrentTenant(null);
-          } else if (tenantData) {
-            setCurrentTenant(tenantData);
-          }
-        } else {
-          setUserRole(null);
-          setCurrentTenant(null);
-        }
+      console.log('✅ SECURE AUTH: Role validation successful');
+      
+      // Update state with server-validated data
+      setUserRole(authResult.role || null);
+      
+      if (authResult.tenant) {
+        setCurrentTenant(authResult.tenant);
       } else {
-        setUserRole(null);
         setCurrentTenant(null);
       }
+      
     } catch (error) {
-      console.error('Error checking user role:', error);
+      console.error('❌ SECURE AUTH: Role validation error:', error);
       setUserRole(null);
       setCurrentTenant(null);
     }
@@ -141,7 +148,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Computed values
+  // SECURITY FIX: Add secure permission checking functions
+  const checkPermission = async (permission: 'super_admin' | 'tenant_admin' | 'tenant_access'): Promise<boolean> => {
+    try {
+      return await hasPermission(permission);
+    } catch (error) {
+      console.error('Permission check error:', error);
+      return false;
+    }
+  };
+
+  const validateAuth = async (): Promise<boolean> => {
+    try {
+      const authResult = await validateSession();
+      return authResult.success;
+    } catch (error) {
+      console.error('Auth validation error:', error);
+      return false;
+    }
+  };
+
+  // Computed values (client-side for UI, but always validated server-side)
   const isAuthenticated = !!user;
   const isSuperAdmin = userRole === 'super_admin';
   const isTenantOwner = userRole === 'tenant' && !!currentTenant;
@@ -157,6 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated,
     isSuperAdmin,
     isTenantOwner,
+    checkPermission,
+    validateAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

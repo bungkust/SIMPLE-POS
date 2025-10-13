@@ -15,9 +15,65 @@ export function ProtectedRoute({
   requireSuperAdmin = false,
   requireAuth = false
 }: ProtectedRouteProps) {
-  const { user, loading, isTenantOwner, isSuperAdmin } = useAuth();
+  const { user, loading, isTenantOwner, isSuperAdmin, checkPermission, validateAuth } = useAuth();
   const [hasChecked, setHasChecked] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [permissionValidated, setPermissionValidated] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
+
+  // SECURITY FIX: Server-side permission validation
+  useEffect(() => {
+    const validatePermissions = async () => {
+      if (!loading && user) {
+        setAuthLoading(true);
+        try {
+          console.log('🔐 SECURE AUTH: Validating permissions server-side...');
+          
+          // Validate authentication first
+          const isAuthValid = await validateAuth();
+          if (!isAuthValid) {
+            console.error('❌ SECURE AUTH: Authentication validation failed');
+            setHasPermission(false);
+            setPermissionValidated(true);
+            setAuthLoading(false);
+            return;
+          }
+
+          // Check specific permissions based on requirements
+          let permission = '';
+          if (requireSuperAdmin) {
+            permission = 'super_admin';
+          } else if (requireAdmin) {
+            permission = 'tenant_admin';
+          } else if (requireAuth) {
+            permission = 'tenant_access';
+          }
+
+          if (permission) {
+            const hasRequiredPermission = await checkPermission(permission as any);
+            console.log(`🔐 SECURE AUTH: Permission ${permission}:`, hasRequiredPermission);
+            setHasPermission(hasRequiredPermission);
+          } else {
+            setHasPermission(true); // No specific permission required
+          }
+
+          setPermissionValidated(true);
+        } catch (error) {
+          console.error('❌ SECURE AUTH: Permission validation error:', error);
+          setHasPermission(false);
+          setPermissionValidated(true);
+        } finally {
+          setAuthLoading(false);
+        }
+      } else if (!loading && !user) {
+        // No user, no permissions needed
+        setHasPermission(false);
+        setPermissionValidated(true);
+      }
+    };
+
+    validatePermissions();
+  }, [loading, user, requireSuperAdmin, requireAdmin, requireAuth, checkPermission, validateAuth]);
 
   useEffect(() => {
     if (!loading) {
@@ -57,10 +113,15 @@ export function ProtectedRoute({
     }
   };
 
-  if (loading || !hasChecked) {
+  if (loading || !hasChecked || !permissionValidated || authLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-3 sm:p-4">
-        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-green-500 border-t-transparent"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-slate-600 text-sm">
+            {authLoading ? 'Validating permissions...' : 'Loading...'}
+          </p>
+        </div>
       </div>
     );
   }
@@ -98,8 +159,9 @@ export function ProtectedRoute({
     );
   }
 
+  // SECURITY FIX: Use server-validated permissions instead of client-side checks
   // Check super admin requirement
-  if (requireSuperAdmin && !isSuperAdmin) {
+  if (requireSuperAdmin && !hasPermission) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-3 sm:p-4">
         <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 max-w-sm sm:max-w-md w-full text-center">
@@ -145,7 +207,7 @@ export function ProtectedRoute({
   }
 
   // Check admin requirement
-  if (requireAdmin && !isTenantOwner) {
+  if (requireAdmin && !hasPermission) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-3 sm:p-4">
         <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 max-w-sm sm:max-w-md w-full text-center">

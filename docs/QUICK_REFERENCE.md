@@ -16,7 +16,7 @@ http://localhost:5173/sadmin/login            # Super admin login
 
 ### Production
 ```
-https://fheaayyooebdsppcymce.supabase.co      # Supabase database
+[YOUR_SUPABASE_URL]                           # Supabase database
 ```
 
 ---
@@ -426,5 +426,6 @@ SELECT * FROM pg_policies WHERE tablename = 'menu_items';
 ---
 
 *Last updated: October 10, 2025*
+
 
 

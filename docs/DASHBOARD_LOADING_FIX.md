@@ -228,8 +228,8 @@ useEffect(() => {
 2. **Login to Admin Dashboard**
    ```
    URL: http://localhost:5173/kopipendekar/admin/login
-   Email: manager@kopipendekar.com
-   Password: manager123456
+   Email: [YOUR_TENANT_EMAIL]
+   Password: [YOUR_TENANT_PASSWORD]
    ```
 
 3. **Check Console Logs**
@@ -252,14 +252,14 @@ useEffect(() => {
 **Successful Flow:**
 ```
 🔄 AuthContext: Initializing auth...
-🔄 AuthContext: Session check result: manager@kopipendekar.com
+🔄 AuthContext: Session check result: [YOUR_TENANT_EMAIL]
 🔄 AuthContext: User found, refreshing access status...
 🔄 AuthContext: Calling get_user_access_status RPC...
 ✅ AuthContext: RPC success: {is_super_admin: true, memberships: [...]}
 ✅ AuthContext: Access status updated: {is_super_admin: true, memberships: 1, selected_tenant: "Kopi Pendekar"}
 ✅ AuthContext: Setting loading to false
 🔄 AdminDashboard: Component mounted/updated
-🔄 AdminDashboard: Auth state: {loading: false, user: "manager@kopipendekar.com", ...}
+🔄 AdminDashboard: Auth state: {loading: false, user: "[YOUR_TENANT_EMAIL]", ...}
 ```
 
 **Error Indicators:**

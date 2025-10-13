@@ -228,7 +228,7 @@ try {
 **Successful Flow:**
 ```
 🔄 AuthContext: Initializing auth...
-🔄 AuthContext: Session check result: manager@kopipendekar.com
+🔄 AuthContext: Session check result: [YOUR_TENANT_EMAIL]
 🔄 AuthContext: User found, refreshing access status...
 🔄 AuthContext: Starting refreshAccessStatus
 🔄 AuthContext: Calling get_user_access_status RPC...
@@ -340,4 +340,5 @@ If loading state issues persist:
 5. **Review console logs** for the debug messages above
 
 The enhanced logging and ref-based protection will help identify any remaining issues quickly.
+
 

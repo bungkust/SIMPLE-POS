@@ -2,7 +2,7 @@
 
 **Generated:** October 10, 2025  
 **Database:** Supabase PostgreSQL  
-**Project URL:** https://fheaayyooebdsppcymce.supabase.co
+**Project URL:** [YOUR_SUPABASE_URL]
 
 ---
 
@@ -212,5 +212,6 @@ The database schema is well-designed with:
 - ⚠️ A few records missing tenant_id assignments
 
 The system is **production-ready** and actively processing orders.
+
 
 

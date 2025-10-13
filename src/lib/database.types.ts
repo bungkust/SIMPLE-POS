@@ -201,9 +201,7 @@ export interface Database {
           id: string;
           name: string;
           slug: string;
-          subdomain: string;
-          domain: string | null;
-          email_domain: string | null;
+          owner_email: string;
           settings: any;
           is_active: boolean;
           created_by: string | null;
@@ -215,9 +213,7 @@ export interface Database {
           id?: string;
           name: string;
           slug: string;
-          subdomain: string;
-          domain?: string | null;
-          email_domain?: string | null;
+          owner_email: string;
           settings?: any;
           is_active?: boolean;
           created_by?: string | null;
@@ -229,9 +225,7 @@ export interface Database {
           id?: string;
           name?: string;
           slug?: string;
-          subdomain?: string;
-          domain?: string | null;
-          email_domain?: string | null;
+          owner_email?: string;
           settings?: any;
           is_active?: boolean;
           created_by?: string | null;

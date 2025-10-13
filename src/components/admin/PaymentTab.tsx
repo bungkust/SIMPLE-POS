@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X, Upload, Image } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ConfirmDialog } from '../ConfirmDialog';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Define PaymentMethod interface since it's not in generated types yet
 interface PaymentMethod {
@@ -41,12 +42,21 @@ export function PaymentTab() {
   });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [filePreview, setFilePreview] = useState<string | null>(null);
+  const { currentTenant } = useAuth();
 
   useEffect(() => {
-    loadPaymentMethods();
-  }, []);
+    if (currentTenant) {
+      loadPaymentMethods();
+    } else {
+      setLoading(false);
+    }
+  }, [currentTenant]);
 
   const loadPaymentMethods = async () => {
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
     if (process.env.NODE_ENV === 'development') {
       console.log('🔄 PaymentTab: Starting to load payment methods...');
     }
@@ -54,7 +64,11 @@ export function PaymentTab() {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 PaymentTab: Querying payment_methods table...');
       }
-      const { data, error } = await (supabase as any).from('payment_methods').select('*').order('sort_order');
+      const { data, error } = await (supabase as any)
+        .from('payment_methods')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .order('sort_order');
 
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 PaymentTab: Payment methods query result:', { dataLength: data?.length, error });
@@ -175,7 +189,8 @@ export function PaymentTab() {
       const { error } = await (supabase as any)
         .from('payment_methods')
         .update(updateData)
-        .eq('id', editingId);
+        .eq('id', editingId)
+        .eq('tenant_id', currentTenant?.id);
 
       if (error) throw error;
 
@@ -195,7 +210,8 @@ export function PaymentTab() {
       description: 'Deskripsi metode pembayaran',
       payment_type: 'TRANSFER',
       is_active: true,
-      sort_order: paymentMethods.length
+      sort_order: paymentMethods.length,
+      tenant_id: currentTenant?.id
     };
 
     try {
@@ -229,7 +245,8 @@ export function PaymentTab() {
       const { error } = await (supabase as any)
         .from('payment_methods')
         .delete()
-        .eq('id', deleteConfirm.itemId);
+        .eq('id', deleteConfirm.itemId)
+        .eq('tenant_id', currentTenant?.id);
 
       if (error) throw error;
 
@@ -249,7 +266,8 @@ export function PaymentTab() {
       const { error } = await (supabase as any)
         .from('payment_methods')
         .update({ is_active: !currentStatus })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', currentTenant?.id);
 
       if (error) throw error;
 
@@ -349,7 +367,7 @@ export function PaymentTab() {
                               type="text"
                               value={editForm.account_number}
                               onChange={(e) => setEditForm({ ...editForm, account_number: e.target.value })}
-                              placeholder="1234567890"
+                              placeholder="[YOUR_ACCOUNT_NUMBER]"
                               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                             />
                           </div>

@@ -16,8 +16,10 @@ export function OrdersTab() {
   const [filterStatus, setFilterStatus] = useState<string>('');
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    if (currentTenant) {
+      loadOrders();
+    }
+  }, [currentTenant]);
 
   const loadOrders = async () => {
     if (process.env.NODE_ENV === 'development') {
@@ -28,15 +30,18 @@ export function OrdersTab() {
         console.log('OrdersTab: Querying orders table...');
       }
 
-      // Build query with optional tenant_id filter
-      let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
-
-      // Only filter by tenant_id if currentTenant exists and has a valid tenant_id
-      if (currentTenant?.id) {
-        query = query.eq('tenant_id', currentTenant.id);
+      if (!currentTenant?.id) {
+        setOrders([]);
+        setOrderItems([]);
+        setLoading(false);
+        return;
       }
 
-      const { data: ordersData, error: ordersError } = await query;
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .order('created_at', { ascending: false });
 
       if (process.env.NODE_ENV === 'development') {
         console.log('OrdersTab: Orders query result:', { dataLength: ordersData?.length, error: ordersError });
@@ -61,14 +66,12 @@ export function OrdersTab() {
         }
         const orderIds = orders.map(order => order.id);
 
-        // Build order items query with tenant_id filter if available
-        let itemsQuery = supabase.from('order_items').select('*').in('order_id', orderIds).order('order_id');
-
-        if (currentTenant?.id) {
-          itemsQuery = itemsQuery.eq('tenant_id', currentTenant.id);
-        }
-
-        const { data: itemsData, error: itemsError } = await itemsQuery;
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*')
+          .in('order_id', orderIds)
+          .eq('tenant_id', currentTenant.id)
+          .order('order_id');
 
         if (process.env.NODE_ENV === 'development') {
           console.log('OrdersTab: Order items query result:', { dataLength: itemsData?.length, error: itemsError });

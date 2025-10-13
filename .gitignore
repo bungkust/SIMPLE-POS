@@ -21,6 +21,17 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.local
+.env.production
+.env.development
+
+# Security and credentials
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.json
+credentials.json
 
 # Local Netlify folder
 .netlify

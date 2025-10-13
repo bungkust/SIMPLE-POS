@@ -98,7 +98,7 @@ export function SettingsTab() {
       };
     };
 
-    const defaultConfig = getDefaultConfigForTenant(currentTenant.tenant_slug);
+    const defaultConfig = getDefaultConfigForTenant(currentTenant.slug);
     setFormData(defaultConfig);
     setUploadedIconUrl(null);
 
@@ -135,10 +135,10 @@ export function SettingsTab() {
     try {
       // Create unique filename with tenant prefix
       const fileExt = file.name.split('.').pop();
-      const fileName = `${currentTenant.tenant_slug}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `${currentTenant.slug}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('Uploading file:', fileName, 'to bucket: store-icons for tenant:', currentTenant.tenant_slug);
+        console.log('Uploading file:', fileName, 'to bucket: store-icons for tenant:', currentTenant.slug);
       }
 
       // Upload to Supabase Storage with tenant organization
@@ -210,7 +210,7 @@ export function SettingsTab() {
           <h2 className="text-lg font-semibold text-slate-900">Pengaturan Toko</h2>
           {currentTenant && (
             <div className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-              {currentTenant.tenant_name}
+              {currentTenant.name}
             </div>
           )}
         </div>

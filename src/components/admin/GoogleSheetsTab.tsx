@@ -3,6 +3,7 @@ import { Sheet, CheckCircle, AlertCircle, Info, Copy, Code, Settings } from 'luc
 import { supabase } from '../../lib/supabase';
 import { formatRupiah, formatDateTime } from '../../lib/utils';
 import { Database } from '../../lib/database.types';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Order = Database['public']['Tables']['orders']['Row'];
 type OrderItem = Database['public']['Tables']['order_items']['Row'];
@@ -15,6 +16,7 @@ export function GoogleSheetsTab() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportResult, setExportResult] = useState<{success: boolean, message: string} | null>(null);
   const [showScript, setShowScript] = useState(false);
+  const { currentTenant } = useAuth();
 
   // Google Apps Script template code
   const googleAppsScriptTemplate = `// ========================================
@@ -177,7 +179,7 @@ function testExport() {
     order_code: 'TEST001',
     created_at: '2025-01-01 10:00:00',
     customer_name: 'Test Customer',
-    phone: '081234567890',
+    phone: '[YOUR_PHONE_NUMBER]',
     items: 'Kopi Susu (2x); Cold Brew (1x)',
     total: 58000,
     payment_method: 'CASH',
@@ -195,14 +197,20 @@ function testExport() {
 }`;
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    if (currentTenant) {
+      loadOrders();
+    } else {
+      setLoading(false);
+    }
+  }, [currentTenant]);
 
   const loadOrders = async () => {
+    if (!currentTenant) return;
     try {
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
+        .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
@@ -216,6 +224,7 @@ function testExport() {
           .from('order_items')
           .select('*')
           .in('order_id', orderIds)
+          .eq('tenant_id', currentTenant.id)
           .order('order_id');
 
         if (itemsError) {

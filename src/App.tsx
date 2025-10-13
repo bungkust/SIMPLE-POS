@@ -16,6 +16,7 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { SuperAdminLoginPage } from './pages/SuperAdminLoginPage';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
+import { TenantSetupPage } from './pages/TenantSetupPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { handleOAuthError } from './lib/auth-utils';
 import AuthCallback from './pages/AuthCallback';
@@ -168,6 +169,7 @@ function App() {
                     <AdminDashboardWrapper />
                   </AuthProvider>
                 } />
+                <Route path="/:tenantSlug/admin/setup" element={<TenantSetupPage />} />
 
                 {/* Catch all - redirect to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />

@@ -67,7 +67,7 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
       // Upload to Supabase Storage with tenant-specific folder
       const { error: uploadError } = await supabase.storage
         .from('menu-photos')
-        .upload(`${currentTenant.tenant_slug}/${fileName}`, file, {
+        .upload(`${currentTenant.slug}/${fileName}`, file, {
           cacheControl: '3600',
           upsert: false
         });
@@ -77,7 +77,7 @@ export function MenuFormModal({ item, categories, onClose }: MenuFormModalProps)
       // Get public URL
       const { data: urlData } = supabase.storage
         .from('menu-photos')
-        .getPublicUrl(`${currentTenant.tenant_slug}/${fileName}`);
+        .getPublicUrl(`${currentTenant.slug}/${fileName}`);
 
       if (urlData?.publicUrl) {
         setFormData(prev => ({ ...prev, photo_url: urlData.publicUrl }));
