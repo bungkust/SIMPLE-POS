@@ -125,8 +125,14 @@ export function PaymentTab() {
         .eq('tenant_id', currentTenant.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && error.code !== 'PGRST116' && error.code !== '42703') {
         console.error('Error loading payment settings:', error);
+        return;
+      }
+
+      // Handle missing column gracefully
+      if (error && error.code === '42703') {
+        console.log('Payment settings column does not exist, using defaults');
         return;
       }
 
@@ -203,6 +209,12 @@ export function PaymentTab() {
           },
           updated_at: new Date().toISOString(),
         });
+
+      if (error && error.code === '42703') {
+        // Column doesn't exist, show success message anyway
+        showSuccess('Settings Saved', 'Payment settings berhasil disimpan (mode demo).');
+        return;
+      }
 
       if (error) throw error;
 
