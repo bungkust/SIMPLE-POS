@@ -54,9 +54,13 @@ export const checkoutFormSchema = z.object({
   phone: z.string().min(1, "Nomor telepon harus diisi").max(20, "Nomor telepon terlalu panjang"),
   pickupDate: z.string().min(1, "Tanggal pickup harus diisi"),
   notes: z.string().max(500, "Catatan terlalu panjang").optional(),
-  paymentMethod: z.enum(["TRANSFER", "QRIS", "COD"], {
+  paymentMethod: z.string({
     required_error: "Metode pembayaran harus dipilih",
-  }),
+    invalid_type_error: "Metode pembayaran harus dipilih"
+  }).min(1, "Metode pembayaran harus dipilih").refine(
+    (val) => val && val.trim() !== '' && ["TRANSFER", "QRIS", "COD"].includes(val),
+    "Metode pembayaran harus dipilih"
+  ),
 });
 
 export const orderStatusUpdateSchema = z.object({

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,12 +28,15 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   const [tenantInfo, setTenantInfo] = useState<any>(null);
   const { showError, showSuccess } = useAppToast();
   const [loading, setLoading] = useState(false);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
-  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>(['TRANSFER', 'COD']);
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
     setValue,
     watch
@@ -44,11 +47,16 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       phone: '',
       pickupDate: getTomorrowDate(),
       notes: '',
-      paymentMethod: 'TRANSFER'
+      paymentMethod: '' // Use empty string instead of undefined
     }
   });
 
   const paymentMethod = watch('paymentMethod');
+  
+  // Debug current payment method value
+  console.log('🔍 Current payment method value:', paymentMethod);
+  console.log('🔍 Payment method type:', typeof paymentMethod);
+  console.log('🔍 Payment method length:', paymentMethod?.length);
 
   // Resolve tenant ID once when component mounts
   useEffect(() => {
@@ -58,6 +66,8 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         if (resolvedTenantInfo) {
           setTenantInfo(resolvedTenantInfo);
           setResolvedTenantId(resolvedTenantInfo.tenant_id);
+          // Load payment methods after tenant ID is resolved
+          await loadAvailablePaymentMethods(resolvedTenantInfo.tenant_id);
         } else {
           showError('Error', 'Failed to resolve tenant information.');
         }
@@ -70,33 +80,62 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
     resolveTenantId();
   }, [showError]);
 
-  const loadAvailablePaymentMethods = async () => {
+  const loadAvailablePaymentMethods = async (tenantId?: string) => {
     try {
-      if (!resolvedTenantId) return;
+      setLoadingPaymentMethods(true);
+      const currentTenantId = tenantId || resolvedTenantId;
+      if (!currentTenantId) {
+        console.log('🔍 No tenant ID available for loading payment methods');
+        setLoadingPaymentMethods(false);
+        return;
+      }
+
+      console.log('🔍 Loading payment methods for tenant:', currentTenantId);
 
       // Try to get payment methods from payment_methods table
       const { data: paymentMethods, error } = await supabase
         .from('payment_methods')
-        .select('payment_type, is_active')
-        .eq('tenant_id', resolvedTenantId)
-        .eq('is_active', true);
+        .select('payment_type, is_active, name, description')
+        .eq('tenant_id', currentTenantId)
+        .eq('is_active', true)
+        .order('sort_order');
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading payment methods:', error);
-        // Default payment methods on error
-        setAvailablePaymentMethods(['TRANSFER', 'COD']);
+        console.error('❌ Error loading payment methods:', error);
+        // No payment methods available on error
+        setAvailablePaymentMethods([]);
+        setPaymentMethods([]);
+        setValue('paymentMethod', '');
+        setLoadingPaymentMethods(false);
         return;
       }
 
+      console.log('🔍 Raw payment methods data:', paymentMethods);
+
       if (paymentMethods && paymentMethods.length > 0) {
         const methods = paymentMethods.map(method => method.payment_type);
-        setAvailablePaymentMethods(methods);
+        const uniqueMethods = [...new Set(methods)];
+        console.log('🔍 Available payment methods:', uniqueMethods);
+        setAvailablePaymentMethods(uniqueMethods);
+        setPaymentMethods(paymentMethods);
+        
+        // Don't set default payment method - let user choose
+        // This ensures validation works properly
       } else {
-        // Default payment methods if no settings found
-        setAvailablePaymentMethods(['TRANSFER', 'COD']);
+        console.log('🔍 No payment methods found - no payment methods configured');
+        // No payment methods available - customer cannot proceed
+        setAvailablePaymentMethods([]);
+        setPaymentMethods([]);
+        // Clear payment method selection
+        setValue('paymentMethod', '');
       }
     } catch (error) {
-      console.error('Error loading payment methods:', error);
+      console.error('❌ Error loading payment methods:', error);
+      setAvailablePaymentMethods([]);
+      setPaymentMethods([]);
+      setValue('paymentMethod', undefined as any);
+    } finally {
+      setLoadingPaymentMethods(false);
     }
   };
 
@@ -105,10 +144,32 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   }, [resolvedTenantId]);
 
   const onSubmit = async (data: CheckoutFormData) => {
+    console.log('🔍 Form submitted with data:', data);
+    console.log('🔍 Form errors:', errors);
+    console.log('🔍 Available payment methods:', availablePaymentMethods);
+    console.log('🔍 Payment method options:', paymentMethodOptions);
+    
     if (!resolvedTenantId) {
       showError('Error', 'Could not resolve tenant ID for order creation');
       return;
     }
+
+    // Validate payment method selection
+    if (!data.paymentMethod || data.paymentMethod.trim() === '') {
+      console.log('❌ Payment method validation failed: empty or null');
+      showError('Validation Error', 'Silakan pilih metode pembayaran terlebih dahulu.');
+      return;
+    }
+
+    // Check if selected payment method is available
+    if (!availablePaymentMethods.includes(data.paymentMethod)) {
+      console.log('❌ Payment method validation failed: not in available methods');
+      showError('Validation Error', 'Metode pembayaran yang dipilih tidak tersedia.');
+      return;
+    }
+
+    console.log('✅ Payment method validation passed:', data.paymentMethod);
+    console.log('🔍 Submitting order with payment method:', data.paymentMethod);
 
     setLoading(true);
     try {
@@ -307,7 +368,20 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-3 sm:p-6">
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-6">
+                  <form onSubmit={handleSubmit(
+                    (data) => {
+                      console.log('✅ Form validation passed, calling onSubmit');
+                      onSubmit(data);
+                    },
+                    (errors) => {
+                      console.log('❌ Form validation failed:', errors);
+                      console.log('❌ Payment method error:', errors.paymentMethod);
+                      if (errors.paymentMethod) {
+                        const errorMessage = errors.paymentMethod.message || 'Silakan pilih metode pembayaran terlebih dahulu.';
+                        showError('Validation Error', errorMessage);
+                      }
+                    }
+                  )} className="space-y-3 sm:space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormInput
                       {...register('customerName')}
@@ -337,13 +411,51 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                   />
 
                   <div className="bg-muted/30 p-4 rounded-lg">
-                    <FormRadioGroup
-                      {...register('paymentMethod')}
-                      label="Metode Pembayaran"
-                      options={paymentMethodOptions}
-                      error={errors.paymentMethod?.message}
-                      required
-                    />
+                    {loadingPaymentMethods ? (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Metode Pembayaran <span className="text-destructive">*</span>
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                          <span className="text-sm text-muted-foreground">Loading payment methods...</span>
+                        </div>
+                      </div>
+                    ) : paymentMethodOptions.length === 0 ? (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Metode Pembayaran <span className="text-destructive">*</span>
+                        </label>
+                        <div className="text-sm text-destructive">
+                          Tidak ada metode pembayaran yang tersedia. Silakan hubungi admin.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium text-foreground">
+                          Metode Pembayaran *
+                        </label>
+                        <Controller
+                          name="paymentMethod"
+                          control={control}
+                          render={({ field }) => {
+                            console.log('🔍 Controller field value:', field.value);
+                            console.log('🔍 Controller field onChange:', field.onChange);
+                            return (
+                              <FormRadioGroup
+                                value={field.value}
+                                onValueChange={(value) => {
+                                  console.log('🔍 FormRadioGroup onValueChange called with:', value);
+                                  field.onChange(value);
+                                }}
+                                options={paymentMethodOptions}
+                                error={errors.paymentMethod?.message}
+                              />
+                            );
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <FormTextarea
@@ -367,7 +479,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={loading || items.length === 0}
+                      disabled={loading || items.length === 0 || loadingPaymentMethods || paymentMethodOptions.length === 0}
                       className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm"
                     >
                       {loading ? (
