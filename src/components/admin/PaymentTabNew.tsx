@@ -59,6 +59,19 @@ export function PaymentTab() {
   const [deletingMethod, setDeletingMethod] = useState<PaymentMethod | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [showQRISPreview, setShowQRISPreview] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+
+  // Separate form for payment method
+  const methodForm = useForm({
+    defaultValues: {
+      name: '',
+      description: '',
+      payment_type: 'TRANSFER',
+      account_holder: '',
+      qris_image_url: ''
+    }
+  });
 
   const {
     register,
@@ -90,6 +103,24 @@ export function PaymentTab() {
     }
   }, [currentTenant]);
 
+  // Populate form when editing a method
+  useEffect(() => {
+    if (editingMethod) {
+      setValue('name', editingMethod.name);
+      setValue('description', editingMethod.description);
+      setValue('payment_type', editingMethod.payment_type);
+      setValue('account_holder', editingMethod.account_holder || '');
+      setValue('qris_image_url', editingMethod.qris_image_url || '');
+    } else {
+      // Reset form when not editing
+      setValue('name', '');
+      setValue('description', '');
+      setValue('payment_type', '');
+      setValue('account_holder', '');
+      setValue('qris_image_url', '');
+    }
+  }, [editingMethod, setValue]);
+
   const loadPaymentMethods = async () => {
     if (!currentTenant?.id) return;
 
@@ -106,7 +137,51 @@ export function PaymentTab() {
         return;
       }
 
+      // Check and fix old QRIS URLs
+      const methodsToUpdate = (data || []).filter(method => 
+        method.payment_type === 'QRIS' && 
+        method.qris_image_url && 
+        method.qris_image_url.includes('store-icons/payment-methods/')
+      );
+
+      if (methodsToUpdate.length > 0) {
+        console.log('🔧 Found QRIS methods with old URLs, updating...');
+        
+        for (const method of methodsToUpdate) {
+          const newUrl = method.qris_image_url.replace(
+            'store-icons/payment-methods/',
+            'qris-images/qris/'
+          );
+          
+          console.log(`🔄 Updating QRIS URL for method ${method.id}:`);
+          console.log(`  Old: ${method.qris_image_url}`);
+          console.log(`  New: ${newUrl}`);
+          
+          const { error: updateError } = await supabase
+            .from('payment_methods')
+            .update({ qris_image_url: newUrl })
+            .eq('id', method.id);
+          
+          if (updateError) {
+            console.error(`❌ Error updating QRIS URL for method ${method.id}:`, updateError);
+          } else {
+            console.log(`✅ Successfully updated QRIS URL for method ${method.id}`);
+            // Update the method in the local array
+            method.qris_image_url = newUrl;
+          }
+        }
+      }
+
       setPaymentMethods(data || []);
+      
+      // Auto-update payment settings based on existing methods
+      const hasTransfer = data?.some(m => m.payment_type === 'TRANSFER' && m.is_active) || false;
+      const hasQRIS = data?.some(m => m.payment_type === 'QRIS' && m.is_active) || false;
+      const hasCOD = data?.some(m => m.payment_type === 'COD' && m.is_active) || false;
+
+      setValue('transfer_enabled', hasTransfer);
+      setValue('qris_enabled', hasQRIS);
+      setValue('cod_enabled', hasCOD);
     } catch (error) {
       console.error('Unexpected error:', error);
       showError('Error', 'Unexpected error occurred');
@@ -116,43 +191,22 @@ export function PaymentTab() {
   };
 
   const loadPaymentSettings = async () => {
-    if (!currentTenant?.id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('tenant_settings')
-        .select('payment_settings')
-        .eq('tenant_id', currentTenant.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116' && error.code !== '42703') {
-        console.error('Error loading payment settings:', error);
-        return;
-      }
-
-      // Handle missing column gracefully
-      if (error && error.code === '42703') {
-        console.log('Payment settings column does not exist, using defaults');
-        return;
-      }
-
-      if (data?.payment_settings) {
-        const settings = data.payment_settings;
-        setValue('transfer_enabled', settings.transfer_enabled || false);
-        setValue('transfer_account', settings.transfer_account || '');
-        setValue('transfer_bank', settings.transfer_bank || '');
-        setValue('qris_enabled', settings.qris_enabled || false);
-        setValue('qris_code', settings.qris_code || '');
-        setValue('cod_enabled', settings.cod_enabled !== false);
-      }
-    } catch (error) {
-      console.error('Error loading payment settings:', error);
-    }
+    // Payment settings are now auto-managed in loadPaymentMethods
+    // Just set default values for other fields
+    setValue('transfer_account', '');
+    setValue('transfer_bank', '');
+    setValue('qris_code', '');
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !currentTenant) return;
+    if (!file || !currentTenant) {
+      console.log('No file selected or no tenant');
+      return;
+    }
+
+    console.log('File selected:', file.name, file.type, file.size);
+    console.log('Current tenant:', currentTenant.id);
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
@@ -167,27 +221,77 @@ export function PaymentTab() {
     }
 
     setUploadingFile(true);
+    setUploadProgress(0);
+    
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `qris/${currentTenant.id}/${fileName}`;
 
+      console.log('🔍 Upload details:');
+      console.log('  - File name:', file.name);
+      console.log('  - File size:', file.size);
+      console.log('  - File type:', file.type);
+      console.log('  - Tenant ID:', currentTenant.id);
+      console.log('  - Upload path:', filePath);
+      console.log('  - Bucket: qris-images');
+      
+      setUploadProgress(25);
+
+      // Test bucket access first
+      console.log('🔍 Testing bucket access...');
+      const { data: bucketData, error: bucketError } = await supabase.storage
+        .from('qris-images')
+        .list('', { limit: 1 });
+      
+      if (bucketError) {
+        console.error('❌ Bucket access error:', bucketError);
+        throw new Error(`Cannot access qris-images bucket: ${bucketError.message}`);
+      }
+      console.log('✅ Bucket access successful');
+
+      console.log('🔍 Starting file upload...');
       const { error: uploadError } = await supabase.storage
-        .from('payment-images')
+        .from('qris-images')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('❌ Upload error details:', uploadError);
+        console.error('  - Error code:', uploadError.statusCode);
+        console.error('  - Error message:', uploadError.message);
+        console.error('  - Error details:', uploadError.error);
+        throw uploadError;
+      }
+
+      console.log('Upload successful, getting public URL...');
+      setUploadProgress(75);
 
       const { data: { publicUrl } } = supabase.storage
-        .from('payment-images')
+        .from('qris-images')
         .getPublicUrl(filePath);
 
-      setValue('qris_code', publicUrl);
+      console.log('🔍 Generated public URL:', publicUrl);
+      console.log('🔍 Expected path structure: qris-images/qris/{tenant_id}/{filename}');
+      console.log('🔍 Actual file path:', filePath);
+      
+      // Ensure URL uses correct bucket structure
+      const correctUrl = publicUrl.replace(
+        /\/storage\/v1\/object\/public\/[^\/]+\//,
+        '/storage/v1/object/public/qris-images/'
+      );
+      
+      console.log('🔍 Corrected URL:', correctUrl);
+      methodForm.setValue('qris_image_url', correctUrl);
+      setUploadedFileName(file.name);
+      setUploadProgress(100);
+      
+      showSuccess('Upload Success', 'Gambar QRIS berhasil diupload.');
     } catch (error: any) {
       console.error('Upload error:', error);
-      showError('Upload Failed', 'Gagal mengupload gambar QRIS.');
+      showError('Upload Failed', `Gagal mengupload gambar QRIS: ${error.message || 'Unknown error'}`);
     } finally {
       setUploadingFile(false);
+      setTimeout(() => setUploadProgress(0), 1000); // Reset progress after 1 second
     }
   };
 
@@ -195,38 +299,184 @@ export function PaymentTab() {
     if (!currentTenant?.id) return;
 
     try {
-      const { error } = await supabase
-        .from('tenant_settings')
-        .upsert({
-          tenant_id: currentTenant.id,
-          payment_settings: {
-            transfer_enabled: data.transfer_enabled,
-            transfer_account: data.transfer_account,
-            transfer_bank: data.transfer_bank,
-            qris_enabled: data.qris_enabled,
-            qris_code: data.qris_code,
-            cod_enabled: data.cod_enabled,
-          },
-          updated_at: new Date().toISOString(),
-        });
-
-      if (error && error.code === '42703') {
-        // Column doesn't exist, show success message anyway
-        showSuccess('Settings Saved', 'Payment settings berhasil disimpan (mode demo).');
+      console.log('🔍 Saving payment settings:', data);
+      
+      // Safety check: Ensure at least one payment method type is enabled
+      const enabledTypes = [data.transfer_enabled, data.qris_enabled, data.cod_enabled].filter(Boolean);
+      if (enabledTypes.length === 0) {
+        showError('Validation Error', 'Minimal harus ada 1 jenis payment method yang aktif.');
         return;
       }
-
-      if (error) throw error;
-
-      showSuccess('Settings Saved', 'Payment settings berhasil disimpan.');
+      
+      // Update payment methods based on toggle settings
+      const updates = [];
+      
+      // Handle TRANSFER methods
+      const transferMethods = paymentMethods.filter(m => m.payment_type === 'TRANSFER');
+      for (const method of transferMethods) {
+        if (method.is_active !== data.transfer_enabled) {
+          updates.push(
+            supabase
+              .from('payment_methods')
+              .update({ 
+                is_active: data.transfer_enabled,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', method.id)
+          );
+        }
+      }
+      
+      // Handle QRIS methods
+      const qrisMethods = paymentMethods.filter(m => m.payment_type === 'QRIS');
+      for (const method of qrisMethods) {
+        if (method.is_active !== data.qris_enabled) {
+          updates.push(
+            supabase
+              .from('payment_methods')
+              .update({ 
+                is_active: data.qris_enabled,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', method.id)
+          );
+        }
+      }
+      
+      // Handle COD methods
+      const codMethods = paymentMethods.filter(m => m.payment_type === 'COD');
+      for (const method of codMethods) {
+        if (method.is_active !== data.cod_enabled) {
+          updates.push(
+            supabase
+              .from('payment_methods')
+              .update({ 
+                is_active: data.cod_enabled,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', method.id)
+          );
+        }
+      }
+      
+      // Execute all updates
+      if (updates.length > 0) {
+        console.log(`🔍 Executing ${updates.length} payment method updates...`);
+        const results = await Promise.all(updates);
+        
+        // Check for errors
+        const errors = results.filter(result => result.error);
+        if (errors.length > 0) {
+          console.error('❌ Some updates failed:', errors);
+          throw new Error(`Failed to update ${errors.length} payment methods`);
+        }
+        
+        console.log('✅ All payment method updates successful');
+      }
+      
+      // Reload payment methods to reflect changes
+      await loadPaymentMethods();
+      
+      showSuccess('Settings Updated', 'Pengaturan pembayaran berhasil diperbarui.');
     } catch (error: any) {
-      console.error('Error saving payment settings:', error);
-      showError('Save Failed', 'Gagal menyimpan pengaturan pembayaran.');
+      console.error('Error updating payment settings:', error);
+      showError('Update Failed', 'Gagal memperbarui pengaturan pembayaran.');
+    }
+  };
+
+  const onSubmitMethod = async (data: any) => {
+    if (!currentTenant?.id) return;
+
+    console.log('🔍 Form data received:', data);
+    console.log('🔍 Form data validation:');
+    console.log('  - name:', data.name, '(type:', typeof data.name, ')');
+    console.log('  - description:', data.description);
+    console.log('  - payment_type:', data.payment_type);
+    console.log('  - account_holder:', data.account_holder);
+    console.log('  - qris_image_url:', data.qris_image_url);
+
+    // Validate required fields
+    if (!data.name || data.name.trim() === '') {
+      showError('Validation Error', 'Payment method name is required.');
+      return;
+    }
+
+    // Validate QRIS image upload
+    if (data.payment_type === 'QRIS' && !data.qris_image_url) {
+      showError('Validation Error', 'QRIS image is required for QRIS payment method.');
+      return;
+    }
+
+    try {
+      const methodData = {
+        tenant_id: currentTenant.id,
+        name: data.name,
+        description: data.description,
+        payment_type: data.payment_type,
+        bank_name: null, // Removed field
+        account_number: null, // Removed field
+        account_holder: data.account_holder || null,
+        qris_image_url: data.qris_image_url || null,
+        is_active: true,
+        sort_order: paymentMethods.length,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('🔍 Saving payment method:');
+      console.log('  - Tenant ID:', currentTenant.id);
+      console.log('  - Method data:', methodData);
+      console.log('  - Editing method:', editingMethod?.id || 'new');
+
+      if (editingMethod) {
+        // Update existing method
+        const { error } = await supabase
+          .from('payment_methods')
+          .update({
+            ...methodData,
+            id: editingMethod.id,
+          })
+          .eq('id', editingMethod.id);
+
+        if (error) throw error;
+        showSuccess('Method Updated', 'Payment method berhasil diperbarui.');
+      } else {
+        // Create new method
+        const { error } = await supabase
+          .from('payment_methods')
+          .insert(methodData);
+
+        if (error) throw error;
+        showSuccess('Method Added', 'Payment method berhasil ditambahkan.');
+      }
+
+      setShowPaymentForm(false);
+      setEditingMethod(null);
+      await loadPaymentMethods();
+    } catch (error: any) {
+      console.error('Error saving payment method:', error);
+      
+      if (error.code === '42501') {
+        showError('Permission Error', 'Tidak memiliki izin untuk menyimpan payment method. Silakan hubungi administrator.');
+      } else {
+        showError('Save Failed', `Gagal menyimpan payment method: ${error.message || 'Unknown error'}`);
+      }
     }
   };
 
   const handleDeleteMethod = async (method: PaymentMethod) => {
     try {
+      // Check if this is the last active method being deleted
+      if (method.is_active) {
+        const activeMethods = paymentMethods.filter(m => m.is_active && m.id !== method.id);
+        if (activeMethods.length === 0) {
+          showError('Cannot Delete', 'Minimal harus ada 1 payment method yang aktif.');
+          setShowDeleteDialog(false);
+          setDeletingMethod(null);
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from('payment_methods')
         .delete()
@@ -234,10 +484,12 @@ export function PaymentTab() {
 
       if (error) throw error;
 
-      setPaymentMethods(prev => prev.filter(m => m.id !== method.id));
       setShowDeleteDialog(false);
       setDeletingMethod(null);
       showSuccess('Method Deleted', 'Payment method berhasil dihapus.');
+      
+      // Reload payment methods to update settings automatically
+      await loadPaymentMethods();
     } catch (error: any) {
       console.error('Error deleting payment method:', error);
       showError('Delete Failed', 'Gagal menghapus payment method.');
@@ -246,6 +498,15 @@ export function PaymentTab() {
 
   const toggleMethodStatus = async (method: PaymentMethod) => {
     try {
+      // Check if this is the last active method being disabled
+      if (method.is_active) {
+        const activeMethods = paymentMethods.filter(m => m.is_active && m.id !== method.id);
+        if (activeMethods.length === 0) {
+          showError('Cannot Disable', 'Minimal harus ada 1 payment method yang aktif.');
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from('payment_methods')
         .update({ 
@@ -256,13 +517,10 @@ export function PaymentTab() {
 
       if (error) throw error;
 
-      setPaymentMethods(prev => prev.map(m => 
-        m.id === method.id 
-          ? { ...m, is_active: !m.is_active }
-          : m
-      ));
-
       showSuccess('Status Updated', 'Payment method status berhasil diperbarui.');
+      
+      // Reload payment methods to update settings automatically
+      await loadPaymentMethods();
     } catch (error: any) {
       console.error('Error updating method status:', error);
       showError('Update Failed', 'Gagal memperbarui status payment method.');
@@ -374,24 +632,6 @@ export function PaymentTab() {
                 </Label>
               </div>
 
-              {transferEnabled && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
-                  <FormInput
-                    {...register('transfer_bank')}
-                    label="Bank Name"
-                    placeholder="e.g., BCA, Mandiri, BRI"
-                    error={errors.transfer_bank?.message}
-                    disabled={!transferEnabled}
-                  />
-                  <FormInput
-                    {...register('transfer_account')}
-                    label="Account Number"
-                    placeholder="Enter account number"
-                    error={errors.transfer_account?.message}
-                    disabled={!transferEnabled}
-                  />
-                </div>
-              )}
             </div>
 
             <Separator />
@@ -409,71 +649,6 @@ export function PaymentTab() {
                   Enable QRIS Payment
                 </Label>
               </div>
-
-              {qrisEnabled && (
-                <div className="space-y-4 ml-6">
-                  <div className="space-y-2">
-                    <Label>QRIS Code</Label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        id="qris-upload"
-                        disabled={uploadingFile}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById('qris-upload')?.click()}
-                        disabled={uploadingFile}
-                      >
-                        {uploadingFile ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload QRIS Image
-                          </>
-                        )}
-                      </Button>
-                      {watch('qris_code') && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowQRISPreview(!showQRISPreview)}
-                        >
-                          {showQRISPreview ? (
-                            <>
-                              <EyeOff className="h-4 w-4 mr-1" />
-                              Hide
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="h-4 w-4 mr-1" />
-                              Preview
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                    {watch('qris_code') && showQRISPreview && (
-                      <div className="border rounded-lg p-4 bg-muted/20">
-                        <img
-                          src={watch('qris_code')}
-                          alt="QRIS Code"
-                          className="w-32 h-32 object-cover rounded-lg mx-auto"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
             <Separator />
@@ -513,7 +688,17 @@ export function PaymentTab() {
                 Manage individual payment methods
               </CardDescription>
             </div>
-            <Button onClick={() => setShowPaymentForm(true)}>
+            <Button onClick={() => {
+              setShowPaymentForm(true);
+              setEditingMethod(null);
+              // Reset form values
+              methodForm.setValue('name', '');
+              methodForm.setValue('description', '');
+              methodForm.setValue('payment_type', 'TRANSFER');
+              methodForm.setValue('account_holder', '');
+              methodForm.setValue('qris_image_url', '');
+              setUploadedFileName(null);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Add Method
             </Button>
@@ -542,9 +727,9 @@ export function PaymentTab() {
                       <div>
                         <h4 className="font-medium">{method.name}</h4>
                         <p className="text-sm text-muted-foreground">{method.description}</p>
-                        {method.bank_name && (
+                        {method.account_holder && (
                           <p className="text-xs text-muted-foreground">
-                            {method.bank_name} - {method.account_number}
+                            Account Holder: {method.account_holder}
                           </p>
                         )}
                       </div>
@@ -558,6 +743,30 @@ export function PaymentTab() {
                       variant="ghost"
                       size="sm"
                       onClick={() => toggleMethodStatus(method)}
+                      title={method.is_active ? "Disable" : "Enable"}
+                    >
+                      {method.is_active ? "Disable" : "Enable"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingMethod(method);
+                        setShowPaymentForm(true);
+                        // Set form values
+                        methodForm.setValue('name', method.name);
+                        methodForm.setValue('description', method.description || '');
+                        methodForm.setValue('payment_type', method.payment_type);
+                        methodForm.setValue('account_holder', method.account_holder || '');
+                        methodForm.setValue('qris_image_url', method.qris_image_url || '');
+                        
+                        // Set uploaded file name if there's an existing image
+                        if (method.qris_image_url) {
+                          setUploadedFileName('Existing QRIS Image');
+                        } else {
+                          setUploadedFileName(null);
+                        }
+                      }}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -579,6 +788,178 @@ export function PaymentTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Payment Method Form Dialog */}
+      <Dialog open={showPaymentForm} onOpenChange={setShowPaymentForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingMethod ? 'Edit Payment Method' : 'Add Payment Method'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingMethod ? 'Update the payment method details.' : 'Add a new payment method for your customers.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={methodForm.handleSubmit(onSubmitMethod)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Name</Label>
+                <input
+                  id="name"
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="e.g., Bank Jago"
+                  {...methodForm.register('name', { required: 'Name is required' })}
+                />
+                {methodForm.formState.errors.name && <p className="text-red-500 text-sm">{methodForm.formState.errors.name.message}</p>}
+              </div>
+              
+              <div>
+                <Label htmlFor="payment_type">Payment Type</Label>
+                <select
+                  id="payment_type"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  {...methodForm.register('payment_type', { required: 'Payment type is required' })}
+                >
+                  <option value="">Select type</option>
+                  <option value="TRANSFER">Bank Transfer</option>
+                  <option value="QRIS">QRIS</option>
+                  <option value="COD">Cash on Delivery</option>
+                </select>
+                {methodForm.formState.errors.payment_type && <p className="text-red-500 text-sm">{methodForm.formState.errors.payment_type.message}</p>}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <textarea
+                id="description"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="Description of the payment method"
+                rows={3}
+                {...methodForm.register('description')}
+              />
+            </div>
+
+            {/* Bank Transfer Fields - Only show when TRANSFER is selected */}
+            {methodForm.watch('payment_type') === 'TRANSFER' && (
+              <div>
+                <Label htmlFor="account_holder">Account Holder</Label>
+                <input
+                  id="account_holder"
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="e.g., John Doe"
+                  {...methodForm.register('account_holder', { required: 'Account holder is required for bank transfer' })}
+                />
+                {methodForm.formState.errors.account_holder && <p className="text-red-500 text-sm">{methodForm.formState.errors.account_holder.message}</p>}
+              </div>
+            )}
+
+            {/* QRIS Fields - Only show when QRIS is selected */}
+            {methodForm.watch('payment_type') === 'QRIS' && (
+              <div className="space-y-2">
+                <Label>QRIS Image</Label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="qris-upload-method"
+                    disabled={uploadingFile}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('qris-upload-method')?.click()}
+                    disabled={uploadingFile}
+                    className="flex-1"
+                  >
+                    {uploadingFile ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                        Uploading...
+                      </>
+                    ) : uploadedFileName ? (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {uploadedFileName}
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload QRIS Image
+                      </>
+                    )}
+                  </Button>
+                  {methodForm.watch('qris_image_url') && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowQRISPreview(!showQRISPreview)}
+                    >
+                      {showQRISPreview ? (
+                        <>
+                          <EyeOff className="h-4 w-4 mr-1" />
+                          Hide
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4 mr-1" />
+                          Preview
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+                {uploadingFile && (
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                )}
+                {methodForm.watch('qris_image_url') && !uploadingFile && (
+                  <div className="text-sm text-green-600 flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    Image uploaded successfully
+                  </div>
+                )}
+                {methodForm.watch('qris_image_url') && showQRISPreview && (
+                  <div className="border rounded-lg p-4 bg-muted/20">
+                    <img
+                      src={methodForm.watch('qris_image_url')}
+                      alt="QRIS Code"
+                      className="w-32 h-32 object-cover rounded-lg mx-auto"
+                    />
+                  </div>
+                )}
+                {methodForm.formState.errors.qris_image_url && <p className="text-red-500 text-sm">{methodForm.formState.errors.qris_image_url.message}</p>}
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowPaymentForm(false);
+                  setEditingMethod(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editingMethod ? 'Update Method' : 'Add Method'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
