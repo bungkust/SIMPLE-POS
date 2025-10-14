@@ -7,6 +7,7 @@ export interface CartItem {
   qty: number;
   notes?: string;
   photo_url?: string | null;
+  menu_id?: string; // Original menu ID for database operations
 }
 
 interface CartContextType {
@@ -15,6 +16,7 @@ interface CartContextType {
   removeItem: (id: string) => void;
   updateQuantity: (id: string, qty: number) => void;
   clearCart: () => void;
+  getItemQuantity: (id: string) => number;
   totalItems: number;
   totalAmount: number;
 }
@@ -69,12 +71,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems([]);
   };
 
+  const getItemQuantity = (id: string) => {
+    const item = items.find((i) => i.id === id);
+    return item ? item.qty : 0;
+  };
+
   const totalItems = items.reduce((sum, item) => sum + item.qty, 0);
   const totalAmount = items.reduce((sum, item) => sum + item.price * item.qty, 0);
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalAmount }}
+      value={{ items, addItem, removeItem, updateQuantity, clearCart, getItemQuantity, totalItems, totalAmount }}
     >
       {children}
     </CartContext.Provider>

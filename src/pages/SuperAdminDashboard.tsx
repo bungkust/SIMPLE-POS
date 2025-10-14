@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit, Trash2, Shield, List, Grid3X3, Table, UserPlus, X, LogOut, User, Home, Mail } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Shield, List, Grid3X3, Table, UserPlus, X, LogOut, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { ErrorPopup } from '../components/ErrorPopup';
-import { SuccessPopup } from '../components/SuccessPopup';
+import { ModernDialog } from '@/components/ui/modern-dialog';
+import { AdvancedTable } from '@/components/ui/advanced-table';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useAppToast } from '@/components/ui/toast-provider';
+import { TenantFormModal } from '@/components/admin/TenantFormModalNew';
+import { ColumnDef } from '@tanstack/react-table';
 type Tenant = {
   id: string;
   name: string;
   slug: string;
   owner_email: string;
+  owner_id?: string;
   settings?: any;
   is_active: boolean;
   created_by?: string;
@@ -19,9 +27,17 @@ type Tenant = {
 type TenantAdmin = {
   id: string;
   tenant_id: string;
+  user_id?: string;
   user_email: string;
   role: string;
   is_active: boolean;
+  created_at?: string;
+  invited_by?: string;
+  invited_at?: string;
+  joined_at?: string;
+  permissions?: any[];
+  tenant_role?: string;
+  updated_at?: string;
 };
 
 interface SuperAdminDashboardProps {
@@ -30,51 +46,109 @@ interface SuperAdminDashboardProps {
 
 export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
   const { signOut, user, isSuperAdmin, loading } = useAuth();
+  // const { showSuccess, showError, showInfo } = useAppToast();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantAdmins, setTenantAdmins] = useState<{[tenantId: string]: TenantAdmin[]}>({});
   const [componentLoading, setComponentLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTenantForm, setShowTenantForm] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
-  const [errorPopup, setErrorPopup] = useState<{
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('table');
+  const [dialogState, setDialogState] = useState<{
     isOpen: boolean;
-    error: {
-      title: string;
-      message: string;
-      details?: string;
-      setupUrl?: string;
-      ownerEmail?: string;
-    };
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+    details?: any;
   }>({
     isOpen: false,
-    error: {
-      title: '',
-      message: ''
-    }
+    type: 'info',
+    title: '',
+    message: ''
   });
 
-  const [successPopup, setSuccessPopup] = useState<{
-    isOpen: boolean;
-    data: {
-      title: string;
-      message: string;
-      details?: {
-        email?: string;
-        password?: string;
-        url?: string;
-        setupUrl?: string;
-        ownerEmail?: string;
-      };
-      type?: 'success' | 'info' | 'warning';
-    };
-  }>({
-    isOpen: false,
-    data: {
-      title: '',
-      message: ''
-    }
-  });
+  // Table columns definition
+  const tenantColumns: ColumnDef<Tenant>[] = [
+    {
+      accessorKey: "name",
+      header: "Nama Tenant",
+      cell: ({ row }) => (
+        <div className="font-medium">{row.getValue("name")}</div>
+      ),
+    },
+    {
+      accessorKey: "slug",
+      header: "Slug",
+      cell: ({ row }) => (
+        <Badge variant="outline">{row.getValue("slug")}</Badge>
+      ),
+    },
+    {
+      accessorKey: "owner_email",
+      header: "Owner Email",
+      cell: ({ row }) => {
+        const email = row.getValue("owner_email") as string;
+        return (
+          <div className="text-sm text-muted-foreground">
+            {email || 'admin@' + row.original.slug + '.com'}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "created_at",
+      header: "Dibuat",
+      cell: ({ row }) => {
+        const date = new Date(row.getValue("created_at"));
+        return <div className="text-sm">{date.toLocaleDateString('id-ID')}</div>;
+      },
+    },
+    {
+      accessorKey: "is_active",
+      header: "Status",
+      cell: ({ row }) => {
+        const isActive = row.getValue("is_active") as boolean;
+        return (
+          <StatusBadge status={isActive ? "active" : "inactive"}>
+            {isActive ? "Aktif" : "Nonaktif"}
+          </StatusBadge>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => {
+        const tenant = row.original;
+        return (
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEditTenant(tenant)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleResendEmail(tenant)}
+            >
+              <Mail className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteTenant(tenant)}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -320,25 +394,24 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
 
       if (error) throw error;
 
-      setSuccessPopup({
+      setDialogState({
         isOpen: true,
-        data: {
-          title: 'Tenant Berhasil Dihapus',
-          message: 'Tenant telah berhasil dihapus dari sistem.',
-          type: 'success'
-        }
+        type: 'success',
+        title: 'Tenant Berhasil Dihapus',
+        message: 'Tenant telah berhasil dihapus dari sistem.'
       });
       loadTenants();
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error deleting tenant:', error);
       }
-      setErrorPopup({
+      setDialogState({
         isOpen: true,
-        error: {
-          title: 'Gagal Menghapus Tenant',
-          message: 'Terjadi error saat menghapus tenant. Silakan coba lagi.',
-          details: error instanceof Error ? error.message : 'Unknown error'
+        type: 'error',
+        title: 'Gagal Menghapus Tenant',
+        message: 'Terjadi error saat menghapus tenant. Silakan coba lagi.',
+        details: {
+          error: error instanceof Error ? error.message : 'Unknown error'
         }
       });
     }
@@ -346,12 +419,13 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
 
   const handleResendEmail = async (tenant: Tenant) => {
     if (!tenant.owner_email) {
-      setErrorPopup({
+      setDialogState({
         isOpen: true,
-        error: {
-          title: 'Owner Email Tidak Ditemukan',
-          message: 'Tenant tidak memiliki owner email yang valid.',
-          details: 'Silakan update tenant dengan owner email yang benar.'
+        type: 'error',
+        title: 'Owner Email Tidak Ditemukan',
+        message: 'Tenant tidak memiliki owner email yang valid.',
+        details: {
+          ownerEmail: tenant.owner_email
         }
       });
       return;
@@ -361,16 +435,14 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
     const setupUrl = `${window.location.origin}/${tenant.slug}/admin/setup?token=${tenant.id}`;
     
     // Show setup URL (no email sending)
-    setSuccessPopup({
+    setDialogState({
       isOpen: true,
-      data: {
-        title: 'Setup URL untuk Tenant',
-        message: `Silakan kirim setup URL ini ke ${tenant.owner_email} untuk setup password.`,
-        details: {
-          ownerEmail: tenant.owner_email,
-          setupUrl: setupUrl
-        },
-        type: 'info'
+      type: 'info',
+      title: 'Setup URL untuk Tenant',
+      message: `Silakan kirim setup URL ini ke ${tenant.owner_email} untuk setup password.`,
+      details: {
+        ownerEmail: tenant.owner_email,
+        setupUrl: setupUrl
       }
     });
   };
@@ -621,91 +693,16 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
                   ))}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Tenant</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Slug</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Owner Email</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Created</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
-                        <th className="px-4 py-3 text-center text-sm font-semibold text-slate-900">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {tenants.map((tenant) => (
-                        <tr key={tenant.id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <Shield className="w-4 h-4 text-purple-500" />
-                              <span className="font-medium text-slate-900">{tenant.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{tenant.slug}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">
-                            {tenantAdmins[tenant.id]?.[0]?.user_email || tenant.owner_email || 'admin@' + tenant.slug + '.com'}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-slate-600">
-                            {new Date(tenant.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              tenant.is_active
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}>
-                              {tenant.is_active ? 'Aktif' : 'Nonaktif'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex justify-center gap-1">
-                              <button
-                                onClick={() => handleEditTenant(tenant)}
-                                className="p-2 text-slate-600 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                                title="Edit Tenant"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleResendEmail(tenant)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                title="Get Setup URL"
-                              >
-                                <Mail className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTenant(tenant)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                title="Delete Tenant"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                              <a
-                                href={`/${tenant.slug}/admin/login`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                                title="Admin Login"
-                              >
-                                <User className="w-4 h-4" />
-                              </a>
-                              <a
-                                href={`/${tenant.slug}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
-                                title="User Homepage"
-                              >
-                                <Home className="w-4 h-4" />
-                              </a>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <AdvancedTable
+                  columns={tenantColumns}
+                  data={tenants}
+                  searchKey="name"
+                  searchPlaceholder="Cari tenant..."
+                  showSearch={true}
+                  showColumnToggle={true}
+                  showExport={false}
+                  pageSize={10}
+                />
               )}
             </div>
           )}
@@ -722,39 +719,40 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
             loadTenants();
           }}
           onSuccess={(data) => {
-            setSuccessPopup({
+            setDialogState({
               isOpen: true,
-              data: data
+              type: data.type || 'success',
+              title: data.title,
+              message: data.message,
+              details: data.details
             });
           }}
           onError={(error) => {
-            setErrorPopup({
+            setDialogState({
               isOpen: true,
-              error: error
+              type: 'error',
+              title: error.title,
+              message: error.message,
+              details: error.details
             });
           }}
         />
       )}
 
-      {/* Error Popup */}
-      <ErrorPopup
-        isOpen={errorPopup.isOpen}
-        onClose={() => setErrorPopup(prev => ({ ...prev, isOpen: false }))}
-        error={errorPopup.error}
-      />
-
-      {/* Success Popup */}
-      <SuccessPopup
-        isOpen={successPopup.isOpen}
-        onClose={() => setSuccessPopup(prev => ({ ...prev, isOpen: false }))}
-        data={successPopup.data}
+      {/* Modern Dialog */}
+      <ModernDialog
+        isOpen={dialogState.isOpen}
+        onClose={() => setDialogState(prev => ({ ...prev, isOpen: false }))}
+        title={dialogState.title}
+        message={dialogState.message}
+        type={dialogState.type}
+        details={dialogState.details}
+        showCopyButton={true}
+        showExternalLink={true}
       />
     </div>
   );
 }
-
-// Tenant Form Modal Component
-function TenantFormModal({
   tenant,
   onClose,
   onSuccess,
