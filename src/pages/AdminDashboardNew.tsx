@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   User,
-  Building2
+  Building2,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,13 +39,13 @@ interface AdminDashboardProps {
 type TabType = 'orders' | 'menu' | 'categories' | 'payment' | 'kasir' | 'settings' | 'sheets';
 
 const navigationItems = [
-  { id: 'orders' as TabType, label: 'Pesanan', icon: ShoppingBag, description: 'Kelola pesanan pelanggan' },
-  { id: 'menu' as TabType, label: 'Menu', icon: Coffee, description: 'Kelola menu dan opsi' },
-  { id: 'categories' as TabType, label: 'Kategori', icon: FolderOpen, description: 'Kelola kategori menu' },
-  { id: 'payment' as TabType, label: 'Pembayaran', icon: CreditCard, description: 'Kelola metode pembayaran' },
-  { id: 'kasir' as TabType, label: 'Kasir', icon: Calculator, description: 'Kelola kasir dan transaksi' },
-  { id: 'sheets' as TabType, label: 'Google Sheets', icon: Sheet, description: 'Integrasi Google Sheets' },
-  { id: 'settings' as TabType, label: 'Pengaturan', icon: Settings, description: 'Pengaturan tenant' },
+  { id: 'orders' as TabType, label: 'Pesanan', icon: ShoppingBag, description: 'Kelola pesanan pelanggan', comingSoon: false },
+  { id: 'menu' as TabType, label: 'Menu', icon: Coffee, description: 'Kelola menu dan opsi', comingSoon: false },
+  { id: 'categories' as TabType, label: 'Kategori', icon: FolderOpen, description: 'Kelola kategori menu', comingSoon: false },
+  { id: 'payment' as TabType, label: 'Pembayaran', icon: CreditCard, description: 'Kelola metode pembayaran', comingSoon: true },
+  { id: 'kasir' as TabType, label: 'Kasir', icon: Calculator, description: 'Kelola kasir dan transaksi', comingSoon: true },
+  { id: 'sheets' as TabType, label: 'Google Sheets', icon: Sheet, description: 'Integrasi Google Sheets', comingSoon: true },
+  { id: 'settings' as TabType, label: 'Pengaturan', icon: Settings, description: 'Pengaturan tenant', comingSoon: true },
 ];
 
 export function AdminDashboard({}: AdminDashboardProps) {
@@ -149,6 +150,37 @@ export function AdminDashboard({}: AdminDashboardProps) {
   };
 
   const renderActiveTab = () => {
+    const currentItem = navigationItems.find(item => item.id === activeTab);
+    
+    // Show coming soon message for features that aren't ready
+    if (currentItem?.comingSoon) {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">{currentItem.label}</h2>
+              <p className="text-slate-600 mt-1">{currentItem.description}</p>
+            </div>
+          </div>
+          
+          <Card className="border-dashed border-2 border-slate-200">
+            <CardContent className="text-center py-12">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">Coming Soon</h3>
+              <p className="text-slate-600 mb-4">
+                Fitur {currentItem.label.toLowerCase()} sedang dalam pengembangan dan akan segera hadir.
+              </p>
+              <Badge variant="outline" className="text-sm">
+                Dalam Pengembangan
+              </Badge>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'orders':
         return <OrdersTab />;
@@ -220,13 +252,23 @@ export function AdminDashboard({}: AdminDashboardProps) {
                     : 'text-slate-700 hover:bg-slate-100'
                 }`}
                 onClick={() => {
-                  setActiveTab(item.id);
-                  setSidebarOpen(false);
+                  if (!item.comingSoon) {
+                    setActiveTab(item.id);
+                    setSidebarOpen(false);
+                  }
                 }}
+                disabled={item.comingSoon}
               >
                 <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
                 <div className="text-left flex-1 min-w-0">
-                  <div className="font-medium">{item.label}</div>
+                  <div className="font-medium flex items-center gap-2">
+                    {item.label}
+                    {item.comingSoon && (
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                        Coming Soon
+                      </Badge>
+                    )}
+                  </div>
                   <div className={`text-xs ${
                     isActive ? 'text-primary-foreground/80' : 'text-slate-500'
                   }`}>
