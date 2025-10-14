@@ -151,6 +151,28 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
           menuId = menuId.split('-{')[0];
         }
         
+        // Parse and structure the options properly
+        let structuredNotes = null;
+        if (item.notes) {
+          try {
+            // Check if notes contain structured options
+            if (item.notes.includes('{') && item.notes.includes('}')) {
+              // JSON format from MenuDetailSheet - keep as is for now
+              structuredNotes = item.notes;
+            } else if (item.notes.includes(':')) {
+              // Formatted text from MenuDetailModal - structure it
+              const optionsText = item.notes;
+              structuredNotes = `OPTIONS:${optionsText}`;
+            } else {
+              // Plain user notes
+              structuredNotes = `USER_NOTES:${item.notes}`;
+            }
+          } catch (error) {
+            // Fallback to plain text
+            structuredNotes = item.notes;
+          }
+        }
+        
         return {
           tenant_id: resolvedTenantId,
           order_id: order.id,
@@ -158,7 +180,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
           name_snapshot: item.name,
           price_snapshot: item.price,
           qty: item.qty,
-          notes: item.notes || null,
+          notes: structuredNotes,
           line_total: item.price * item.qty,
         };
       });

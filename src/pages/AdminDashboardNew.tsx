@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
 import { 
   LogOut, 
-  Shield, 
+  ShoppingBag, 
+  Coffee, 
+  CreditCard, 
   Settings, 
+  FolderOpen, 
+  Sheet, 
+  Shield, 
+  Home, 
+  AlertCircle, 
+  Calculator,
   Menu,
   X,
   User,
-  Building2,
-  Home
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,43 +23,53 @@ import { Sheet as SheetComponent, SheetContent, SheetTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '../contexts/AuthContext';
-import { TenantsTab } from '../components/superadmin/TenantsTabNew';
-import { SettingsTab } from '../components/superadmin/SettingsTabNew';
+import { OrdersTab } from '../components/admin/OrdersTabNew';
+import { MenuTab } from '../components/admin/MenuTabNew';
+import { PaymentTab } from '../components/admin/PaymentTabNew';
+import { SettingsTab } from '../components/admin/SettingsTabNew';
+import { CategoriesTab } from '../components/admin/CategoriesTabNew';
+import { GoogleSheetsTab } from '../components/admin/GoogleSheetsTabNew';
+import { CashierTab } from '../components/admin/CashierTabNew';
 
-interface SuperAdminDashboardProps {
-  onBack: () => void;
+interface AdminDashboardProps {
+  // Removed onBack prop since we handle logout redirection internally
 }
 
-type TabType = 'overview' | 'tenants' | 'settings';
+type TabType = 'orders' | 'menu' | 'categories' | 'payment' | 'kasir' | 'settings' | 'sheets';
 
 const navigationItems = [
-  { id: 'overview' as TabType, label: 'Overview', icon: Home, description: 'Platform overview and stats' },
-  { id: 'tenants' as TabType, label: 'Tenants', icon: Building2, description: 'Manage all tenants' },
-  { id: 'settings' as TabType, label: 'Settings', icon: Settings, description: 'Platform settings' },
+  { id: 'orders' as TabType, label: 'Pesanan', icon: ShoppingBag, description: 'Kelola pesanan pelanggan' },
+  { id: 'menu' as TabType, label: 'Menu', icon: Coffee, description: 'Kelola menu dan opsi' },
+  { id: 'categories' as TabType, label: 'Kategori', icon: FolderOpen, description: 'Kelola kategori menu' },
+  { id: 'payment' as TabType, label: 'Pembayaran', icon: CreditCard, description: 'Kelola metode pembayaran' },
+  { id: 'kasir' as TabType, label: 'Kasir', icon: Calculator, description: 'Kelola kasir dan transaksi' },
+  { id: 'sheets' as TabType, label: 'Google Sheets', icon: Sheet, description: 'Integrasi Google Sheets' },
+  { id: 'settings' as TabType, label: 'Pengaturan', icon: Settings, description: 'Pengaturan tenant' },
 ];
 
-export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+export function AdminDashboard({}: AdminDashboardProps) {
+  const [activeTab, setActiveTab] = useState<TabType>('orders');
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { signOut, user, isSuperAdmin, loading } = useAuth();
+  const { signOut, user, currentTenant, isTenantOwner, loading } = useAuth();
 
   // Debug logging
   useEffect(() => {
-    console.log('🔄 SuperAdminDashboard: Component mounted/updated');
-    console.log('🔄 SuperAdminDashboard: Auth state:', {
+    console.log('🔄 AdminDashboard: Component mounted/updated');
+    console.log('🔄 AdminDashboard: Auth state:', {
       loading,
       user: user?.email || 'no user',
-      isSuperAdmin
+      currentTenant: currentTenant?.name || 'no tenant',
+      isTenantOwner
     });
-  }, [loading, user, isSuperAdmin]);
+  }, [loading, user, currentTenant, isTenantOwner]);
 
   // Show error if loading takes too long
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('❌ Super Admin Dashboard loading timeout - check console for errors');
+          console.error('❌ Dashboard loading timeout - check console for errors');
         }
         setLoadingTimeout(true);
       }
@@ -68,7 +85,7 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
         <Card className="shadow-xl border-0 max-w-md w-full mx-4">
           <CardContent className="text-center p-8">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4"></div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Memuat Super Admin Dashboard</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Memuat Dashboard</h3>
             <p className="text-slate-600">Mohon tunggu sebentar...</p>
             {loadingTimeout && (
               <Alert className="mt-4 border-red-200 bg-red-50">
@@ -85,21 +102,21 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
   }
 
   // Show error if no access
-  if (!isSuperAdmin) {
+  if (user && !isTenantOwner) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <Card className="shadow-xl border-0 max-w-md w-full mx-4">
           <CardContent className="text-center p-8">
-            <Shield className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Denied</h2>
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Error</h2>
             <p className="text-slate-600 mb-4">
-              You don't have super admin privileges to access this page.
+              You don't have permission to access this tenant dashboard.
             </p>
             <Button
-              onClick={onBack}
+              onClick={() => window.location.reload()}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
-              Go Back
+              Retry
             </Button>
           </CardContent>
         </Card>
@@ -110,39 +127,62 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
   const handleSignOut = async () => {
     try {
       await signOut();
-      onBack();
+
+      // Redirect to specific tenant login page instead of calling onBack()
+      if (currentTenant?.slug) {
+        window.location.href = `/login`;
+      } else {
+        // Fallback to generic login if no tenant info
+        window.location.href = '/kopipendekar/admin/login';
+      }
     } catch (error) {
-      console.error('Error signing out:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Sign out error:', error);
+      }
+      // Even if sign out fails, redirect to login page
+      if (currentTenant?.slug) {
+        window.location.href = `/login`;
+      } else {
+        window.location.href = '/kopipendekar/admin/login';
+      }
     }
   };
 
   const renderActiveTab = () => {
     switch (activeTab) {
-      case 'overview':
-        return <OverviewTab />;
-      case 'tenants':
-        return <TenantsTab />;
+      case 'orders':
+        return <OrdersTab />;
+      case 'menu':
+        return <MenuTab />;
+      case 'categories':
+        return <CategoriesTab />;
+      case 'payment':
+        return <PaymentTab />;
+      case 'kasir':
+        return <CashierTab />;
+      case 'sheets':
+        return <GoogleSheetsTab />;
       case 'settings':
         return <SettingsTab />;
       default:
-        return <OverviewTab />;
+        return <OrdersTab />;
     }
   };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo & Platform Info */}
+      {/* Logo & Tenant Info */}
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-primary" />
+            <Building2 className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-slate-900 truncate">
-              Super Admin Dashboard
+              {currentTenant?.name || 'Admin Dashboard'}
             </h1>
             <p className="text-sm text-slate-600 truncate">
-              Platform Management
+              {currentTenant?.description || 'Tenant Management'}
             </p>
           </div>
         </div>
@@ -154,10 +194,10 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-900 truncate">
-              {user?.email || 'Super Admin'}
+              {user?.email || 'Admin User'}
             </p>
             <Badge variant="secondary" className="text-xs">
-              Super Admin
+              Owner
             </Badge>
           </div>
         </div>
@@ -204,13 +244,23 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
         {/* Quick Links */}
         <div className="space-y-2">
           <a
-            href="/"
+            href="/kopipendekar"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           >
             <Home className="w-4 h-4" />
             <span>Homepage</span>
+          </a>
+          
+          <a
+            href="/kopipendekar/admin/login"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <Shield className="w-4 h-4" />
+            <span>Admin Login</span>
           </a>
         </div>
 
@@ -300,97 +350,6 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
           </div>
         </main>
       </div>
-    </div>
-  );
-}
-
-// Overview Tab Component
-function OverviewTab() {
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Platform Overview</h2>
-          <p className="text-slate-600 mt-1">
-            Monitor platform health and key metrics
-          </p>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="shadow-xl border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-              <Building2 className="w-4 h-4" />
-              Total Tenants
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">-</div>
-            <p className="text-xs text-slate-500">Active tenants</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-xl border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Total Users
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">-</div>
-            <p className="text-xs text-slate-500">Platform users</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-xl border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Orders Today
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">-</div>
-            <p className="text-xs text-slate-500">Across all tenants</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-xl border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              System Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">Healthy</div>
-            <p className="text-xs text-slate-500">All systems operational</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity */}
-      <Card className="shadow-xl border-0">
-        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10">
-          <CardTitle className="text-lg font-semibold text-slate-900">Recent Activity</CardTitle>
-          <CardDescription>
-            Latest platform activities and events
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="text-center py-8">
-            <Settings className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No recent activity</h3>
-            <p className="text-slate-600">
-              Activity will appear here as users interact with the platform
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

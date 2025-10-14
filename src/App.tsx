@@ -13,7 +13,7 @@ import { OrderSuccessPage } from './pages/OrderSuccessPageNew';
 import { MenuBrowser } from './components/MenuBrowserNew';
 import { CartBar } from './components/CartBarNew';
 import { AdminLoginPage } from './pages/AdminLoginPageNew';
-import { AdminDashboard } from './pages/AdminDashboard';
+import { AdminDashboard } from './pages/AdminDashboardNew';
 import { SuperAdminLoginPage } from './pages/SuperAdminLoginPageNew';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboardNew';
 import { TenantSetupPage } from './pages/TenantSetupPageNew';
@@ -164,7 +164,7 @@ function App() {
                     <SuperAdminDashboardWrapper />
                   </AuthProvider>
                 } />
-                <Route path="/:tenantSlug/dashboard" element={
+                <Route path="/:tenantSlug/admin/dashboard" element={
                   <AuthProvider>
                     <AdminDashboardWrapper />
                   </AuthProvider>

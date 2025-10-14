@@ -60,7 +60,7 @@ export const checkoutFormSchema = z.object({
 });
 
 export const orderStatusUpdateSchema = z.object({
-  status: z.enum(["BELUM BAYAR", "SUDAH BAYAR", "SEDANG DISIAPKAN", "SIAP DIAMBIL", "SELESAI", "DIBATALKAN"]),
+  status: z.enum(["BELUM BAYAR", "SUDAH BAYAR", "DIBATALKAN"]),
   notes: z.string().max(500, "Catatan terlalu panjang").optional(),
 });
 
@@ -85,9 +85,12 @@ export const businessSettingsSchema = z.object({
 
 export const googleSheetsSettingsSchema = z.object({
   enabled: z.boolean().default(false),
+  spreadsheet_id: z.string().max(100, "Spreadsheet ID terlalu panjang").optional(),
+  sheet_name: z.string().max(50, "Sheet name terlalu panjang").default("Orders"),
   webhook_url: z.string().url("Webhook URL tidak valid").optional().or(z.literal("")),
-  sheet_id: z.string().max(100, "Sheet ID terlalu panjang").optional(),
-  range: z.string().max(50, "Range terlalu panjang").optional(),
+  api_key: z.string().max(200, "API key terlalu panjang").optional(),
+  sync_interval: z.string().default("daily"),
+  include_items: z.boolean().default(true),
 });
 
 // Admin Management Schemas
@@ -105,6 +108,107 @@ export const cashierOrderSchema = z.object({
   notes: z.string().max(500, "Catatan terlalu panjang").optional(),
 });
 
+// Settings Schema
+export const settingsFormSchema = z.object({
+  storeName: z.string().min(1, "Nama toko harus diisi").max(100, "Nama toko terlalu panjang"),
+  storeIcon: z.string().optional(),
+  storeIconType: z.string().default("Coffee"),
+  storeDescription: z.string().max(500, "Deskripsi terlalu panjang").optional(),
+  storeAddress: z.string().max(200, "Alamat terlalu panjang").optional(),
+  storePhone: z.string().max(20, "Nomor telepon terlalu panjang").optional(),
+  storeEmail: z.string().email("Email tidak valid").optional().or(z.literal("")),
+  storeHours: z.string().max(100, "Jam operasional terlalu panjang").optional(),
+  currency: z.string().default("IDR"),
+  timezone: z.string().default("Asia/Jakarta"),
+  language: z.string().default("id"),
+  theme: z.string().default("light"),
+  notifications: z.boolean().default(true),
+  emailNotifications: z.boolean().default(true),
+  smsNotifications: z.boolean().default(false),
+  autoAcceptOrders: z.boolean().default(false),
+  requirePhoneVerification: z.boolean().default(false),
+  allowGuestCheckout: z.boolean().default(true),
+  minimumOrderAmount: z.number().min(0, "Minimum order tidak boleh negatif").default(0),
+  deliveryFee: z.number().min(0, "Biaya pengiriman tidak boleh negatif").default(0),
+  freeDeliveryThreshold: z.number().min(0, "Threshold gratis ongkir tidak boleh negatif").default(0),
+});
+
+// Super Admin Schemas
+export const superAdminTenantFormSchema = z.object({
+  name: z.string().min(1, "Nama tenant harus diisi").max(100, "Nama tenant terlalu panjang"),
+  slug: z.string()
+    .min(1, "Slug harus diisi")
+    .max(50, "Slug terlalu panjang")
+    .regex(/^[a-z0-9-]+$/, "Slug hanya boleh huruf kecil, angka, dan tanda hubung"),
+  description: z.string().max(500, "Deskripsi terlalu panjang").optional(),
+  address: z.string().max(200, "Alamat terlalu panjang").optional(),
+  phone: z.string().max(20, "Nomor telepon terlalu panjang").optional(),
+  email: z.string().email("Email tidak valid").optional().or(z.literal("")),
+  website: z.string().url("Website tidak valid").optional().or(z.literal("")),
+  operating_hours: z.string().max(100, "Jam operasional terlalu panjang").optional(),
+  category: z.string().default("Restaurant"),
+  status: z.enum(["active", "inactive"]).default("active"),
+  owner_email: z.string().email("Email tidak valid"),
+  owner_name: z.string().max(100, "Nama owner terlalu panjang").optional(),
+  owner_phone: z.string().max(20, "Nomor telepon owner terlalu panjang").optional(),
+  logo_url: z.string().url("URL logo tidak valid").optional().or(z.literal("")),
+  settings: z.object({
+    currency: z.string().default("IDR"),
+    timezone: z.string().default("Asia/Jakarta"),
+    language: z.string().default("id"),
+    theme: z.string().default("light"),
+    notifications: z.boolean().default(true),
+    email_notifications: z.boolean().default(true),
+    sms_notifications: z.boolean().default(false),
+    auto_accept_orders: z.boolean().default(false),
+    require_phone_verification: z.boolean().default(false),
+    allow_guest_checkout: z.boolean().default(true),
+    minimum_order_amount: z.number().min(0, "Minimum order tidak boleh negatif").default(0),
+    delivery_fee: z.number().min(0, "Biaya pengiriman tidak boleh negatif").default(0),
+    free_delivery_threshold: z.number().min(0, "Threshold gratis ongkir tidak boleh negatif").default(0),
+  }).optional(),
+});
+
+export const platformSettingsSchema = z.object({
+  platform_name: z.string().min(1, "Nama platform harus diisi").max(100, "Nama platform terlalu panjang"),
+  platform_description: z.string().max(500, "Deskripsi platform terlalu panjang").optional(),
+  platform_url: z.string().url("URL platform tidak valid").optional().or(z.literal("")),
+  support_email: z.string().email("Email support tidak valid").optional().or(z.literal("")),
+  admin_email: z.string().email("Email admin tidak valid").optional().or(z.literal("")),
+  maintenance_mode: z.boolean().default(false),
+  registration_enabled: z.boolean().default(true),
+  email_verification_required: z.boolean().default(true),
+  max_tenants_per_user: z.number().min(1, "Max tenants harus minimal 1").default(1),
+  default_tenant_settings: z.object({
+    currency: z.string().default("IDR"),
+    timezone: z.string().default("Asia/Jakarta"),
+    language: z.string().default("id"),
+    theme: z.string().default("light"),
+  }).optional(),
+  email_settings: z.object({
+    provider: z.string().default("smtp"),
+    smtp_host: z.string().max(100, "SMTP host terlalu panjang").optional(),
+    smtp_port: z.number().min(1, "SMTP port harus minimal 1").max(65535, "SMTP port terlalu besar").default(587),
+    smtp_username: z.string().max(100, "SMTP username terlalu panjang").optional(),
+    smtp_password: z.string().max(200, "SMTP password terlalu panjang").optional(),
+    from_name: z.string().max(100, "From name terlalu panjang").default("Simple POS"),
+    from_email: z.string().email("From email tidak valid").default("noreply@simplepos.com"),
+  }).optional(),
+  security_settings: z.object({
+    session_timeout: z.number().min(1, "Session timeout harus minimal 1 jam").max(168, "Session timeout maksimal 168 jam").default(24),
+    max_login_attempts: z.number().min(3, "Max login attempts minimal 3").max(10, "Max login attempts maksimal 10").default(5),
+    password_min_length: z.number().min(6, "Password minimal 6 karakter").max(32, "Password maksimal 32 karakter").default(8),
+    require_2fa: z.boolean().default(false),
+    allowed_domains: z.array(z.string()).default([]),
+  }).optional(),
+  notification_settings: z.object({
+    email_notifications: z.boolean().default(true),
+    sms_notifications: z.boolean().default(false),
+    push_notifications: z.boolean().default(true),
+    admin_notifications: z.boolean().default(true),
+  }).optional(),
+});
+
 
 // Type exports
 export type TenantFormData = z.infer<typeof tenantFormSchema>;
@@ -118,4 +222,6 @@ export type OrderStatusUpdateData = z.infer<typeof orderStatusUpdateSchema>;
 export type CashierOrderData = z.infer<typeof cashierOrderSchema>;
 export type PaymentSettingsData = z.infer<typeof paymentSettingsSchema>;
 export type SettingsFormData = z.infer<typeof settingsFormSchema>;
-export type GoogleSheetsConfigData = z.infer<typeof googleSheetsConfigSchema>;
+export type GoogleSheetsConfigData = z.infer<typeof googleSheetsSettingsSchema>;
+export type PlatformSettingsData = z.infer<typeof platformSettingsSchema>;
+export type SuperAdminTenantFormData = z.infer<typeof superAdminTenantFormSchema>;

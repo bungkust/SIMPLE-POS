@@ -10,6 +10,7 @@ import { FormSelect, SelectItem } from '@/components/forms/FormSelect';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 import { 
   Sheet, 
   CheckCircle, 
@@ -29,7 +30,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency, formatDateTime } from '@/lib/form-utils';
-import { googleSheetsConfigSchema, type GoogleSheetsConfigData } from '@/lib/form-schemas';
+import { googleSheetsSettingsSchema, type GoogleSheetsConfigData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { useAuth } from '../../contexts/AuthContext';
 import { Database as DB } from '../../lib/database.types';
@@ -55,7 +56,7 @@ export function GoogleSheetsTab() {
     watch,
     reset
   } = useForm<GoogleSheetsConfigData>({
-    resolver: zodResolver(googleSheetsConfigSchema),
+    resolver: zodResolver(googleSheetsSettingsSchema),
     defaultValues: {
       enabled: false,
       spreadsheet_id: '',

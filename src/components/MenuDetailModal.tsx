@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
-import { X, Minus, Plus } from 'lucide-react';
+import { Minus, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
 import { formatRupiah } from '../lib/utils';
 import { useCart } from '../contexts/CartContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
+import { Badge } from './ui/badge';
+import { Separator } from './ui/separator';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
+import { useToast } from './ui/use-toast';
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Discount = Database['public']['Tables']['menu_discounts']['Row'];
@@ -37,6 +45,7 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
   const [notes, setNotes] = useState('');
 
   const { addItem } = useCart();
+  const { toast } = useToast();
 
   useEffect(() => {
     loadData();
@@ -91,7 +100,7 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
       } else if (optionsData) {
         if (process.env.NODE_ENV === 'development') {
           console.log('✅ MenuDetailModal: Loaded options:', optionsData.length, optionsData);
-          console.log('📋 MenuDetailModal: Options details:', optionsData.map(opt => ({
+          console.log('📋 MenuDetailModal: Options details:', optionsData.map((opt: MenuOption) => ({
             id: opt.id,
             label: opt.label,
             selection_type: opt.selection_type,
@@ -102,7 +111,7 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
         setOptions(optionsData);
 
         // Load option items for all options
-        const optionIds = optionsData.map(opt => opt.id);
+        const optionIds = optionsData.map((opt: MenuOption) => opt.id);
         if (optionIds.length > 0) {
           if (process.env.NODE_ENV === 'development') {
             console.log('🔍 MenuDetailModal: Loading option items for option IDs:', optionIds);
@@ -126,7 +135,7 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
           } else if (itemsData) {
             if (process.env.NODE_ENV === 'development') {
               console.log('✅ MenuDetailModal: Loaded option items:', itemsData.length, itemsData);
-              console.log('📦 MenuDetailModal: Option items details:', itemsData.map(item => ({
+              console.log('📦 MenuDetailModal: Option items details:', itemsData.map((item: MenuOptionItem) => ({
                 id: item.id,
                 menu_option_id: item.menu_option_id,
                 name: item.name,
@@ -299,7 +308,11 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
     });
 
     if (requiredOptions.length > 0 && !hasAllRequired) {
-      alert('Please select all required options');
+      toast({
+        title: "Required Options Missing",
+        description: "Please select all required options before adding to cart.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -326,12 +339,26 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
       return result;
     };
 
-    // Combine selected options and user notes
+    // Separate selected options from user notes
     const selectedOptionsText = formatSelectedOptions();
-    const allNotes = [selectedOptionsText, notes].filter(Boolean).join('; ');
+    
+    // Structure the notes properly: options first, then user notes
+    let structuredNotes = '';
+    if (selectedOptionsText) {
+      structuredNotes = `OPTIONS:${selectedOptionsText}`;
+    }
+    if (notes && notes.trim()) {
+      if (structuredNotes) {
+        structuredNotes += `; USER_NOTES:${notes}`;
+      } else {
+        structuredNotes = `USER_NOTES:${notes}`;
+      }
+    }
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 handleAddToCart: Final allNotes:', allNotes);
+      console.log('🎯 handleAddToCart: Selected options:', selectedOptionsText);
+      console.log('🎯 handleAddToCart: User notes:', notes);
+      console.log('🎯 handleAddToCart: Structured notes:', structuredNotes);
     }
 
     // Create cart item with all details
@@ -340,7 +367,7 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
       name: item.name,
       price: totalPrice / qty, // Price per item (excluding quantity multiplier)
       qty: qty,
-      notes: allNotes || undefined,
+      notes: structuredNotes || undefined,
       photo_url: item.photo_url,
     };
 
@@ -350,35 +377,38 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
 
     // Add to cart using the context
     addItem(cartItem);
+    
+    toast({
+      title: "Added to Cart",
+      description: `${item.name} has been added to your cart.`,
+    });
+    
     onClose();
   };
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
-      </div>
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+          </div>
+        </DialogContent>
+      </Dialog>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center sm:justify-center z-50 p-4">
-      <div className="bg-white rounded-t-xl sm:rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="p-6 pb-4">
+          <DialogTitle className="text-xl font-bold">
             Detail Menu
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
           {/* Hero Image */}
           {item.photo_url && (
             <div className="aspect-[4/3] rounded-xl overflow-hidden mb-4">
@@ -392,9 +422,9 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
 
           {/* Product Name & Description */}
           <div className="mb-4">
-            <h3 className="text-xl font-bold text-slate-900 mb-2">{item.name}</h3>
+            <h3 className="text-xl font-bold mb-2">{item.name}</h3>
             {item.short_description && (
-              <p className="text-slate-600 text-sm mb-3">{item.short_description}</p>
+              <p className="text-muted-foreground text-sm mb-3">{item.short_description}</p>
             )}
           </div>
 
@@ -403,24 +433,24 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
             <div className="flex items-center gap-2">
               {discount && getBasePrice() !== calculateDiscountedPrice(getBasePrice()) ? (
                 <>
-                  <span className="text-slate-400 line-through">
+                  <span className="text-muted-foreground line-through">
                     {formatRupiah(getBasePrice())}
                   </span>
-                  <span className="text-green-600 font-bold text-lg">
+                  <span className="text-primary font-bold text-lg">
                     {formatRupiah(calculateDiscountedPrice(getBasePrice()))}
                   </span>
                   {discount.discount_type === 'percentage' ? (
-                    <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-sm">
+                    <Badge variant="destructive">
                       -{discount.discount_value}%
-                    </span>
+                    </Badge>
                   ) : (
-                    <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-sm">
+                    <Badge variant="destructive">
                       -{formatRupiah(discount.discount_value)}
-                    </span>
+                    </Badge>
                   )}
                 </>
               ) : (
-                <span className="text-green-600 font-bold text-lg">
+                <span className="text-primary font-bold text-lg">
                   {formatRupiah(getBasePrice())}
                 </span>
               )}
@@ -429,29 +459,36 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
 
           {/* Quantity Stepper */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Jumlah</label>
+            <Label className="text-sm font-medium mb-2">Jumlah</Label>
             <div className="flex items-center gap-4">
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => setQty(Math.max(1, qty - 1))}
-                className="w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors touch-manipulation"
                 disabled={qty <= 1}
+                className="w-10 h-10"
               >
-                <Minus className="w-5 h-5" />
-              </button>
+                <Minus className="w-4 h-4" />
+              </Button>
               <span className="text-xl font-semibold w-12 text-center">{qty}</span>
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => setQty(qty + 1)}
-                className="w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors touch-manipulation"
+                className="w-10 h-10"
               >
-                <Plus className="w-5 h-5" />
-              </button>
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
           </div>
 
           {/* Options Section - Only show if item has options */}
           {options.length > 0 && (
             <div className="space-y-6">
-              <h4 className="font-semibold text-slate-900 border-b border-slate-200 pb-2">Customize Options</h4>
+              <div className="space-y-2">
+                <h4 className="font-semibold">Customize Options</h4>
+                <Separator />
+              </div>
 
               {options.map((option) => {
                 const optionItemsForOption = getOptionItemsForOption(option.id);
@@ -462,14 +499,14 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
                 }
 
                 return (
-                  <div key={option.id} className="border-b border-slate-200 pb-4 last:border-b-0">
+                  <Card key={option.id} className="p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h5 className="font-semibold text-slate-900">
+                      <h5 className="font-semibold">
                         {option.label}
-                        {option.is_required && <span className="text-red-500 ml-1">*</span>}
+                        {option.is_required && <span className="text-destructive ml-1">*</span>}
                       </h5>
                       {option.selection_type === 'multiple' && (
-                        <span className="text-sm text-slate-500">
+                        <span className="text-sm text-muted-foreground">
                           Select up to {option.max_selections}
                         </span>
                       )}
@@ -483,43 +520,47 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
                             !isSelected && selectedItems.length >= option.max_selections;
 
                           return (
-                            <label
+                            <Card
                               key={optionItem.id}
-                              className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                              className={`cursor-pointer transition-colors ${
                                 isSelected
-                                  ? 'border-green-500 bg-green-50'
+                                  ? 'border-primary bg-primary/5'
                                   : isDisabled
-                                    ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
-                                    : 'border-slate-200 hover:bg-slate-50'
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-muted/50'
                               }`}
                             >
-                              <div className="flex items-center gap-3">
-                                <input
-                                  type={
-                                    option.selection_type === 'multiple' ? 'checkbox' : 'radio'
-                                  }
-                                  name={`option-${option.id}`}
-                                  checked={isSelected}
-                                  disabled={isDisabled && !isSelected}
-                                  onChange={(e) => handleOptionSelection(option, optionItem, e.target.checked)}
-                                  className="w-4 h-4 text-green-500 focus:ring-green-500"
-                                />
-                                <span className="font-medium">{optionItem.name}</span>
-                              </div>
+                              <CardContent className="p-3">
+                                <label className="flex items-center justify-between cursor-pointer">
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type={
+                                        option.selection_type === 'multiple' ? 'checkbox' : 'radio'
+                                      }
+                                      name={`option-${option.id}`}
+                                      checked={isSelected}
+                                      disabled={isDisabled && !isSelected}
+                                      onChange={(e) => handleOptionSelection(option, optionItem, e.target.checked)}
+                                      className="w-4 h-4 text-primary focus:ring-primary"
+                                    />
+                                    <span className="font-medium">{optionItem.name}</span>
+                                  </div>
 
-                              {optionItem.additional_price > 0 && (
-                                <span className="text-green-600 font-medium">
-                                  +{formatRupiah(optionItem.additional_price)}
-                                </span>
-                              )}
-                            </label>
+                                  {optionItem.additional_price > 0 && (
+                                    <span className="text-primary font-medium">
+                                      +{formatRupiah(optionItem.additional_price)}
+                                    </span>
+                                  )}
+                                </label>
+                              </CardContent>
+                            </Card>
                           );
                         })
                       ) : (
-                        <p className="text-slate-500 text-sm italic">No choices available for this option</p>
+                        <p className="text-muted-foreground text-sm italic">No choices available for this option</p>
                       )}
                     </div>
-                  </div>
+                  </Card>
                 );
               })}
             </div>
@@ -527,43 +568,43 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
 
           {/* Show message if no options */}
           {options.length === 0 && !loading && (
-            <div className="text-center py-4 text-slate-500">
+            <div className="text-center py-4 text-muted-foreground">
               <p>No options available for this menu item</p>
             </div>
           )}
 
           {/* Notes Textarea - Moved to bottom */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <Label className="text-sm font-medium mb-2">
               Catatan (opsional)
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Contoh: Less sugar, extra ice"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none touch-manipulation"
               rows={3}
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-200 p-4 sm:p-6">
+        <div className="border-t p-6">
           <div className="flex items-center justify-between mb-4">
-            <span className="font-semibold text-slate-900">Total:</span>
-            <span className="text-xl font-bold text-green-600">
+            <span className="font-semibold">Total:</span>
+            <span className="text-xl font-bold text-primary">
               {formatRupiah(calculateTotalPrice())}
             </span>
           </div>
 
-          <button
+          <Button
             onClick={handleAddToCart}
-            className="w-full bg-green-500 text-white py-3 px-4 rounded-lg hover:bg-green-600 transition-colors touch-manipulation font-semibold"
+            className="w-full"
+            size="lg"
           >
             Add to Cart - {formatRupiah(calculateTotalPrice())}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -141,6 +141,9 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
   const handleAddToCart = () => {
     const totalPrice = calculateTotalPrice();
     
+    // Structure the options properly
+    const structuredNotes = `OPTIONS:${JSON.stringify(selectedOptions)}`;
+    
     // Create cart item with customizations
     const cartItem = {
       id: `${item.id}-${JSON.stringify(selectedOptions)}`, // Keep complex ID for cart management
@@ -148,7 +151,7 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
       price: totalPrice / quantity, // Price per unit
       qty: quantity,
       photo_url: item.photo_url,
-      notes: JSON.stringify(selectedOptions), // Store customizations in notes for database
+      notes: structuredNotes, // Store customizations in structured format
       menu_id: item.id // Store original menu ID for database
     };
 
