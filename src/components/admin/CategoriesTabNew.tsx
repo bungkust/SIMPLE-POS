@@ -100,8 +100,7 @@ export function CategoriesTab() {
           .from('categories')
           .update({
             name: data.name,
-            sort_order: data.sort_order,
-            updated_at: new Date().toISOString()
+            sort_order: data.sort_order
           })
           .eq('id', editingCategory.id);
 
@@ -115,9 +114,7 @@ export function CategoriesTab() {
           .insert({
             tenant_id: currentTenant.id,
             name: data.name,
-            sort_order: data.sort_order,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            sort_order: data.sort_order
           });
 
         if (error) throw error;
@@ -190,8 +187,8 @@ export function CategoriesTab() {
       const { error } = await supabase
         .from('categories')
         .update([
-          { id: category.id, sort_order: targetCategory.sort_order, updated_at: new Date().toISOString() },
-          { id: targetCategory.id, sort_order: category.sort_order, updated_at: new Date().toISOString() }
+          { id: category.id, sort_order: targetCategory.sort_order },
+          { id: targetCategory.id, sort_order: category.sort_order }
         ])
         .in('id', [category.id, targetCategory.id]);
 

@@ -42,7 +42,7 @@ const navigationItems = [
   { id: 'orders' as TabType, label: 'Pesanan', icon: ShoppingBag, description: 'Kelola pesanan pelanggan', comingSoon: false },
   { id: 'menu' as TabType, label: 'Menu', icon: Coffee, description: 'Kelola menu dan opsi', comingSoon: false },
   { id: 'categories' as TabType, label: 'Kategori', icon: FolderOpen, description: 'Kelola kategori menu', comingSoon: false },
-  { id: 'payment' as TabType, label: 'Pembayaran', icon: CreditCard, description: 'Kelola metode pembayaran', comingSoon: true },
+  { id: 'payment' as TabType, label: 'Pembayaran', icon: CreditCard, description: 'Kelola metode pembayaran', comingSoon: false },
   { id: 'kasir' as TabType, label: 'Kasir', icon: Calculator, description: 'Kelola kasir dan transaksi', comingSoon: true },
   { id: 'sheets' as TabType, label: 'Google Sheets', icon: Sheet, description: 'Integrasi Google Sheets', comingSoon: true },
   { id: 'settings' as TabType, label: 'Pengaturan', icon: Settings, description: 'Pengaturan tenant', comingSoon: true },
