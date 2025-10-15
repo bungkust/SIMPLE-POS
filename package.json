@@ -8,7 +8,12 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "audit": "npm audit --production",
+    "audit:fix": "npm audit fix",
+    "security:check": "npm audit --audit-level=moderate",
+    "security:fix": "npm audit fix --force",
+    "prebuild": "npm run security:check"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

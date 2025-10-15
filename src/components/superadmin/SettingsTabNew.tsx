@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { platformSettingsSchema, type PlatformSettingsData } from '@/lib/form-schemas';
+import { logger } from '@/lib/logger';
 
 export function SettingsTab() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,7 +77,7 @@ export function SettingsTab() {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔄 SettingsTab: Loading platform settings...');
+      logger.database('Loading platform settings', { component: 'SuperAdminSettingsTab' });
       
       // Try to load from platform_settings table (gracefully handle missing table)
       const { data, error } = await supabase
@@ -86,19 +87,19 @@ export function SettingsTab() {
 
       if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') { 
         // PGRST116 = no rows returned, PGRST205 = table doesn't exist
-        console.error('❌ SettingsTab: Error loading settings:', error);
+        logger.error('Error loading settings', { error: error.message, component: 'SuperAdminSettingsTab' });
         setError(`Failed to load settings: ${error.message}`);
         return;
       }
 
       if (data) {
-        console.log('✅ SettingsTab: Settings loaded successfully');
+        logger.database('Settings loaded successfully', { component: 'SuperAdminSettingsTab' });
         reset(data.settings || {});
       } else {
-        console.log('ℹ️ SettingsTab: No existing settings found or table missing, using defaults');
+        logger.database('No existing settings found or table missing, using defaults', { component: 'SuperAdminSettingsTab' });
       }
     } catch (err) {
-      console.error('❌ SettingsTab: Unexpected error loading settings:', err);
+      logger.error('Unexpected error loading settings', { error: err.message, component: 'SuperAdminSettingsTab' });
       setError('An unexpected error occurred while loading settings');
     } finally {
       setIsLoading(false);
@@ -115,7 +116,7 @@ export function SettingsTab() {
       setError(null);
       setSuccess(null);
       
-      console.log('🔄 SettingsTab: Saving platform settings:', data);
+      logger.database('Saving platform settings', { component: 'SuperAdminSettingsTab', data: { platform_name: data.platform_name } });
 
       // Try to save to platform_settings table (gracefully handle missing table)
       const { error } = await supabase
@@ -127,25 +128,25 @@ export function SettingsTab() {
         });
 
       if (error && error.code !== 'PGRST205') { // PGRST205 = table doesn't exist
-        console.error('❌ SettingsTab: Error saving settings:', error);
+        logger.error('Error saving settings', { error: error.message, component: 'SuperAdminSettingsTab' });
         setError(`Failed to save settings: ${error.message}`);
         return;
       }
 
       if (error && error.code === 'PGRST205') {
-        console.log('ℹ️ SettingsTab: platform_settings table does not exist, settings not persisted');
+        logger.database('platform_settings table does not exist, settings not persisted', { component: 'SuperAdminSettingsTab' });
         setSuccess('Settings validated successfully (table not available for persistence)');
         setTimeout(() => setSuccess(null), 3000);
         return;
       }
 
-      console.log('✅ SettingsTab: Settings saved successfully');
+      logger.database('Settings saved successfully', { component: 'SuperAdminSettingsTab' });
       setSuccess('Platform settings saved successfully!');
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      console.error('❌ SettingsTab: Unexpected error saving settings:', err);
+      logger.error('Unexpected error saving settings', { error: err.message, component: 'SuperAdminSettingsTab' });
       setError('An unexpected error occurred while saving settings');
     } finally {
       setIsSubmitting(false);

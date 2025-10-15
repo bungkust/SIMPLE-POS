@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useMemo, use
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 
+import { logger } from '@/lib/logger';
 interface AppConfig {
   storeName: string;
   storeIcon: string; // Can be either icon name or uploaded icon URL
@@ -107,7 +108,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   try {
     authContext = useAuth();
   } catch (error) {
-    console.warn('ConfigProvider: AuthContext not available yet, using fallback');
+    logger.warn('ConfigProvider: AuthContext not available yet, using fallback');
     authContext = {
       currentTenant: null,
       user: null
@@ -142,28 +143,81 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     try {
       // Try to load from database if user is authenticated
       if (user && currentTenant) {
-        // TODO: Fix tenant_settings table access - table doesn't exist
-        // const { data, error } = await supabase
-        //   .from('tenant_settings')
-        //   .select('*')
-        //   .eq('tenant_id', currentTenant.id)
-        //   .single();
+        // Load tenant data from database to get settings
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('id', currentTenant.id)
+          .single();
 
-        // TODO: Use tenant.settings instead of tenant_settings table
-        // if (data && !error) {
-        //   const dbConfig: AppConfig = {
-        //     storeName: data.store_name || getDefaultConfigForTenant(tenantSlug).storeName,
-        //     storeIcon: data.store_icon || getDefaultConfigForTenant(tenantSlug).storeIcon,
-        //     storeIconType: data.store_icon_type || 'predefined'
-        //   };
-        //   setConfig(dbConfig);
+        if (tenantData && !tenantError) {
+          const tenantSettings = tenantData.settings as any || {};
+          const dbConfig: AppConfig = {
+            storeName: tenantSettings.storeName || tenantData.name || getDefaultConfigForTenant(tenantSlug).storeName,
+            storeIcon: tenantSettings.logo_url || tenantSettings.storeIcon || getDefaultConfigForTenant(tenantSlug).storeIcon,
+            storeIconType: tenantSettings.logo_url ? 'uploaded' : (tenantSettings.storeIconType || 'predefined'),
+            storeDescription: tenantSettings.description || tenantSettings.storeDescription,
+            storeAddress: tenantSettings.address || tenantSettings.storeAddress,
+            storePhone: tenantSettings.phone || tenantSettings.storePhone,
+            storeEmail: tenantSettings.email || tenantSettings.storeEmail,
+            storeHours: tenantSettings.operating_hours || tenantSettings.storeHours,
+            autoAcceptOrders: tenantSettings.autoAcceptOrders || tenantSettings.auto_accept_orders,
+            requirePhoneVerification: tenantSettings.requirePhoneVerification || tenantSettings.require_phone_verification,
+            allowGuestCheckout: tenantSettings.allowGuestCheckout || tenantSettings.allow_guest_checkout,
+            minimumOrderAmount: tenantSettings.minimumOrderAmount || tenantSettings.minimum_order_amount,
+            deliveryFee: tenantSettings.deliveryFee || tenantSettings.delivery_fee,
+            freeDeliveryThreshold: tenantSettings.freeDeliveryThreshold || tenantSettings.free_delivery_threshold
+          };
+          
+          setConfig(dbConfig);
 
-        //   // Also save to localStorage for faster subsequent loads
-        //   const storageKey = `tenant-config-${tenantSlug}`;
-        //   localStorage.setItem(storageKey, JSON.stringify(dbConfig));
+          // Also save to localStorage for faster subsequent loads
+          const storageKey = `tenant-config-${tenantSlug}`;
+          localStorage.setItem(storageKey, JSON.stringify(dbConfig));
 
-        //   return;
-        // }
+          return;
+        }
+      }
+
+      // For public pages, try to load tenant data by slug
+      if (!user) {
+        try {
+          const { data: tenantData, error: tenantError } = await supabase
+            .from('tenants')
+            .select('*')
+            .eq('slug', tenantSlug)
+            .single();
+
+          if (tenantData && !tenantError) {
+            const tenantSettings = tenantData.settings as any || {};
+            const dbConfig: AppConfig = {
+              storeName: tenantSettings.storeName || tenantData.name || getDefaultConfigForTenant(tenantSlug).storeName,
+              storeIcon: tenantSettings.logo_url || tenantSettings.storeIcon || getDefaultConfigForTenant(tenantSlug).storeIcon,
+              storeIconType: tenantSettings.logo_url ? 'uploaded' : (tenantSettings.storeIconType || 'predefined'),
+              storeDescription: tenantSettings.description || tenantSettings.storeDescription,
+              storeAddress: tenantSettings.address || tenantSettings.storeAddress,
+              storePhone: tenantSettings.phone || tenantSettings.storePhone,
+              storeEmail: tenantSettings.email || tenantSettings.storeEmail,
+              storeHours: tenantSettings.operating_hours || tenantSettings.storeHours,
+              autoAcceptOrders: tenantSettings.autoAcceptOrders || tenantSettings.auto_accept_orders,
+              requirePhoneVerification: tenantSettings.requirePhoneVerification || tenantSettings.require_phone_verification,
+              allowGuestCheckout: tenantSettings.allowGuestCheckout || tenantSettings.allow_guest_checkout,
+              minimumOrderAmount: tenantSettings.minimumOrderAmount || tenantSettings.minimum_order_amount,
+              deliveryFee: tenantSettings.deliveryFee || tenantSettings.delivery_fee,
+              freeDeliveryThreshold: tenantSettings.freeDeliveryThreshold || tenantSettings.free_delivery_threshold
+            };
+            
+            setConfig(dbConfig);
+
+            // Also save to localStorage for faster subsequent loads
+            const storageKey = `tenant-config-${tenantSlug}`;
+            localStorage.setItem(storageKey, JSON.stringify(dbConfig));
+
+            return;
+          }
+        } catch (error) {
+          logger.error('Error loading tenant data for public page:', error);
+        }
       }
 
       // Fallback to localStorage
@@ -174,14 +228,14 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           const parsedConfig = JSON.parse(savedConfig);
           setConfig({ ...getDefaultConfigForTenant(tenantSlug), ...parsedConfig });
         } catch (error) {
-          console.error('Error loading tenant config from localStorage:', error);
+          logger.error('Error loading tenant config from localStorage:', error);
           setConfig(getDefaultConfigForTenant(tenantSlug));
         }
       } else {
         setConfig(getDefaultConfigForTenant(tenantSlug));
       }
     } catch (error) {
-      console.error('Error loading config:', error);
+      logger.error('Error loading config:', error);
       setConfig(getDefaultConfigForTenant(tenantSlug));
     }
   };
@@ -189,30 +243,59 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   // Save config to database and localStorage
   const saveConfig = async (tenantSlug: string, newConfig: AppConfig) => {
     try {
-      // TODO: Fix tenant_settings table access - table doesn't exist
       // Save to database if user is authenticated
-      // if (user && currentTenant) {
-      //   const { error } = await supabase
-      //     .from('tenant_settings')
-      //     .upsert({
-      //       tenant_id: currentTenant.id,
-      //       store_name: newConfig.storeName,
-      //       store_icon: newConfig.storeIcon,
-      //       store_icon_type: newConfig.storeIconType,
-      //       updated_at: new Date().toISOString()
-      //     });
+      if (user && currentTenant) {
+        // Get current tenant settings
+        const { data: currentTenantData, error: fetchError } = await supabase
+          .from('tenants')
+          .select('settings')
+          .eq('id', currentTenant.id)
+          .single();
 
-      //   if (error) {
-      //     console.error('Error saving config to database:', error);
-      //     // Continue with localStorage fallback
-      //   }
-      // }
+        if (currentTenantData && !fetchError) {
+          const currentSettings = currentTenantData.settings as any || {};
+          
+          // Update settings with new config
+          const updatedSettings = {
+            ...currentSettings,
+            storeName: newConfig.storeName,
+            storeIcon: newConfig.storeIcon,
+            storeIconType: newConfig.storeIconType,
+            storeDescription: newConfig.storeDescription,
+            storeAddress: newConfig.storeAddress,
+            storePhone: newConfig.storePhone,
+            storeEmail: newConfig.storeEmail,
+            storeHours: newConfig.storeHours,
+            autoAcceptOrders: newConfig.autoAcceptOrders,
+            requirePhoneVerification: newConfig.requirePhoneVerification,
+            allowGuestCheckout: newConfig.allowGuestCheckout,
+            minimumOrderAmount: newConfig.minimumOrderAmount,
+            deliveryFee: newConfig.deliveryFee,
+            freeDeliveryThreshold: newConfig.freeDeliveryThreshold,
+            // Also save logo_url for super admin tenant form compatibility
+            logo_url: newConfig.storeIconType === 'uploaded' ? newConfig.storeIcon : currentSettings.logo_url
+          };
+
+          const { error: updateError } = await supabase
+            .from('tenants')
+            .update({ 
+              settings: updatedSettings,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', currentTenant.id);
+
+          if (updateError) {
+            logger.error('Error saving config to database:', updateError);
+            // Continue with localStorage fallback
+          }
+        }
+      }
 
       // Always save to localStorage for immediate availability
       const storageKey = `tenant-config-${tenantSlug}`;
       localStorage.setItem(storageKey, JSON.stringify(newConfig));
     } catch (error) {
-      console.error('Error saving config:', error);
+      logger.error('Error saving config:', error);
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/form-utils';
 
+import { logger } from '@/lib/logger';
 interface OrderItem {
   name_snapshot: string;
   price_snapshot: number;
@@ -79,33 +80,33 @@ export const ThermalReceiptImage: React.FC<ThermalReceiptImageProps> = ({
 
     // Load QRIS image if available
     let qrisImage: HTMLImageElement | null = null;
-    console.log('🔍 Current payment method:', currentPaymentMethod);
-    console.log('🔍 Order payment method:', order.payment_method);
-    console.log('🔍 Payment methods array:', order.payment_methods);
+    logger.log('🔍 Current payment method:', currentPaymentMethod);
+    logger.log('🔍 Order payment method:', order.payment_method);
+    logger.log('🔍 Payment methods array:', order.payment_methods);
     
     if (currentPaymentMethod?.qris_image_url) {
-      console.log('🔍 QRIS image URL:', currentPaymentMethod.qris_image_url);
+      logger.log('🔍 QRIS image URL:', currentPaymentMethod.qris_image_url);
       try {
         qrisImage = new Image();
         qrisImage.crossOrigin = 'anonymous';
         qrisImage.referrerPolicy = 'no-referrer';
         await new Promise((resolve, reject) => {
           qrisImage!.onload = () => {
-            console.log('✅ QRIS image loaded successfully');
+            logger.log('✅ QRIS image loaded successfully');
             resolve(true);
           };
           qrisImage!.onerror = (error) => {
-            console.error('❌ QRIS image failed to load:', error);
-            console.log('🔍 Trying fallback approach...');
+            logger.error('❌ QRIS image failed to load:', error);
+            logger.log('🔍 Trying fallback approach...');
             // Try without CORS
             const fallbackImage = new Image();
             fallbackImage.onload = () => {
-              console.log('✅ QRIS fallback image loaded successfully');
+              logger.log('✅ QRIS fallback image loaded successfully');
               qrisImage = fallbackImage;
               resolve(true);
             };
             fallbackImage.onerror = (fallbackError) => {
-              console.error('❌ QRIS fallback image also failed:', fallbackError);
+              logger.error('❌ QRIS fallback image also failed:', fallbackError);
               qrisImage = null;
               resolve(false);
             };
@@ -114,11 +115,11 @@ export const ThermalReceiptImage: React.FC<ThermalReceiptImageProps> = ({
           qrisImage!.src = currentPaymentMethod.qris_image_url!;
         });
       } catch (error) {
-        console.error('Error loading QRIS image:', error);
+        logger.error('Error loading QRIS image:', error);
         qrisImage = null;
       }
     } else {
-      console.log('❌ No QRIS image URL found');
+      logger.log('❌ No QRIS image URL found');
     }
 
     // Set canvas size for thermal printer (300px width, dynamic height)
@@ -278,19 +279,19 @@ export const ThermalReceiptImage: React.FC<ThermalReceiptImageProps> = ({
         
         // Render QRIS image if available
         if (qrisImage) {
-          console.log('🎨 Rendering QRIS image at position:', currentY);
+          logger.log('🎨 Rendering QRIS image at position:', currentY);
           const qrSize = 80; // Size of QR code
           const qrX = (canvasWidth - qrSize) / 2; // Center horizontally
           ctx.drawImage(qrisImage, qrX, currentY, qrSize, qrSize);
           currentY += qrSize + lineHeight;
         } else if (currentPaymentMethod.qr_code) {
-          console.log('📝 Rendering QRIS text fallback');
+          logger.log('📝 Rendering QRIS text fallback');
           // Fallback to text if image not available
           ctx.font = '8px monospace';
           ctx.fillText(currentPaymentMethod.qr_code, padding, currentY);
           currentY += lineHeight;
         } else {
-          console.log('❌ No QRIS image or text available');
+          logger.log('❌ No QRIS image or text available');
           // Create a placeholder QRIS box
           ctx.strokeStyle = '#000000';
           ctx.lineWidth = 1;

@@ -149,6 +149,13 @@ export const superAdminTenantFormSchema = z.object({
   owner_name: z.string().max(100, "Nama owner terlalu panjang").optional(),
   owner_phone: z.string().max(20, "Nomor telepon owner terlalu panjang").optional(),
   logo_url: z.string().url("URL logo tidak valid").optional().or(z.literal("")),
+  // Social Media Links
+  social_media: z.object({
+    instagram: z.string().url("Instagram URL tidak valid").optional().or(z.literal("")),
+    tiktok: z.string().url("TikTok URL tidak valid").optional().or(z.literal("")),
+    twitter: z.string().url("X/Twitter URL tidak valid").optional().or(z.literal("")),
+    facebook: z.string().url("Facebook URL tidak valid").optional().or(z.literal("")),
+  }).optional(),
   settings: z.object({
     currency: z.string().default("IDR"),
     timezone: z.string().default("Asia/Jakarta"),

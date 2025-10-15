@@ -17,7 +17,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { menuFormSchema, type MenuFormData } from '@/lib/form-schemas';
 import { formatCurrency } from '@/lib/form-utils';
 import { Database } from '@/lib/database.types';
-
+import { uploadFile, uploadConfigs } from '@/lib/storage-utils';
+import { logger } from '@/lib/logger';
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 
@@ -63,45 +64,23 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
     const file = event.target.files?.[0];
     if (!file || !currentTenant) return;
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      onError({
-        title: 'File Too Large',
-        message: 'File terlalu besar. Maksimal 5MB.',
-        details: 'Please choose a smaller image file.'
-      });
-      return;
-    }
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      onError({
-        title: 'Invalid File Type',
-        message: 'File harus berupa gambar.',
-        details: 'Please choose a valid image file (JPG, PNG, GIF, etc.).'
-      });
-      return;
-    }
-
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `menu-items/${currentTenant.tenant_id}/${fileName}`;
+      // Use standardized upload utility with tenant-specific folder structure
+      const result = await uploadFile(file, uploadConfigs.menuItem(currentTenant.tenant_id));
 
-      const { error: uploadError } = await supabase.storage
-        .from('menu-images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('menu-images')
-        .getPublicUrl(filePath);
-
-      setValue('image_url', publicUrl);
+      if (result.success && result.url) {
+        setValue('image_url', result.url);
+        logger.log('✅ Menu item image uploaded successfully:', result.url);
+      } else {
+        onError({
+          title: 'Upload Failed',
+          message: 'Gagal mengupload gambar.',
+          details: result.error || 'Unknown error occurred during upload.'
+        });
+      }
     } catch (error: any) {
-      console.error('Upload error:', error);
+      logger.error('Upload error:', error);
       onError({
         title: 'Upload Failed',
         message: 'Gagal mengupload gambar.',
@@ -173,7 +152,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
 
       onClose();
     } catch (error: any) {
-      console.error('Error saving menu item:', error);
+      logger.error('Error saving menu item:', error);
       onError({
         title: 'Save Failed',
         message: 'Gagal menyimpan menu item.',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit, Trash2, Eye, Shield, Building2, Mail, Calendar, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Shield, Building2, Mail, Calendar, AlertCircle, CheckCircle, XCircle, Link, Copy, ExternalLink, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { ColumnDef } from '@tanstack/react-table';
@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TenantFormModal } from './TenantFormModalNew';
+import { deleteTenantStorageStructure } from '@/lib/storage-utils';
+import { logger } from '@/lib/logger';
 
 type Tenant = Database['public']['Tables']['tenants']['Row'];
 
@@ -23,6 +25,10 @@ export function TenantsTab() {
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingTenant, setDeletingTenant] = useState<Tenant | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showInvitationDialog, setShowInvitationDialog] = useState(false);
+  const [selectedTenantForInvitation, setSelectedTenantForInvitation] = useState<Tenant | null>(null);
+  const [copied, setCopied] = useState(false);
   const { currentTenant } = useAuth();
 
   const loadTenants = async () => {
@@ -30,7 +36,7 @@ export function TenantsTab() {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 TenantsTab: Starting to load tenants...');
+      logger.database('Starting to load tenants', { component: 'TenantsTab' });
       
       const { data, error } = await supabase
         .from('tenants')
@@ -38,15 +44,15 @@ export function TenantsTab() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ TenantsTab: Error loading tenants:', error);
+        logger.error('Error loading tenants', { error: error.message, component: 'TenantsTab' });
         setError(`Failed to load tenants: ${error.message}`);
         return;
       }
 
-      console.log('✅ TenantsTab: Tenants loaded successfully:', data?.length || 0, 'tenants');
+      logger.database('Tenants loaded successfully', { count: data?.length || 0, component: 'TenantsTab' });
       setTenants(data || []);
     } catch (err) {
-      console.error('❌ TenantsTab: Unexpected error loading tenants:', err);
+      logger.error('Unexpected error loading tenants', { error: err.message, component: 'TenantsTab' });
       setError('An unexpected error occurred while loading tenants');
     } finally {
       setLoading(false);
@@ -59,29 +65,70 @@ export function TenantsTab() {
 
   const handleDelete = async (tenant: Tenant) => {
     try {
-      setDeletingTenant(tenant);
+      setIsDeleting(true);
       
+      // Delete tenant from database
       const { error } = await supabase
         .from('tenants')
         .delete()
         .eq('id', tenant.id);
 
       if (error) {
-        console.error('Error deleting tenant:', error);
+        logger.error('Error deleting tenant', { error: error.message, component: 'TenantsTab' });
         setError(`Failed to delete tenant: ${error.message}`);
         return;
       }
 
-      console.log('✅ Tenant deleted successfully');
+      logger.database('Tenant deleted successfully', { component: 'TenantsTab' });
+      
+      // Clean up tenant storage structure
+      try {
+        await deleteTenantStorageStructure(tenant.slug);
+        logger.log('✅ Storage structure cleaned up for deleted tenant:', tenant.slug);
+      } catch (storageError) {
+        logger.error('⚠️ Failed to clean up storage structure, but tenant was deleted:', storageError);
+        // Don't fail the entire operation if storage cleanup fails
+      }
+      
       await loadTenants();
       setShowDeleteConfirm(false);
       setDeletingTenant(null);
     } catch (err) {
-      console.error('Unexpected error deleting tenant:', err);
+      logger.error('Unexpected error deleting tenant', { error: err.message, component: 'TenantsTab' });
       setError('An unexpected error occurred while deleting tenant');
     } finally {
+      setIsDeleting(false);
       setDeletingTenant(null);
     }
+  };
+
+  const generateInvitationLink = (tenant: Tenant) => {
+    const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+    return `${baseUrl}/${tenant.slug}/admin/setup?token=${tenant.id}`;
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      logger.error('Failed to copy to clipboard', { error: error.message, component: 'TenantsTab' });
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleViewInvitation = (tenant: Tenant) => {
+    setSelectedTenantForInvitation(tenant);
+    setShowInvitationDialog(true);
   };
 
   const getStatusBadge = (tenant: Tenant) => {
@@ -178,8 +225,19 @@ export function TenantsTab() {
                 window.open(`/admin/dashboard?tenant=${tenant.slug}`, '_blank');
               }}
               className="h-8 w-8 p-0"
+              title="View Dashboard"
             >
               <Eye className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewInvitation(tenant)}
+              className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
+              title="View Invitation Link"
+            >
+              <Link className="w-4 h-4" />
             </Button>
             
             <Button
@@ -190,6 +248,7 @@ export function TenantsTab() {
                 setShowDeleteConfirm(true);
               }}
               className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+              title="Delete Tenant"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -344,7 +403,7 @@ export function TenantsTab() {
             loadTenants();
           }}
           onError={(error) => {
-            console.error('Tenant form error:', error);
+            logger.error('Tenant form error', { error: error.message, component: 'TenantsTab' });
           }}
         />
       )}
@@ -365,20 +424,127 @@ export function TenantsTab() {
               onClick={() => {
                 setShowDeleteConfirm(false);
                 setDeletingTenant(null);
+                setIsDeleting(false);
               }}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={() => deletingTenant && handleDelete(deletingTenant)}
-              disabled={!!deletingTenant}
+              onClick={() => handleDelete(deletingTenant!)}
+              disabled={isDeleting}
             >
-              {deletingTenant ? 'Deleting...' : 'Delete Tenant'}
+              {isDeleting ? 'Deleting...' : 'Delete Tenant'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Invitation Link Dialog */}
+      {showInvitationDialog && selectedTenantForInvitation && (
+        <Dialog open={showInvitationDialog} onOpenChange={setShowInvitationDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Link className="w-5 h-5 text-blue-600" />
+                Invitation Link - {selectedTenantForInvitation.name}
+              </DialogTitle>
+              <DialogDescription>
+                Kirim link invitation ini ke owner untuk setup akun admin.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Owner Email Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Owner Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium">{selectedTenantForInvitation.owner_email}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Kirim link invitation ini ke email owner untuk setup password dan akses admin dashboard.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Invitation Link */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Invitation Link</CardTitle>
+                  <CardDescription>
+                    Link ini akan mengarahkan owner ke halaman setup password untuk tenant.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                    <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <code className="flex-1 text-sm break-all">
+                      {generateInvitationLink(selectedTenantForInvitation)}
+                    </code>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => copyToClipboard(generateInvitationLink(selectedTenantForInvitation))}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copy Link
+                        </>
+                      )}
+                    </Button>
+                    
+                    <Button
+                      onClick={() => window.open(generateInvitationLink(selectedTenantForInvitation), '_blank')}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open Link
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Instructions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Cara Menggunakan</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ol className="list-decimal list-inside space-y-2 text-sm">
+                    <li>Copy link invitation di atas</li>
+                    <li>Kirim link tersebut ke email owner: <strong>{selectedTenantForInvitation.owner_email}</strong></li>
+                    <li>Owner akan mengklik link dan diarahkan ke halaman setup password</li>
+                    <li>Setelah setup selesai, owner bisa login ke admin dashboard</li>
+                  </ol>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowInvitationDialog(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

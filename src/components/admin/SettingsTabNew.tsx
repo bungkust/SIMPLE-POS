@@ -37,7 +37,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { settingsFormSchema, type SettingsFormData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
-
+import { uploadFile, uploadConfigs } from '@/lib/storage-utils';
+import { logger } from '@/lib/logger';
 const iconOptions = [
   { value: 'Coffee', label: 'Coffee', icon: Coffee },
   { value: 'Store', label: 'Store', icon: Store },
@@ -89,37 +90,20 @@ export function SettingsTab() {
     const file = event.target.files?.[0];
     if (!file || !currentTenant) return;
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      showError('File Too Large', 'File terlalu besar. Maksimal 5MB.');
-      return;
-    }
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      showError('Invalid File Type', 'File harus berupa gambar.');
-      return;
-    }
-
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `store-logos/${currentTenant.id}/${fileName}`;
+      // Use standardized upload utility with tenant-specific folder structure
+      const result = await uploadFile(file, uploadConfigs.storeLogo(currentTenant.id));
 
-      const { error: uploadError } = await supabase.storage
-        .from('store-assets')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('store-assets')
-        .getPublicUrl(filePath);
-
-      setValue('storeIcon', publicUrl);
+      if (result.success && result.url) {
+        setValue('storeIcon', result.url);
+        showSuccess('Upload Success', 'Logo toko berhasil diupload.');
+        logger.log('✅ Store logo uploaded successfully:', result.url);
+      } else {
+        showError('Upload Failed', `Gagal mengupload logo toko: ${result.error || 'Unknown error'}`);
+      }
     } catch (error: any) {
-      console.error('Upload error:', error);
+      logger.error('Upload error:', error);
       showError('Upload Failed', 'Gagal mengupload logo toko.');
     } finally {
       setUploading(false);
@@ -148,7 +132,7 @@ export function SettingsTab() {
 
       showSuccess('Settings Saved', 'Pengaturan toko berhasil disimpan.');
     } catch (error: any) {
-      console.error('Error saving settings:', error);
+      logger.error('Error saving settings:', error);
       showError('Save Failed', 'Gagal menyimpan pengaturan toko.');
     } finally {
       setLoading(false);

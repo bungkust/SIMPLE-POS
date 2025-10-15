@@ -1,13 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
+import { logger } from '@/lib/logger';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 // Get the correct redirect URL based on environment
 export const getRedirectUrl = (path: string = '/sadmin/dashboard'): string => {
   const isProduction = import.meta.env.PROD;
-  const siteUrl = import.meta.env.VITE_SITE_URL || 'https://your-production-domain.com';
+  const siteUrl = import.meta.env.VITE_SITE_URL;
 
   if (isProduction) {
     return `${siteUrl}${path}`;
@@ -18,7 +19,7 @@ export const getRedirectUrl = (path: string = '/sadmin/dashboard'): string => {
 };
 
 if (process.env.NODE_ENV === 'development') {
-  console.log('Supabase client initialized successfully');
+  logger.log('Supabase client initialized successfully');
 }
 
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -27,7 +28,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     `VITE_SUPABASE_URL: ${supabaseUrl || 'NOT SET'}\n` +
     `VITE_SUPABASE_ANON_KEY: ${supabaseAnonKey ? 'SET' : 'NOT SET'}`
   );
-  console.error(error);
+  logger.error(error);
   throw error;
 }
 
@@ -54,5 +55,5 @@ if (import.meta.env.DEV) {
 }
 
 if (process.env.NODE_ENV === 'development') {
-  console.log('Supabase client created successfully');
+  logger.log('Supabase client created successfully');
 }

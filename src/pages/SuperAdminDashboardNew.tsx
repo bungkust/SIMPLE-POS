@@ -7,7 +7,8 @@ import {
   X,
   User,
   Building2,
-  Home
+  Home,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '../contexts/AuthContext';
 import { TenantsTab } from '../components/superadmin/TenantsTabNew';
 import { SettingsTab } from '../components/superadmin/SettingsTabNew';
+import { logger } from '@/lib/logger';
 
 interface SuperAdminDashboardProps {
   onBack: () => void;
@@ -39,8 +41,8 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
 
   // Debug logging
   useEffect(() => {
-    console.log('🔄 SuperAdminDashboard: Component mounted/updated');
-    console.log('🔄 SuperAdminDashboard: Auth state:', {
+    logger.log('SuperAdminDashboard: Component mounted/updated', {
+      component: 'SuperAdminDashboard',
       loading,
       user: user?.email || 'no user',
       isSuperAdmin
@@ -51,9 +53,10 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('❌ Super Admin Dashboard loading timeout - check console for errors');
-        }
+        logger.error('Super Admin Dashboard loading timeout - check console for errors', {
+          component: 'SuperAdminDashboard',
+          timeout: true
+        });
         setLoadingTimeout(true);
       }
     }, 10000); // 10 seconds
@@ -112,7 +115,7 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
       await signOut();
       onBack();
     } catch (error) {
-      console.error('Error signing out:', error);
+      logger.error('Error signing out', { error: error.message, component: 'SuperAdminDashboard' });
     }
   };
 

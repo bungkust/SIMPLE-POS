@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
+import { logger } from '@/lib/logger';
 interface ProtectedRouteProps {
   children: ReactNode;
   requireAdmin?: boolean;
@@ -27,12 +28,12 @@ export function ProtectedRoute({
       if (!loading && user) {
         setAuthLoading(true);
         try {
-          console.log('🔐 SECURE AUTH: Validating permissions server-side...');
+          logger.log('🔐 SECURE AUTH: Validating permissions server-side...');
           
           // Validate authentication first
           const isAuthValid = await validateAuth();
           if (!isAuthValid) {
-            console.error('❌ SECURE AUTH: Authentication validation failed');
+            logger.error('❌ SECURE AUTH: Authentication validation failed');
             setHasPermission(false);
             setPermissionValidated(true);
             setAuthLoading(false);
@@ -51,7 +52,7 @@ export function ProtectedRoute({
 
           if (permission) {
             const hasRequiredPermission = await checkPermission(permission as any);
-            console.log(`🔐 SECURE AUTH: Permission ${permission}:`, hasRequiredPermission);
+            logger.log(`🔐 SECURE AUTH: Permission ${permission}:`, hasRequiredPermission);
             setHasPermission(hasRequiredPermission);
           } else {
             setHasPermission(true); // No specific permission required
@@ -59,7 +60,7 @@ export function ProtectedRoute({
 
           setPermissionValidated(true);
         } catch (error) {
-          console.error('❌ SECURE AUTH: Permission validation error:', error);
+          logger.error('❌ SECURE AUTH: Permission validation error:', error);
           setHasPermission(false);
           setPermissionValidated(true);
         } finally {
@@ -87,7 +88,7 @@ export function ProtectedRoute({
       // Use environment-specific redirect URLs for production compatibility
       const isProduction = process.env.NODE_ENV === 'production';
       const currentOrigin = isProduction
-        ? 'https://your-production-domain.com' // Replace with your actual production domain
+        ? import.meta.env.VITE_SITE_URL || window.location.origin
         : window.location.origin;
 
       const { error } = await supabase.auth.signInWithOAuth({
@@ -99,13 +100,13 @@ export function ProtectedRoute({
 
       if (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Google login error:', error);
+          logger.error('Google login error:', error);
         }
         alert('Gagal login dengan Google. Silakan coba lagi.');
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Google login error:', error);
+        logger.error('Google login error:', error);
       }
       alert('Terjadi kesalahan saat login dengan Google.');
     } finally {

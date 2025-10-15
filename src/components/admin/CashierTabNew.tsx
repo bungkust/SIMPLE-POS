@@ -27,6 +27,7 @@ import { cashierOrderSchema, type CashierOrderData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { Database } from '../../lib/database.types';
 
+import { logger } from '@/lib/logger';
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 type CartItem = {
@@ -99,7 +100,7 @@ export function CashierTab() {
       setMenuItems(menuData || []);
 
     } catch (error) {
-      console.error('Error loading data:', error);
+      logger.error('Error loading data:', error);
       showError('Error', 'Failed to load menu data');
     } finally {
       setLoading(false);
@@ -187,7 +188,7 @@ export function CashierTab() {
       return;
     }
 
-    console.log('✅ Payment method validation passed:', data.payment_method);
+    logger.log('✅ Payment method validation passed:', data.payment_method);
 
     setProcessingOrder(true);
     try {
@@ -255,7 +256,7 @@ export function CashierTab() {
                });
              }, 1500);
     } catch (error: any) {
-      console.error('Error creating order:', error);
+      logger.error('Error creating order:', error);
       
       // More specific error handling
       if (error.message?.includes('payment_method')) {

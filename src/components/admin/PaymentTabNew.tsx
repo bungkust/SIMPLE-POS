@@ -32,7 +32,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { paymentSettingsSchema, type PaymentSettingsData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
-
+import { uploadFile, uploadConfigs } from '@/lib/storage-utils';
+import { logger } from '@/lib/logger';
 interface PaymentMethod {
   id: string;
   name: string;
@@ -132,7 +133,7 @@ export function PaymentTab() {
         .order('sort_order', { ascending: true });
 
       if (error) {
-        console.error('Error loading payment methods:', error);
+        logger.error('Error loading payment methods:', error);
         showError('Error', 'Failed to load payment methods');
         return;
       }
@@ -145,7 +146,7 @@ export function PaymentTab() {
       );
 
       if (methodsToUpdate.length > 0) {
-        console.log('🔧 Found QRIS methods with old URLs, updating...');
+        logger.log('🔧 Found QRIS methods with old URLs, updating...');
         
         for (const method of methodsToUpdate) {
           const newUrl = method.qris_image_url.replace(
@@ -153,9 +154,9 @@ export function PaymentTab() {
             'qris-images/qris/'
           );
           
-          console.log(`🔄 Updating QRIS URL for method ${method.id}:`);
-          console.log(`  Old: ${method.qris_image_url}`);
-          console.log(`  New: ${newUrl}`);
+          logger.log(`🔄 Updating QRIS URL for method ${method.id}:`);
+          logger.log(`  Old: ${method.qris_image_url}`);
+          logger.log(`  New: ${newUrl}`);
           
           const { error: updateError } = await supabase
             .from('payment_methods')
@@ -163,9 +164,9 @@ export function PaymentTab() {
             .eq('id', method.id);
           
           if (updateError) {
-            console.error(`❌ Error updating QRIS URL for method ${method.id}:`, updateError);
+            logger.error(`❌ Error updating QRIS URL for method ${method.id}:`, updateError);
           } else {
-            console.log(`✅ Successfully updated QRIS URL for method ${method.id}`);
+            logger.log(`✅ Successfully updated QRIS URL for method ${method.id}`);
             // Update the method in the local array
             method.qris_image_url = newUrl;
           }
@@ -183,7 +184,7 @@ export function PaymentTab() {
       setValue('qris_enabled', hasQRIS);
       setValue('cod_enabled', hasCOD);
     } catch (error) {
-      console.error('Unexpected error:', error);
+      logger.error('Unexpected error:', error);
       showError('Error', 'Unexpected error occurred');
     } finally {
       setLoading(false);
@@ -201,22 +202,7 @@ export function PaymentTab() {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !currentTenant) {
-      console.log('No file selected or no tenant');
-      return;
-    }
-
-    console.log('File selected:', file.name, file.type, file.size);
-    console.log('Current tenant:', currentTenant.id);
-
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      showError('File Too Large', 'File terlalu besar. Maksimal 5MB.');
-      return;
-    }
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      showError('Invalid File Type', 'File harus berupa gambar.');
+      logger.log('No file selected or no tenant');
       return;
     }
 
@@ -224,70 +210,20 @@ export function PaymentTab() {
     setUploadProgress(0);
     
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `qris/${currentTenant.id}/${fileName}`;
+      // Use standardized upload utility with tenant-specific folder structure
+      const result = await uploadFile(file, uploadConfigs.qrisImage(currentTenant.id));
 
-      console.log('🔍 Upload details:');
-      console.log('  - File name:', file.name);
-      console.log('  - File size:', file.size);
-      console.log('  - File type:', file.type);
-      console.log('  - Tenant ID:', currentTenant.id);
-      console.log('  - Upload path:', filePath);
-      console.log('  - Bucket: qris-images');
-      
-      setUploadProgress(25);
-
-      // Test bucket access first
-      console.log('🔍 Testing bucket access...');
-      const { data: bucketData, error: bucketError } = await supabase.storage
-        .from('qris-images')
-        .list('', { limit: 1 });
-      
-      if (bucketError) {
-        console.error('❌ Bucket access error:', bucketError);
-        throw new Error(`Cannot access qris-images bucket: ${bucketError.message}`);
+      if (result.success && result.url) {
+        methodForm.setValue('qris_image_url', result.url);
+        setUploadedFileName(file.name);
+        setUploadProgress(100);
+        showSuccess('Upload Success', 'Gambar QRIS berhasil diupload.');
+        logger.log('✅ QRIS image uploaded successfully:', result.url);
+      } else {
+        showError('Upload Failed', `Gagal mengupload gambar QRIS: ${result.error || 'Unknown error'}`);
       }
-      console.log('✅ Bucket access successful');
-
-      console.log('🔍 Starting file upload...');
-      const { error: uploadError } = await supabase.storage
-        .from('qris-images')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        console.error('❌ Upload error details:', uploadError);
-        console.error('  - Error code:', uploadError.statusCode);
-        console.error('  - Error message:', uploadError.message);
-        console.error('  - Error details:', uploadError.error);
-        throw uploadError;
-      }
-
-      console.log('Upload successful, getting public URL...');
-      setUploadProgress(75);
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('qris-images')
-        .getPublicUrl(filePath);
-
-      console.log('🔍 Generated public URL:', publicUrl);
-      console.log('🔍 Expected path structure: qris-images/qris/{tenant_id}/{filename}');
-      console.log('🔍 Actual file path:', filePath);
-      
-      // Ensure URL uses correct bucket structure
-      const correctUrl = publicUrl.replace(
-        /\/storage\/v1\/object\/public\/[^\/]+\//,
-        '/storage/v1/object/public/qris-images/'
-      );
-      
-      console.log('🔍 Corrected URL:', correctUrl);
-      methodForm.setValue('qris_image_url', correctUrl);
-      setUploadedFileName(file.name);
-      setUploadProgress(100);
-      
-      showSuccess('Upload Success', 'Gambar QRIS berhasil diupload.');
     } catch (error: any) {
-      console.error('Upload error:', error);
+      logger.error('Upload error:', error);
       showError('Upload Failed', `Gagal mengupload gambar QRIS: ${error.message || 'Unknown error'}`);
     } finally {
       setUploadingFile(false);
@@ -299,7 +235,7 @@ export function PaymentTab() {
     if (!currentTenant?.id) return;
 
     try {
-      console.log('🔍 Saving payment settings:', data);
+      logger.log('🔍 Saving payment settings:', data);
       
       // Safety check: Ensure at least one payment method type is enabled
       const enabledTypes = [data.transfer_enabled, data.qris_enabled, data.cod_enabled].filter(Boolean);
@@ -421,17 +357,17 @@ export function PaymentTab() {
       
       // Execute all updates
       if (updates.length > 0) {
-        console.log(`🔍 Executing ${updates.length} payment method updates...`);
+        logger.log(`🔍 Executing ${updates.length} payment method updates...`);
         const results = await Promise.all(updates);
         
         // Check for errors
         const errors = results.filter(result => result.error);
         if (errors.length > 0) {
-          console.error('❌ Some updates failed:', errors);
+          logger.error('❌ Some updates failed:', errors);
           throw new Error(`Failed to update ${errors.length} payment methods`);
         }
         
-        console.log('✅ All payment method updates successful');
+        logger.log('✅ All payment method updates successful');
       }
       
       // Reload payment methods to reflect changes
@@ -439,7 +375,7 @@ export function PaymentTab() {
       
       showSuccess('Settings Updated', 'Pengaturan pembayaran berhasil diperbarui.');
     } catch (error: any) {
-      console.error('Error updating payment settings:', error);
+      logger.error('Error updating payment settings:', error);
       showError('Update Failed', 'Gagal memperbarui pengaturan pembayaran.');
     }
   };
@@ -447,13 +383,13 @@ export function PaymentTab() {
   const onSubmitMethod = async (data: any) => {
     if (!currentTenant?.id) return;
 
-    console.log('🔍 Form data received:', data);
-    console.log('🔍 Form data validation:');
-    console.log('  - name:', data.name, '(type:', typeof data.name, ')');
-    console.log('  - description:', data.description);
-    console.log('  - payment_type:', data.payment_type);
-    console.log('  - account_holder:', data.account_holder);
-    console.log('  - qris_image_url:', data.qris_image_url);
+    logger.log('🔍 Form data received:', data);
+    logger.log('🔍 Form data validation:');
+    logger.log('  - name:', data.name, '(type:', typeof data.name, ')');
+    logger.log('  - description:', data.description);
+    logger.log('  - payment_type:', data.payment_type);
+    logger.log('  - account_holder:', data.account_holder);
+    logger.log('  - qris_image_url:', data.qris_image_url);
 
     // Validate required fields
     if (!data.name || data.name.trim() === '') {
@@ -483,10 +419,10 @@ export function PaymentTab() {
         updated_at: new Date().toISOString(),
       };
 
-      console.log('🔍 Saving payment method:');
-      console.log('  - Tenant ID:', currentTenant.id);
-      console.log('  - Method data:', methodData);
-      console.log('  - Editing method:', editingMethod?.id || 'new');
+      logger.log('🔍 Saving payment method:');
+      logger.log('  - Tenant ID:', currentTenant.id);
+      logger.log('  - Method data:', methodData);
+      logger.log('  - Editing method:', editingMethod?.id || 'new');
 
       if (editingMethod) {
         // Update existing method
@@ -514,7 +450,7 @@ export function PaymentTab() {
       setEditingMethod(null);
       await loadPaymentMethods();
     } catch (error: any) {
-      console.error('Error saving payment method:', error);
+      logger.error('Error saving payment method:', error);
       
       if (error.code === '42501') {
         showError('Permission Error', 'Tidak memiliki izin untuk menyimpan payment method. Silakan hubungi administrator.');
@@ -551,7 +487,7 @@ export function PaymentTab() {
       // Reload payment methods to update settings automatically
       await loadPaymentMethods();
     } catch (error: any) {
-      console.error('Error deleting payment method:', error);
+      logger.error('Error deleting payment method:', error);
       showError('Delete Failed', 'Gagal menghapus payment method.');
     }
   };
@@ -582,7 +518,7 @@ export function PaymentTab() {
       // Reload payment methods to update settings automatically
       await loadPaymentMethods();
     } catch (error: any) {
-      console.error('Error updating method status:', error);
+      logger.error('Error updating method status:', error);
       showError('Update Failed', 'Gagal memperbarui status payment method.');
     }
   };

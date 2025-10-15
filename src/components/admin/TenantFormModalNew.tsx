@@ -199,7 +199,8 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
           }
 
           // Step 2: Generate setup URL
-          const setupUrl = `${window.location.origin}/${data.slug}/admin/setup?token=${tenantData.id}`;
+          const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+          const setupUrl = `${baseUrl}/${data.slug}/admin/setup?token=${tenantData.id}`;
           
           // Show success with setup URL (no email sending)
           onSuccess({

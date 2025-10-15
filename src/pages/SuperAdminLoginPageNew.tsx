@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { superAdminLoginSchema, type SuperAdminLoginData } from '@/lib/form-schemas';
 import { User, Session } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
 
 interface SuperAdminLoginPageProps {
   onBack: () => void;
@@ -70,7 +71,7 @@ export function SuperAdminLoginPage({ onBack }: SuperAdminLoginPageProps) {
       });
 
       if (error) {
-        console.error('Error checking user role:', error);
+        logger.error('Error checking user role', { error: error.message, component: 'SuperAdminLogin' });
         return;
       }
 
@@ -81,7 +82,7 @@ export function SuperAdminLoginPage({ onBack }: SuperAdminLoginPageProps) {
         await supabase.auth.signOut();
       }
     } catch (error) {
-      console.error('Error in checkUserRoleAndRedirect:', error);
+      logger.error('Error in checkUserRoleAndRedirect', { error: error.message, component: 'SuperAdminLogin' });
       showError('Error', 'Failed to verify user permissions.');
     }
   };
@@ -101,7 +102,7 @@ export function SuperAdminLoginPage({ onBack }: SuperAdminLoginPageProps) {
 
       // The auth state change listener will handle the redirect
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error', { error: error.message, component: 'SuperAdminLogin' });
       showError('Login Error', 'An unexpected error occurred during login.');
     } finally {
       setLoading(false);

@@ -37,6 +37,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ColumnDef } from '@tanstack/react-table';
 import { Database } from '@/lib/database.types';
 import { ThermalReceiptImage } from '@/components/ThermalReceiptImage';
+import { logger } from '@/lib/logger';
+import { createSafeWhatsAppUrl } from '@/lib/security-utils';
 
 type Order = Database['public']['Tables']['orders']['Row'];
 type OrderItem = Database['public']['Tables']['order_items']['Row'];
@@ -84,12 +86,12 @@ export function OrdersTab() {
 
   const loadOrders = useCallback(async () => {
     if (loadingOrders) {
-      console.log('OrdersTab: Already loading orders, skipping...');
+      logger.database('Already loading orders, skipping', { component: 'OrdersTab' });
       return;
     }
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('OrdersTab: Starting to load orders...');
+      logger.log('OrdersTab: Starting to load orders...');
     }
     
     setLoadingOrders(true);
@@ -108,7 +110,7 @@ export function OrdersTab() {
         .order('created_at', { ascending: false });
 
       if (ordersError) {
-        console.error('OrdersTab: Error loading orders:', ordersError);
+        logger.error('OrdersTab: Error loading orders:', ordersError);
         setOrders([]);
         setOrderItems([]);
         setLoading(false);
@@ -126,14 +128,14 @@ export function OrdersTab() {
           .in('order_id', orderIds);
 
         if (itemsError) {
-          console.error('OrdersTab: Error loading order items:', itemsError);
+          logger.error('OrdersTab: Error loading order items:', itemsError);
         } else {
           setOrderItems(itemsData || []);
         }
       }
 
     } catch (error) {
-      console.error('OrdersTab: Unexpected error:', error);
+      logger.error('OrdersTab: Unexpected error:', error);
       setOrders([]);
       setOrderItems([]);
     } finally {
@@ -144,16 +146,16 @@ export function OrdersTab() {
 
   const loadMenuOptions = useCallback(async () => {
     if (loadingMenuOptions) {
-      console.log('🔍 Already loading menu options, skipping...');
+      logger.log('🔍 Already loading menu options, skipping...');
       return;
     }
     
     if (!currentTenant?.id) {
-      console.log('🔍 No tenant ID available for loading menu options');
+      logger.log('🔍 No tenant ID available for loading menu options');
       return;
     }
     
-    console.log('🔍 Loading menu options for tenant:', currentTenant.id);
+    logger.log('🔍 Loading menu options for tenant:', currentTenant.id);
     setLoadingMenuOptions(true);
     
     try {
@@ -168,7 +170,7 @@ export function OrdersTab() {
         .eq('tenant_id', currentTenant.id);
 
       if (error) {
-        console.error('❌ Error loading menu options:', error);
+        logger.error('❌ Error loading menu options:', error);
         return;
       }
 
@@ -182,7 +184,7 @@ export function OrdersTab() {
       });
       setMenuOptions(optionsMap);
     } catch (error) {
-      console.error('❌ Error loading menu options:', error);
+      logger.error('❌ Error loading menu options:', error);
     } finally {
       setLoadingMenuOptions(false);
     }
@@ -191,7 +193,7 @@ export function OrdersTab() {
   // Load data when tenant changes
   useEffect(() => {
     if (tenantId) {
-      console.log('🔄 Loading data for new tenant:', tenantId);
+      logger.log('🔄 Loading data for new tenant:', tenantId);
       loadOrders();
       loadMenuOptions();
       loadTenantInfo();
@@ -210,12 +212,12 @@ export function OrdersTab() {
         .single();
 
       if (error) {
-        console.error('Error loading tenant info:', error);
+        logger.error('Error loading tenant info:', error);
       } else {
         setTenantInfo(tenant);
       }
     } catch (error) {
-      console.error('Error loading tenant info:', error);
+      logger.error('Error loading tenant info:', error);
     }
   };
 
@@ -231,12 +233,12 @@ export function OrdersTab() {
         .order('sort_order');
 
       if (error) {
-        console.error('Error loading payment methods:', error);
+        logger.error('Error loading payment methods:', error);
       } else {
         setPaymentMethods(methods || []);
       }
     } catch (error) {
-      console.error('Error loading payment methods:', error);
+      logger.error('Error loading payment methods:', error);
     }
   };
 
@@ -245,7 +247,7 @@ export function OrdersTab() {
     if (!currentTenant?.id) return;
     
     try {
-      console.log('🧪 Testing database permissions...');
+      logger.log('🧪 Testing database permissions...');
       
       // Test read permission
       const { data: testRead, error: readError } = await supabase
@@ -255,15 +257,15 @@ export function OrdersTab() {
         .limit(1);
         
       if (readError) {
-        console.error('❌ Read permission test failed:', readError);
+        logger.error('❌ Read permission test failed:', readError);
       } else {
-        console.log('✅ Read permission test passed:', testRead);
+        logger.log('✅ Read permission test passed:', testRead);
       }
       
       // Test update permission (dry run)
       if (testRead && testRead.length > 0) {
         const testOrder = testRead[0];
-        console.log('🧪 Testing update permission on order:', testOrder.id);
+        logger.log('🧪 Testing update permission on order:', testOrder.id);
         
         const { data: testUpdate, error: updateError } = await supabase
           .from('orders')
@@ -272,13 +274,13 @@ export function OrdersTab() {
           .select();
           
         if (updateError) {
-          console.error('❌ Update permission test failed:', updateError);
+          logger.error('❌ Update permission test failed:', updateError);
         } else {
-          console.log('✅ Update permission test passed:', testUpdate);
+          logger.log('✅ Update permission test passed:', testUpdate);
         }
       }
     } catch (error) {
-      console.error('❌ Permission test error:', error);
+      logger.error('❌ Permission test error:', error);
     }
   };
 
@@ -288,37 +290,37 @@ export function OrdersTab() {
 
   const resolveOptionNames = (optionsJson: string) => {
     try {
-      console.log('🔍 Resolving options:', optionsJson);
-      console.log('🔍 Available menu options:', menuOptions);
+      logger.log('🔍 Resolving options:', optionsJson);
+      logger.log('🔍 Available menu options:', menuOptions);
       
       const options = JSON.parse(optionsJson);
       const resolvedOptions: Record<string, string> = {};
       
       Object.entries(options).forEach(([optionId, itemId]) => {
-        console.log(`🔍 Processing option: ${optionId} -> ${itemId}`);
+        logger.log(`🔍 Processing option: ${optionId} -> ${itemId}`);
         const option = menuOptions[optionId];
-        console.log(`🔍 Found option:`, option);
+        logger.log(`🔍 Found option:`, option);
         
         if (option) {
           const item = option.items.find((i: any) => i.id === itemId);
-          console.log(`🔍 Found item:`, item);
+          logger.log(`🔍 Found item:`, item);
           if (item) {
             resolvedOptions[option.label] = item.name;
-            console.log(`✅ Resolved: ${option.label} = ${item.name}`);
+            logger.log(`✅ Resolved: ${option.label} = ${item.name}`);
           } else {
             resolvedOptions[option.label] = `Unknown (${String(itemId).substring(0, 8)}...)`;
-            console.log(`⚠️ Item not found for option: ${option.label}`);
+            logger.log(`⚠️ Item not found for option: ${option.label}`);
           }
         } else {
           resolvedOptions[`Option (${optionId.substring(0, 8)}...)`] = `Item (${String(itemId).substring(0, 8)}...)`;
-          console.log(`❌ Option not found: ${optionId}`);
+          logger.log(`❌ Option not found: ${optionId}`);
         }
       });
       
-      console.log('🔍 Final resolved options:', resolvedOptions);
+      logger.log('🔍 Final resolved options:', resolvedOptions);
       return resolvedOptions;
     } catch (error) {
-      console.error('Error resolving option names:', error);
+      logger.error('Error resolving option names:', error);
       return {};
     }
   };
@@ -346,11 +348,11 @@ export function OrdersTab() {
 
   const handleStatusUpdate = async (data: OrderStatusUpdateData) => {
     if (!selectedOrder) {
-      console.error('No selected order for status update');
+      logger.error('No selected order for status update');
       return;
     }
 
-    console.log('🔄 Updating order status:', {
+    logger.log('🔄 Updating order status:', {
       orderId: selectedOrder.id,
       orderCode: selectedOrder.order_code,
       currentStatus: selectedOrder.status,
@@ -366,7 +368,7 @@ export function OrdersTab() {
         updated_at: new Date().toISOString()
       };
 
-      console.log('📝 Update data:', updateData);
+      logger.log('📝 Update data:', updateData);
 
       const { data: result, error } = await supabase
         .from('orders')
@@ -375,11 +377,11 @@ export function OrdersTab() {
         .select();
 
       if (error) {
-        console.error('❌ Supabase error:', error);
+        logger.error('❌ Supabase error:', error);
         throw error;
       }
 
-      console.log('✅ Update successful:', result);
+      logger.log('✅ Update successful:', result);
 
       // Update local state
       setOrders(prev => prev.map(order => 
@@ -392,7 +394,7 @@ export function OrdersTab() {
       setSelectedOrder(null);
       reset();
       
-      console.log('🎉 Status update completed successfully');
+      logger.log('🎉 Status update completed successfully');
       
       // Show success toast
       toast({
@@ -403,11 +405,11 @@ export function OrdersTab() {
       
       // Force refresh the orders list to ensure UI is up to date
       setTimeout(() => {
-        console.log('🔄 Refreshing orders list...');
+        logger.log('🔄 Refreshing orders list...');
         loadOrders();
       }, 500);
     } catch (error: any) {
-      console.error('❌ Error updating order status:', error);
+      logger.error('❌ Error updating order status:', error);
       toast({
         title: "Update Failed",
         description: `Failed to update order status: ${error.message}`,
@@ -419,12 +421,12 @@ export function OrdersTab() {
   };
 
   const openStatusUpdate = (order: Order) => {
-    console.log('🔍 Opening status update for order:', order.order_code, 'Current status:', order.status);
+    logger.log('🔍 Opening status update for order:', order.order_code, 'Current status:', order.status);
     setSelectedOrder(order);
     setValue('status', order.status);
     setValue('notes', order.notes || '');
     setShowStatusUpdate(true);
-    console.log('🔍 Form initialized with status:', order.status);
+    logger.log('🔍 Form initialized with status:', order.status);
   };
 
   const sendReceiptToWhatsApp = (order: Order) => {
@@ -437,7 +439,7 @@ export function OrdersTab() {
     if (!currentTenant?.id) return;
 
     try {
-      console.log('🗑️ Cancelling order:', order.order_code);
+      logger.log('🗑️ Cancelling order:', order.order_code);
       
       // Update order status to DIBATALKAN
       const { error } = await supabase
@@ -450,7 +452,7 @@ export function OrdersTab() {
 
       if (error) throw error;
 
-      console.log('✅ Order cancelled successfully');
+      logger.log('✅ Order cancelled successfully');
       
       toast({
         title: "Order Cancelled",
@@ -461,7 +463,7 @@ export function OrdersTab() {
       // Reload orders to reflect changes
       await loadOrders();
     } catch (error: any) {
-      console.error('❌ Error cancelling order:', error);
+      logger.error('❌ Error cancelling order:', error);
       toast({
         title: "Cancel Failed",
         description: `Failed to cancel order: ${error.message}`,
@@ -488,14 +490,21 @@ Berikut adalah struk atas pembelian Anda.
 
 Terima kasih dan selamat menikmati!`;
 
-    // Encode the message for URL
-    const encodedMessage = encodeURIComponent(receiptMessage);
-    
-    // Create WhatsApp URL
-    const whatsappUrl = `https://wa.me/${selectedOrderForReceipt.phone.replace(/\D/g, '')}?text=${encodedMessage}`;
-    
-    // Open WhatsApp in new tab
-    window.open(whatsappUrl, '_blank');
+    try {
+      // Create secure WhatsApp URL with input sanitization
+      const whatsappUrl = createSafeWhatsAppUrl(selectedOrderForReceipt.phone, receiptMessage);
+      
+      // Open WhatsApp in new tab
+      window.open(whatsappUrl, '_blank');
+    } catch (error) {
+      logger.error('Failed to create WhatsApp URL', { error: error.message });
+      toast({
+        title: "Error",
+        description: "Invalid phone number format. Please check the customer's phone number.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Close the receipt generator
     setShowReceiptGenerator(false);
@@ -897,21 +906,21 @@ Terima kasih dan selamat menikmati!`;
                         <div className="mt-2 pt-2 border-t border-border/50">
                           {(() => {
                             const notes = item.notes;
-                            console.log('🔍 Processing item notes:', notes);
+                            logger.log('🔍 Processing item notes:', notes);
                             
                             // Handle structured format from checkout
                             if (notes.startsWith('OPTIONS:')) {
                               const optionsText = notes.replace('OPTIONS:', '');
-                              console.log('🔍 OPTIONS: prefix detected, optionsText:', optionsText);
+                              logger.log('🔍 OPTIONS: prefix detected, optionsText:', optionsText);
                               
                               // Check if it's JSON format
                               if (optionsText.includes('{') && optionsText.includes('}')) {
-                                console.log('🔍 OPTIONS: contains JSON, attempting resolution');
+                                logger.log('🔍 OPTIONS: contains JSON, attempting resolution');
                                 try {
                                   const jsonMatch = optionsText.match(/\{.*\}/);
                                   if (jsonMatch) {
                                     const resolvedOptions = resolveOptionNames(jsonMatch[0]);
-                                    console.log('🔍 OPTIONS: resolved options:', resolvedOptions);
+                                    logger.log('🔍 OPTIONS: resolved options:', resolvedOptions);
                                     
                                     if (Object.keys(resolvedOptions).length > 0) {
                                       return (
@@ -930,7 +939,7 @@ Terima kasih dan selamat menikmati!`;
                                     }
                                   }
                                 } catch (error) {
-                                  console.error('🔍 OPTIONS: JSON resolution failed:', error);
+                                  logger.error('🔍 OPTIONS: JSON resolution failed:', error);
                                 }
                               }
                               
@@ -965,18 +974,18 @@ Terima kasih dan selamat menikmati!`;
                             // Handle structured JSON format from MenuDetailSheet
                             if (notes.includes('{') && notes.includes('}')) {
                               try {
-                                console.log('🔍 Processing JSON notes:', notes);
+                                logger.log('🔍 Processing JSON notes:', notes);
                                 // Extract JSON from structured format
                                 const jsonMatch = notes.match(/\{.*\}/);
-                                console.log('🔍 JSON match:', jsonMatch);
+                                logger.log('🔍 JSON match:', jsonMatch);
                                 
                                 if (jsonMatch) {
                                   const resolvedOptions = resolveOptionNames(jsonMatch[0]);
-                                  console.log('🔍 Resolved options for display:', resolvedOptions);
+                                  logger.log('🔍 Resolved options for display:', resolvedOptions);
                                   
                                   // If resolution failed, try manual resolution
                                   if (Object.keys(resolvedOptions).length === 0) {
-                                    console.log('🔍 Manual resolution attempt...');
+                                    logger.log('🔍 Manual resolution attempt...');
                                     const options = JSON.parse(jsonMatch[0]);
                                     const manualResolved: Record<string, string> = {};
                                     
@@ -994,7 +1003,7 @@ Terima kasih dan selamat menikmati!`;
                                       }
                                     });
                                     
-                                    console.log('🔍 Manual resolved options:', manualResolved);
+                                    logger.log('🔍 Manual resolved options:', manualResolved);
                                     
                                     return (
                                       <>
@@ -1038,7 +1047,7 @@ Terima kasih dan selamat menikmati!`;
                                   );
                                 }
                               } catch (error) {
-                                console.error('🔍 Error processing JSON notes:', error);
+                                logger.error('🔍 Error processing JSON notes:', error);
                                 // Fallback to plain text
                                 return (
                                   <>
@@ -1069,7 +1078,7 @@ Terima kasih dan selamat menikmati!`;
                             
                             // Fallback for plain text - but try to resolve if it looks like JSON
                             if (notes.includes('{') && notes.includes('}')) {
-                              console.log('🔍 Fallback: Attempting to resolve JSON in plain text fallback');
+                              logger.log('🔍 Fallback: Attempting to resolve JSON in plain text fallback');
                               try {
                                 const jsonMatch = notes.match(/\{.*\}/);
                                 if (jsonMatch) {
@@ -1090,7 +1099,7 @@ Terima kasih dan selamat menikmati!`;
                                     }
                                   });
                                   
-                                  console.log('🔍 Fallback resolved options:', manualResolved);
+                                  logger.log('🔍 Fallback resolved options:', manualResolved);
                                   
                                   if (Object.keys(manualResolved).length > 0) {
                                     return (
@@ -1109,7 +1118,7 @@ Terima kasih dan selamat menikmati!`;
                                   }
                                 }
                               } catch (error) {
-                                console.error('🔍 Fallback resolution failed:', error);
+                                logger.error('🔍 Fallback resolution failed:', error);
                               }
                             }
                             
@@ -1152,9 +1161,9 @@ Terima kasih dan selamat menikmati!`;
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit((data) => {
-            console.log('📋 Form submitted with data:', data);
-            console.log('📋 Current form status value:', status);
-            console.log('📋 Selected order status:', selectedOrder?.status);
+            logger.log('📋 Form submitted with data:', data);
+            logger.log('📋 Current form status value:', status);
+            logger.log('📋 Selected order status:', selectedOrder?.status);
             handleStatusUpdate(data);
           })} className="space-y-4">
             <div className="space-y-2">
@@ -1162,7 +1171,7 @@ Terima kasih dan selamat menikmati!`;
               <Select
                 value={status}
                 onValueChange={(value) => {
-                  console.log('🔄 Status changed to:', value);
+                  logger.log('🔄 Status changed to:', value);
                   setValue('status', value as 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN');
                 }}
                 disabled={updatingStatus}
