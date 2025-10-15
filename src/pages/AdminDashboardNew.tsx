@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   LogOut, 
   ShoppingBag, 
@@ -43,27 +44,36 @@ const navigationItems = [
   { id: 'menu' as TabType, label: 'Menu', icon: Coffee, description: 'Kelola menu dan opsi', comingSoon: false },
   { id: 'categories' as TabType, label: 'Kategori', icon: FolderOpen, description: 'Kelola kategori menu', comingSoon: false },
   { id: 'payment' as TabType, label: 'Pembayaran', icon: CreditCard, description: 'Kelola metode pembayaran', comingSoon: false },
-  { id: 'kasir' as TabType, label: 'Kasir', icon: Calculator, description: 'Kelola kasir dan transaksi', comingSoon: true },
+  { id: 'kasir' as TabType, label: 'Kasir', icon: Calculator, description: 'Kelola kasir dan transaksi', comingSoon: false },
   { id: 'sheets' as TabType, label: 'Google Sheets', icon: Sheet, description: 'Integrasi Google Sheets', comingSoon: true },
-  { id: 'settings' as TabType, label: 'Pengaturan', icon: Settings, description: 'Pengaturan tenant', comingSoon: true },
+  { id: 'settings' as TabType, label: 'Pengaturan', icon: Settings, description: 'Pengaturan tenant', comingSoon: false },
 ];
 
 export function AdminDashboard({}: AdminDashboardProps) {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>('orders');
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { signOut, user, currentTenant, isTenantOwner, loading } = useAuth();
+  const { signOut, user, currentTenant, isTenantOwner, loading, tenantLoading } = useAuth();
+
+  // Handle activeTab from location state
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
 
   // Debug logging
   useEffect(() => {
     console.log('🔄 AdminDashboard: Component mounted/updated');
     console.log('🔄 AdminDashboard: Auth state:', {
       loading,
+      tenantLoading,
       user: user?.email || 'no user',
       currentTenant: currentTenant?.name || 'no tenant',
       isTenantOwner
     });
-  }, [loading, user, currentTenant, isTenantOwner]);
+  }, [loading, tenantLoading, user, currentTenant, isTenantOwner]);
 
   // Show error if loading takes too long
   useEffect(() => {
@@ -79,8 +89,8 @@ export function AdminDashboard({}: AdminDashboardProps) {
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // Show loading state
-  if (loading) {
+  // Show loading state - wait for both auth loading AND tenant data
+  if (loading || tenantLoading || !currentTenant || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <Card className="shadow-xl border-0 max-w-md w-full mx-4">

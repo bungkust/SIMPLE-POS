@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,8 @@ import {
   Eye,
   Edit,
   Calendar,
-  DollarSign
+  DollarSign,
+  X
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency, formatDateTime } from '@/lib/form-utils';
@@ -35,6 +36,7 @@ import { orderStatusUpdateSchema, type OrderStatusUpdateData } from '@/lib/form-
 import { useAuth } from '@/contexts/AuthContext';
 import { ColumnDef } from '@tanstack/react-table';
 import { Database } from '@/lib/database.types';
+import { ThermalReceiptImage } from '@/components/ThermalReceiptImage';
 
 type Order = Database['public']['Tables']['orders']['Row'];
 type OrderItem = Database['public']['Tables']['order_items']['Row'];
@@ -44,12 +46,24 @@ export function OrdersTab() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [loadingMenuOptions, setLoadingMenuOptions] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [showStatusUpdate, setShowStatusUpdate] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [menuOptions, setMenuOptions] = useState<Record<string, any>>({});
+  const [showReceiptGenerator, setShowReceiptGenerator] = useState(false);
+  const [selectedOrderForReceipt, setSelectedOrderForReceipt] = useState<Order | null>(null);
+  const [tenantInfo, setTenantInfo] = useState<any>(null);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  
+  // Memoize tenant ID to prevent unnecessary re-renders
+  const tenantId = useMemo(() => currentTenant?.id, [currentTenant?.id]);
+  
+  // Use ref to track if we've already loaded data for this tenant
+  const loadedTenantRef = useRef<string | null>(null);
 
   const {
     register,
@@ -68,17 +82,17 @@ export function OrdersTab() {
 
   const status = watch('status');
 
-  useEffect(() => {
-    if (currentTenant) {
-      loadOrders();
-      loadMenuOptions();
+  const loadOrders = useCallback(async () => {
+    if (loadingOrders) {
+      console.log('OrdersTab: Already loading orders, skipping...');
+      return;
     }
-  }, [currentTenant]);
-
-  const loadOrders = async () => {
+    
     if (process.env.NODE_ENV === 'development') {
       console.log('OrdersTab: Starting to load orders...');
     }
+    
+    setLoadingOrders(true);
     try {
       if (!currentTenant?.id) {
         setOrders([]);
@@ -124,16 +138,23 @@ export function OrdersTab() {
       setOrderItems([]);
     } finally {
       setLoading(false);
+      setLoadingOrders(false);
     }
-  };
+  }, [tenantId, loadingOrders]);
 
-  const loadMenuOptions = async () => {
+  const loadMenuOptions = useCallback(async () => {
+    if (loadingMenuOptions) {
+      console.log('🔍 Already loading menu options, skipping...');
+      return;
+    }
+    
     if (!currentTenant?.id) {
       console.log('🔍 No tenant ID available for loading menu options');
       return;
     }
     
     console.log('🔍 Loading menu options for tenant:', currentTenant.id);
+    setLoadingMenuOptions(true);
     
     try {
       const { data: optionsData, error } = await supabase
@@ -151,22 +172,71 @@ export function OrdersTab() {
         return;
       }
 
-      console.log('🔍 Raw menu options data:', optionsData);
-
       // Create a lookup map for option IDs to names
       const optionsMap: Record<string, any> = {};
       optionsData?.forEach(option => {
-        console.log('🔍 Processing option:', option);
         optionsMap[option.id] = {
           label: option.label,
           items: option.items || []
         };
       });
-
-      console.log('🔍 Final options map:', optionsMap);
       setMenuOptions(optionsMap);
     } catch (error) {
       console.error('❌ Error loading menu options:', error);
+    } finally {
+      setLoadingMenuOptions(false);
+    }
+  }, [tenantId, loadingMenuOptions]);
+
+  // Load data when tenant changes
+  useEffect(() => {
+    if (tenantId) {
+      console.log('🔄 Loading data for new tenant:', tenantId);
+      loadOrders();
+      loadMenuOptions();
+      loadTenantInfo();
+      loadPaymentMethods();
+    }
+  }, [tenantId]); // Only depend on tenantId, not the functions
+
+  const loadTenantInfo = async () => {
+    if (!currentTenant?.id) return;
+
+    try {
+      const { data: tenant, error } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('id', currentTenant.id)
+        .single();
+
+      if (error) {
+        console.error('Error loading tenant info:', error);
+      } else {
+        setTenantInfo(tenant);
+      }
+    } catch (error) {
+      console.error('Error loading tenant info:', error);
+    }
+  };
+
+  const loadPaymentMethods = async () => {
+    if (!currentTenant?.id) return;
+
+    try {
+      const { data: methods, error } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (error) {
+        console.error('Error loading payment methods:', error);
+      } else {
+        setPaymentMethods(methods || []);
+      }
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
     }
   };
 
@@ -358,30 +428,78 @@ export function OrdersTab() {
   };
 
   const sendReceiptToWhatsApp = (order: Order) => {
-    // Format the receipt message
-    const receiptMessage = `🍽️ *Receipt - ${order.order_code}*
+    // Set order for receipt generation
+    setSelectedOrderForReceipt(order);
+    setShowReceiptGenerator(true);
+  };
 
-📅 *Date:* ${formatDateTime(new Date(order.created_at))}
-👤 *Customer:* ${order.customer_name}
-📞 *Phone:* ${order.phone}
-💰 *Total:* ${formatCurrency(order.total)}
-📊 *Status:* ${order.status}
+  const cancelOrder = async (order: Order) => {
+    if (!currentTenant?.id) return;
 
-📋 *Order Details:*
-${order.items?.map(item => 
-  `• ${item.name} x${item.quantity} = ${formatCurrency(item.price * item.quantity)}`
-).join('\n') || 'No items found'}
+    try {
+      console.log('🗑️ Cancelling order:', order.order_code);
+      
+      // Update order status to DIBATALKAN
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status: 'DIBATALKAN',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id);
 
-Thank you for your order! 🙏`;
+      if (error) throw error;
+
+      console.log('✅ Order cancelled successfully');
+      
+      toast({
+        title: "Order Cancelled",
+        description: `Order ${order.order_code} has been cancelled and removed from the list.`,
+        variant: "default",
+      });
+      
+      // Reload orders to reflect changes
+      await loadOrders();
+    } catch (error: any) {
+      console.error('❌ Error cancelling order:', error);
+      toast({
+        title: "Cancel Failed",
+        description: `Failed to cancel order: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImageGenerated = (imageDataUrl: string) => {
+    if (!selectedOrderForReceipt) return;
+
+    // Download the image first
+    const link = document.createElement('a');
+    link.download = `receipt-${selectedOrderForReceipt.order_code}.png`;
+    link.href = imageDataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Simple WhatsApp message without redundant info
+    const receiptMessage = `Terima kasih atas pesanannya!
+
+Berikut adalah struk atas pembelian Anda.
+
+Terima kasih dan selamat menikmati!`;
 
     // Encode the message for URL
     const encodedMessage = encodeURIComponent(receiptMessage);
     
     // Create WhatsApp URL
-    const whatsappUrl = `https://wa.me/${order.phone.replace(/\D/g, '')}?text=${encodedMessage}`;
+    const whatsappUrl = `https://wa.me/${selectedOrderForReceipt.phone.replace(/\D/g, '')}?text=${encodedMessage}`;
     
     // Open WhatsApp in new tab
     window.open(whatsappUrl, '_blank');
+    
+    // Close the receipt generator
+    setShowReceiptGenerator(false);
+    setSelectedOrderForReceipt(null);
   };
 
   const openOrderDetails = (order: Order) => {
@@ -477,6 +595,15 @@ Thank you for your order! 🙏`;
             >
               <MessageCircle className="h-4 w-4" />
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => cancelOrder(order)}
+              title="Cancel Order"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         );
       },
@@ -484,11 +611,11 @@ Thank you for your order! 🙏`;
   ];
 
   const filteredOrders = filterStatus && filterStatus !== 'all'
-    ? orders.filter(order => order.status === filterStatus)
-    : orders;
+    ? orders.filter(order => order.status === filterStatus && order.status !== 'DIBATALKAN')
+    : orders.filter(order => order.status !== 'DIBATALKAN');
 
   const stats = {
-    total: orders.length,
+    total: orders.filter(o => o.status !== 'DIBATALKAN').length,
     pending: orders.filter(o => o.status === 'BELUM BAYAR').length,
     processing: orders.filter(o => o.status === 'SUDAH BAYAR').length,
     completed: orders.filter(o => o.status === 'SUDAH BAYAR').length, // Using SUDAH BAYAR as completed
@@ -664,6 +791,87 @@ Thank you for your order! 🙏`;
                   <p className="text-sm text-muted-foreground">
                     Payment: {selectedOrder.payment_method}
                   </p>
+                </div>
+              </div>
+
+              {/* Payment Method Details */}
+              <div>
+                <h4 className="font-medium mb-2">Payment Method Details</h4>
+                <div className="p-3 border rounded-lg bg-muted/20">
+                  {(() => {
+                    const currentPaymentMethod = paymentMethods.find(pm => pm.payment_type === selectedOrder.payment_method);
+                    
+                    if (!currentPaymentMethod) {
+                      return (
+                        <div className="text-sm text-muted-foreground">
+                          <p>Payment Method: {selectedOrder.payment_method}</p>
+                          <p className="text-xs mt-1">No additional details available</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Method:</span>
+                          <span className="text-sm">{currentPaymentMethod.name}</span>
+                        </div>
+                        
+                        {selectedOrder.payment_method === 'TRANSFER' && (
+                          <>
+                            {currentPaymentMethod.bank_name && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">Bank:</span>
+                                <span className="text-sm">{currentPaymentMethod.bank_name}</span>
+                              </div>
+                            )}
+                            {currentPaymentMethod.account_number && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">Account Number:</span>
+                                <span className="text-sm font-mono">{currentPaymentMethod.account_number}</span>
+                              </div>
+                            )}
+                            {currentPaymentMethod.account_holder && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">Account Holder:</span>
+                                <span className="text-sm">{currentPaymentMethod.account_holder}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        
+                        {selectedOrder.payment_method === 'QRIS' && currentPaymentMethod.qris_image_url && (
+                          <div className="mt-3">
+                            <p className="text-sm text-muted-foreground mb-2">QR Code:</p>
+                            <div className="flex justify-center">
+                              <img 
+                                src={currentPaymentMethod.qris_image_url} 
+                                alt="QRIS Code" 
+                                className="w-32 h-32 object-contain border rounded"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {selectedOrder.payment_method === 'QRIS' && !currentPaymentMethod.qris_image_url && (
+                          <div className="text-sm text-muted-foreground">
+                            <p>QRIS payment method</p>
+                            <p className="text-xs mt-1">QR Code not available</p>
+                          </div>
+                        )}
+                        
+                        {selectedOrder.payment_method === 'COD' && (
+                          <div className="text-sm text-muted-foreground">
+                            <p>Cash on Delivery</p>
+                            <p className="text-xs mt-1">Payment to be collected upon delivery</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1008,6 +1216,19 @@ Thank you for your order! 🙏`;
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Receipt Image Generator */}
+      {showReceiptGenerator && selectedOrderForReceipt && tenantInfo && (
+        <ThermalReceiptImage
+          order={{
+            ...selectedOrderForReceipt,
+            order_items: getOrderItems(selectedOrderForReceipt.id),
+            payment_methods: paymentMethods
+          }}
+          tenant={tenantInfo}
+          onImageGenerated={handleImageGenerated}
+        />
+      )}
     </div>
   );
 }

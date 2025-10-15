@@ -52,7 +52,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
       category_id: item?.category_id || '',
       is_available: item?.is_active ?? true,
       image_url: item?.photo_url || '',
-      preparation_time: item?.preparation_time || 0,
+      // preparation_time field removed as it doesn't exist in database schema
     }
   });
 
@@ -132,7 +132,10 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
         category_id: data.category_id,
         photo_url: data.image_url || null,
         is_active: data.is_available,
-        preparation_time: data.preparation_time || null,
+        base_price: data.price, // Set base_price same as price initially
+        short_description: data.description ? data.description.substring(0, 100) : null, // Truncate description for short_description
+        search_text: `${data.name} ${data.description || ''}`.toLowerCase(), // Create search text for filtering
+        // preparation_time field doesn't exist in database schema, removing it
         updated_at: new Date().toISOString(),
       };
 
@@ -237,15 +240,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
                   helperText={price ? `Price: ${formatCurrency(price)}` : undefined}
                 />
 
-                <FormInput
-                  {...register('preparation_time', { valueAsNumber: true })}
-                  label="Preparation Time (minutes)"
-                  type="number"
-                  placeholder="0"
-                  error={errors.preparation_time?.message}
-                  disabled={loading}
-                  helperText="Estimated time to prepare this item"
-                />
+                {/* Preparation time field removed as it doesn't exist in database schema */}
               </div>
 
               <FormSelect

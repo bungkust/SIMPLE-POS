@@ -3,12 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Copy, Download, Check, FileText, CreditCard, Smartphone, Banknote } from 'lucide-react';
+import { ArrowLeft, Copy, Download, Check, FileText, CreditCard, Smartphone, Banknote, Printer } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatRupiah, formatDateTime } from '../lib/utils';
 import { Database } from '../lib/database.types';
 import { pdf } from '@react-pdf/renderer';
 import { ReceiptPDF } from '../components/ReceiptPDF';
+import { ThermalReceipt } from '../components/ThermalReceipt';
 import { getTenantInfo } from '../lib/tenantUtils';
 
 type Order = Database['public']['Tables']['orders']['Row'];
@@ -28,6 +29,7 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
   const [tenantInfo, setTenantInfo] = useState<any>(null);
+  const [showThermalReceipt, setShowThermalReceipt] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -170,13 +172,23 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <h1 className="text-xl font-bold">Invoice</h1>
-            <Button
-              onClick={downloadPDF}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download Struk
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowThermalReceipt(true)}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Print Struk
+              </Button>
+              
+              <Button
+                onClick={downloadPDF}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Struk
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -556,6 +568,36 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Thermal Receipt Modal */}
+      {showThermalReceipt && order && tenantInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Print Struk Thermal</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowThermalReceipt(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              <ThermalReceipt
+                order={{
+                  ...order,
+                  order_items: items,
+                  payment_methods: paymentMethod ? [paymentMethod] : []
+                }}
+                tenant={tenantInfo}
+                onClose={() => setShowThermalReceipt(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

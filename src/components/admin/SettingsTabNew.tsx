@@ -23,11 +23,8 @@ import {
   Upload, 
   X,
   Settings,
-  Palette,
   Image,
-  Bell,
   Shield,
-  Globe,
   Clock,
   MapPin,
   Phone,
@@ -35,9 +32,9 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { useConfig } from '../../contexts/ConfigContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { useConfig } from '@/contexts/ConfigContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { settingsFormSchema, type SettingsFormData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 
@@ -76,17 +73,10 @@ export function SettingsTab() {
       storePhone: config.storePhone || '',
       storeEmail: config.storeEmail || '',
       storeHours: config.storeHours || '',
-      currency: config.currency || 'IDR',
-      timezone: config.timezone || 'Asia/Jakarta',
-      language: config.language || 'id',
-      theme: config.theme || 'light',
-      notifications: config.notifications || true,
-      emailNotifications: config.emailNotifications || true,
-      smsNotifications: config.smsNotifications || false,
       autoAcceptOrders: config.autoAcceptOrders || false,
-      requireCustomerInfo: config.requireCustomerInfo || true,
-      allowGuestCheckout: config.allowGuestCheckout || false,
-      minOrderAmount: config.minOrderAmount || 0,
+      requirePhoneVerification: config.requirePhoneVerification || false,
+      allowGuestCheckout: config.allowGuestCheckout || true,
+      minimumOrderAmount: config.minimumOrderAmount || 0,
       deliveryFee: config.deliveryFee || 0,
       freeDeliveryThreshold: config.freeDeliveryThreshold || 0,
     }
@@ -148,17 +138,10 @@ export function SettingsTab() {
         storePhone: data.storePhone,
         storeEmail: data.storeEmail,
         storeHours: data.storeHours,
-        currency: data.currency,
-        timezone: data.timezone,
-        language: data.language,
-        theme: data.theme,
-        notifications: data.notifications,
-        emailNotifications: data.emailNotifications,
-        smsNotifications: data.smsNotifications,
         autoAcceptOrders: data.autoAcceptOrders,
-        requireCustomerInfo: data.requireCustomerInfo,
+        requirePhoneVerification: data.requirePhoneVerification,
         allowGuestCheckout: data.allowGuestCheckout,
-        minOrderAmount: data.minOrderAmount,
+        minimumOrderAmount: data.minimumOrderAmount,
         deliveryFee: data.deliveryFee,
         freeDeliveryThreshold: data.freeDeliveryThreshold,
       });
@@ -182,17 +165,10 @@ export function SettingsTab() {
       storePhone: '',
       storeEmail: '',
       storeHours: '',
-      currency: 'IDR',
-      timezone: 'Asia/Jakarta',
-      language: 'id',
-      theme: 'light',
-      notifications: true,
-      emailNotifications: true,
-      smsNotifications: false,
       autoAcceptOrders: false,
-      requireCustomerInfo: true,
-      allowGuestCheckout: false,
-      minOrderAmount: 0,
+      requirePhoneVerification: false,
+      allowGuestCheckout: true,
+      minimumOrderAmount: 0,
       deliveryFee: 0,
       freeDeliveryThreshold: 0,
     });
@@ -217,18 +193,10 @@ export function SettingsTab() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="general" className="flex items-center gap-2">
                 <Store className="h-4 w-4" />
                 General
-              </TabsTrigger>
-              <TabsTrigger value="appearance" className="flex items-center gap-2">
-                <Palette className="h-4 w-4" />
-                Appearance
-              </TabsTrigger>
-              <TabsTrigger value="notifications" className="flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                Notifications
               </TabsTrigger>
               <TabsTrigger value="orders" className="flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4" />
@@ -394,140 +362,9 @@ export function SettingsTab() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Regional Settings</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormSelect
-                        {...register('currency')}
-                        label="Currency"
-                        error={errors.currency?.message}
-                        required
-                        disabled={loading}
-                      >
-                        <SelectItem value="IDR">IDR (Indonesian Rupiah)</SelectItem>
-                        <SelectItem value="USD">USD (US Dollar)</SelectItem>
-                        <SelectItem value="EUR">EUR (Euro)</SelectItem>
-                      </FormSelect>
-
-                      <FormSelect
-                        {...register('timezone')}
-                        label="Timezone"
-                        error={errors.timezone?.message}
-                        required
-                        disabled={loading}
-                      >
-                        <SelectItem value="Asia/Jakarta">Asia/Jakarta</SelectItem>
-                        <SelectItem value="Asia/Makassar">Asia/Makassar</SelectItem>
-                        <SelectItem value="Asia/Jayapura">Asia/Jayapura</SelectItem>
-                        <SelectItem value="UTC">UTC</SelectItem>
-                      </FormSelect>
-
-                      <FormSelect
-                        {...register('language')}
-                        label="Language"
-                        error={errors.language?.message}
-                        required
-                        disabled={loading}
-                      >
-                        <SelectItem value="id">Bahasa Indonesia</SelectItem>
-                        <SelectItem value="en">English</SelectItem>
-                      </FormSelect>
-                    </div>
-                  </CardContent>
-                </Card>
               </TabsContent>
 
-              {/* Appearance Settings */}
-              <TabsContent value="appearance" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Theme Settings</CardTitle>
-                    <CardDescription>
-                      Customize the appearance of your store
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormSelect
-                      {...register('theme')}
-                      label="Theme"
-                      error={errors.theme?.message}
-                      required
-                      disabled={loading}
-                    >
-                      <SelectItem value="light">Light Theme</SelectItem>
-                      <SelectItem value="dark">Dark Theme</SelectItem>
-                      <SelectItem value="auto">Auto (System)</SelectItem>
-                    </FormSelect>
 
-                    <Alert>
-                      <Palette className="h-4 w-4" />
-                      <AlertDescription>
-                        Theme changes will be applied immediately. You can also customize colors in the advanced settings.
-                      </AlertDescription>
-                    </Alert>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Notification Settings */}
-              <TabsContent value="notifications" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Notification Preferences</CardTitle>
-                    <CardDescription>
-                      Configure how you receive notifications
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label>Enable Notifications</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Receive notifications for new orders and updates
-                          </p>
-                        </div>
-                        <Switch
-                          checked={watch('notifications')}
-                          onCheckedChange={(checked) => setValue('notifications', checked)}
-                          disabled={loading}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label>Email Notifications</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Receive notifications via email
-                          </p>
-                        </div>
-                        <Switch
-                          checked={watch('emailNotifications')}
-                          onCheckedChange={(checked) => setValue('emailNotifications', checked)}
-                          disabled={loading}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label>SMS Notifications</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Receive notifications via SMS
-                          </p>
-                        </div>
-                        <Switch
-                          checked={watch('smsNotifications')}
-                          onCheckedChange={(checked) => setValue('smsNotifications', checked)}
-                          disabled={loading}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
 
               {/* Order Settings */}
               <TabsContent value="orders" className="space-y-6">
@@ -556,14 +393,14 @@ export function SettingsTab() {
 
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <Label>Require Customer Info</Label>
+                          <Label>Require Phone Verification</Label>
                           <p className="text-sm text-muted-foreground">
-                            Require customer name and phone for all orders
+                            Require phone number verification for all orders
                           </p>
                         </div>
                         <Switch
-                          checked={watch('requireCustomerInfo')}
-                          onCheckedChange={(checked) => setValue('requireCustomerInfo', checked)}
+                          checked={watch('requirePhoneVerification')}
+                          onCheckedChange={(checked) => setValue('requirePhoneVerification', checked)}
                           disabled={loading}
                         />
                       </div>
@@ -592,11 +429,11 @@ export function SettingsTab() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormInput
-                        {...register('minOrderAmount', { valueAsNumber: true })}
+                        {...register('minimumOrderAmount', { valueAsNumber: true })}
                         label="Minimum Order Amount"
                         type="number"
                         placeholder="0"
-                        error={errors.minOrderAmount?.message}
+                        error={errors.minimumOrderAmount?.message}
                         disabled={loading}
                         helperText="Minimum amount for order placement"
                       />

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, FileText, ArrowLeft, ShoppingBag, CreditCard, Smartphone, Banknote, Download, Copy } from 'lucide-react';
+import { CheckCircle, FileText, ArrowLeft, ShoppingBag, CreditCard, Smartphone, Banknote, Download, Copy, Printer, Calculator } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppToast } from '@/components/ui/toast-provider';
+import { ThermalReceipt } from '@/components/ThermalReceipt';
 
 interface OrderSuccessPageProps {
   orderCode: string;
@@ -22,12 +23,19 @@ interface OrderData {
   status: string;
   pickup_date: string;
   created_at: string;
+  subtotal: number;
+  discount: number;
+  service_fee: number;
+  notes?: string;
+  order_items: any[];
 }
 
 export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu }: OrderSuccessPageProps) {
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showThermalReceipt, setShowThermalReceipt] = useState(false);
+  const [tenantData, setTenantData] = useState<any>(null);
   const { showSuccess, showError } = useAppToast();
 
   useEffect(() => {
@@ -38,10 +46,13 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu }: Ord
     try {
       setLoading(true);
       
-      // Load order data
+      // Load order data with order items
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          order_items (*)
+        `)
         .eq('order_code', orderCode)
         .single();
 
@@ -115,6 +126,19 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu }: Ord
         console.error('Error loading payment methods:', methodsError);
       } else {
         setPaymentMethods(methods || []);
+      }
+
+      // Load tenant data for thermal receipt
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('id', order.tenant_id)
+        .single();
+
+      if (tenantError) {
+        console.error('Error loading tenant:', tenantError);
+      } else {
+        setTenantData(tenant);
       }
     } catch (error) {
       console.error('Error loading order data:', error);
@@ -386,6 +410,15 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu }: Ord
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <Button
+                onClick={() => setShowThermalReceipt(true)}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-base"
+                size="sm"
+              >
+                <Printer className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                Print Struk
+              </Button>
+              
+              <Button
                 onClick={onViewInvoice}
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-base"
                 size="sm"
@@ -400,8 +433,8 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu }: Ord
                 className="flex-1 text-xs sm:text-base"
                 size="sm"
               >
-                <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                Kembali ke Menu
+                <Calculator className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                Kembali ke Kasir
               </Button>
             </div>
 
@@ -419,6 +452,35 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu }: Ord
           </CardContent>
         </Card>
       </div>
+
+      {/* Thermal Receipt Modal */}
+      {showThermalReceipt && orderData && tenantData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Print Struk Thermal</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowThermalReceipt(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              <ThermalReceipt
+                order={{
+                  ...orderData,
+                  payment_methods: paymentMethods
+                }}
+                tenant={tenantData}
+                onClose={() => setShowThermalReceipt(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

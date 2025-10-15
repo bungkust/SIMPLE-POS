@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 // Removed secureAuth import - using Supabase Auth directly
@@ -16,6 +16,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  tenantLoading: boolean;
   currentTenant: Tenant | null;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -36,6 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [userRole, setUserRole] = useState<'super_admin' | 'tenant' | null>(null);
+  const [loadingTenantData, setLoadingTenantData] = useState(false);
+  const [tenantLoading, setTenantLoading] = useState(false);
 
   const signIn = async (email: string, password: string) => {
     console.log('🔐 AUTH: Starting authentication...');
@@ -89,9 +92,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Load tenant data for authenticated user
-  const loadTenantData = async (user: User) => {
+  const loadTenantData = useCallback(async (user: User) => {
+    if (loadingTenantData) {
+      console.log('🔐 AUTH: Already loading tenant data, skipping...');
+      return;
+    }
+    
     try {
       console.log('🔐 AUTH: Loading tenant data...');
+      setLoadingTenantData(true);
+      setTenantLoading(true);
       
       // Get user role from user_roles table
       const { data: userRoleData, error: roleError } = await supabase
@@ -121,20 +131,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Load tenant data if user is a tenant
       if (userRoleData[0].role === 'tenant') {
         console.log('🔍 AUTH: Loading tenant data for email:', user.email);
+        console.log('🔍 AUTH: User ID:', user.id);
         
-        const { data: tenantData, error: tenantError } = await supabase
+        // Try multiple approaches to find tenant
+        let tenantData = null;
+        let tenantError = null;
+        
+        // Debug: List all tenants to see what's available
+        const { data: allTenants, error: allTenantsError } = await supabase
           .from('tenants')
-          .select('id, name, slug, owner_email')
+          .select('id, name, slug, owner_email, owner_id');
+        
+        if (allTenantsError) {
+          console.error('❌ AUTH: Error listing all tenants:', allTenantsError);
+        } else {
+          console.log('🔍 AUTH: All tenants in database:', allTenants);
+        }
+        
+        // Approach 1: Find by owner_email
+        const { data: tenantByEmail, error: errorByEmail } = await supabase
+          .from('tenants')
+          .select('id, name, slug, owner_email, owner_id')
           .eq('owner_email', user.email);
 
-        if (tenantError) {
-          console.error('❌ AUTH: Failed to load tenant data:', tenantError);
-          setCurrentTenant(null);
-        } else if (tenantData && tenantData.length > 0) {
-          console.log('✅ AUTH: Tenant data loaded:', tenantData[0]);
+        if (errorByEmail) {
+          console.error('❌ AUTH: Error finding tenant by email:', errorByEmail);
+        } else if (tenantByEmail && tenantByEmail.length > 0) {
+          tenantData = tenantByEmail;
+          console.log('✅ AUTH: Found tenant by email:', tenantByEmail[0]);
+        } else {
+          console.log('⚠️ AUTH: No tenant found by email, trying by user_id...');
+          
+          // Approach 2: Find by owner_id in tenants table
+          const { data: tenantByUserId, error: errorByUserId } = await supabase
+            .from('tenants')
+            .select('id, name, slug, owner_email, owner_id')
+            .eq('owner_id', user.id);
+
+          if (errorByUserId) {
+            console.error('❌ AUTH: Error finding tenant by user_id:', errorByUserId);
+          } else if (tenantByUserId && tenantByUserId.length > 0) {
+            tenantData = tenantByUserId;
+            console.log('✅ AUTH: Found tenant by user_id:', tenantByUserId[0]);
+          } else {
+            console.log('⚠️ AUTH: No tenant found by user_id either');
+          }
+        }
+
+        if (tenantData && tenantData.length > 0) {
           setCurrentTenant(tenantData[0]);
         } else {
-          console.log('⚠️ AUTH: No tenant found for email:', user.email);
+          console.log('⚠️ AUTH: No tenant found for user:', user.email);
           setCurrentTenant(null);
         }
       } else {
@@ -145,8 +192,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('❌ AUTH: Role validation error:', error);
       setUserRole(null);
       setCurrentTenant(null);
+    } finally {
+      setLoadingTenantData(false);
+      setTenantLoading(false);
     }
-  };
+  }, [loadingTenantData]); // Add loadingTenantData to dependency array
 
   useEffect(() => {
     // Set up auth state listener
@@ -219,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     session,
     loading,
+    tenantLoading,
     currentTenant,
     signIn,
     signInWithGoogle,

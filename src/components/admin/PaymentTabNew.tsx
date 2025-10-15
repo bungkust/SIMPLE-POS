@@ -313,49 +313,109 @@ export function PaymentTab() {
       
       // Handle TRANSFER methods
       const transferMethods = paymentMethods.filter(m => m.payment_type === 'TRANSFER');
-      for (const method of transferMethods) {
-        if (method.is_active !== data.transfer_enabled) {
-          updates.push(
-            supabase
-              .from('payment_methods')
-              .update({ 
-                is_active: data.transfer_enabled,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', method.id)
-          );
+      
+      if (transferMethods.length === 0 && data.transfer_enabled) {
+        // Create default TRANSFER method if none exists and TRANSFER is enabled
+        updates.push(
+          supabase
+            .from('payment_methods')
+            .insert({
+              tenant_id: currentTenant.id,
+              name: 'Bank Transfer',
+              description: 'Transfer to bank account',
+              payment_type: 'TRANSFER',
+              is_active: true,
+              sort_order: paymentMethods.length,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+        );
+      } else {
+        // Update existing TRANSFER methods
+        for (const method of transferMethods) {
+          if (method.is_active !== data.transfer_enabled) {
+            updates.push(
+              supabase
+                .from('payment_methods')
+                .update({ 
+                  is_active: data.transfer_enabled,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', method.id)
+            );
+          }
         }
       }
       
       // Handle QRIS methods
       const qrisMethods = paymentMethods.filter(m => m.payment_type === 'QRIS');
-      for (const method of qrisMethods) {
-        if (method.is_active !== data.qris_enabled) {
-          updates.push(
-            supabase
-              .from('payment_methods')
-              .update({ 
-                is_active: data.qris_enabled,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', method.id)
-          );
+      
+      if (qrisMethods.length === 0 && data.qris_enabled) {
+        // Create default QRIS method if none exists and QRIS is enabled
+        updates.push(
+          supabase
+            .from('payment_methods')
+            .insert({
+              tenant_id: currentTenant.id,
+              name: 'QRIS Payment',
+              description: 'Scan QR code to pay',
+              payment_type: 'QRIS',
+              is_active: true,
+              sort_order: paymentMethods.length,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+        );
+      } else {
+        // Update existing QRIS methods
+        for (const method of qrisMethods) {
+          if (method.is_active !== data.qris_enabled) {
+            updates.push(
+              supabase
+                .from('payment_methods')
+                .update({ 
+                  is_active: data.qris_enabled,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', method.id)
+            );
+          }
         }
       }
       
       // Handle COD methods
       const codMethods = paymentMethods.filter(m => m.payment_type === 'COD');
-      for (const method of codMethods) {
-        if (method.is_active !== data.cod_enabled) {
-          updates.push(
-            supabase
-              .from('payment_methods')
-              .update({ 
-                is_active: data.cod_enabled,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', method.id)
-          );
+      
+      if (codMethods.length === 0 && data.cod_enabled) {
+        // Create default COD method if none exists and COD is enabled
+        updates.push(
+          supabase
+            .from('payment_methods')
+            .insert({
+              tenant_id: currentTenant.id,
+              name: 'Cash on Delivery',
+              description: 'Payment upon delivery',
+              payment_type: 'COD',
+              is_active: true,
+              sort_order: paymentMethods.length,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+        );
+      } else {
+        // Update existing COD methods
+        for (const method of codMethods) {
+          if (method.is_active !== data.cod_enabled) {
+            updates.push(
+              supabase
+                .from('payment_methods')
+                .update({ 
+                  is_active: data.cod_enabled,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', method.id)
+            );
+          }
         }
       }
       

@@ -19,8 +19,8 @@ import {
   Calendar,
   AlertCircle
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { categoryFormSchema, type CategoryFormData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { ColumnDef } from '@tanstack/react-table';

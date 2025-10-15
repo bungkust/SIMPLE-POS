@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,29 +10,19 @@ import { FormTextarea } from '@/components/forms/FormTextarea';
 import { FormSelect, SelectItem } from '@/components/forms/FormSelect';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { 
   Plus, 
   Minus, 
   Trash2, 
   ShoppingCart, 
-  CreditCard, 
-  DollarSign, 
-  QrCode,
-  User,
-  Phone,
-  FileText,
   CheckCircle,
-  XCircle,
   Receipt,
-  Calculator,
   Package
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatCurrency } from '@/lib/form-utils';
+import { formatCurrency, normalizePhone } from '@/lib/form-utils';
+import { generateOrderCode } from '@/lib/orderUtils';
 import { cashierOrderSchema, type CashierOrderData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { Database } from '../../lib/database.types';
@@ -50,15 +41,15 @@ type CartItem = {
 export function CashierTab() {
   const { currentTenant } = useAuth();
   const { showSuccess, showError } = useAppToast();
+  const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showCustomerForm, setShowCustomerForm] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'TRANSFER' | 'QRIS' | 'COD' | null>(null);
   const [processingOrder, setProcessingOrder] = useState(false);
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>(['QRIS', 'COD', 'TRANSFER']);
 
   const {
     register,
@@ -73,13 +64,10 @@ export function CashierTab() {
       customer_name: '',
       customer_phone: '',
       notes: '',
-      payment_method: 'COD'
+      payment_method: 'QRIS'
     }
   });
 
-  const customerName = watch('customer_name');
-  const customerPhone = watch('customer_phone');
-  const notes = watch('notes');
 
   useEffect(() => {
     loadData();
@@ -164,6 +152,7 @@ export function CashierTab() {
   const clearCart = () => {
     setCart([]);
     reset();
+    setValue('payment_method', 'QRIS'); // Ensure QRIS is selected
   };
 
   const getTotalAmount = () => {
@@ -180,20 +169,49 @@ export function CashierTab() {
       return;
     }
 
+    // Validate payment method
+    if (!data.payment_method || data.payment_method.trim() === '') {
+      showError('Validation Error', 'Silakan pilih metode pembayaran terlebih dahulu.');
+      return;
+    }
+
+    // Validate payment method value
+    if (!['TRANSFER', 'QRIS', 'COD'].includes(data.payment_method)) {
+      showError('Validation Error', 'Metode pembayaran tidak valid.');
+      return;
+    }
+
+    // Check if selected payment method is available
+    if (!availablePaymentMethods.includes(data.payment_method)) {
+      showError('Validation Error', 'Metode pembayaran yang dipilih tidak tersedia.');
+      return;
+    }
+
+    console.log('✅ Payment method validation passed:', data.payment_method);
+
     setProcessingOrder(true);
     try {
       // Generate order code
-      const orderCode = `KP-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const orderCode = generateOrderCode();
 
       // Create order
+      const subtotal = getTotalAmount();
+      const discount = 0;
+      const serviceFee = 0;
+      const total = subtotal - discount + serviceFee;
+
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
           tenant_id: currentTenant.id,
           order_code: orderCode,
-          customer_name: data.customer_name,
-          phone: data.customer_phone,
-          total: getTotalAmount(),
+          customer_name: data.customer_name || 'Customer',
+          phone: data.customer_phone ? normalizePhone(data.customer_phone) : 'Tidak ada',
+          pickup_date: new Date().toISOString().split('T')[0], // Today's date
+          subtotal,
+          discount,
+          service_fee: serviceFee,
+          total,
           payment_method: data.payment_method,
           status: 'BELUM BAYAR',
           notes: data.notes || null,
@@ -208,11 +226,13 @@ export function CashierTab() {
       // Create order items
       const orderItems = cart.map(item => ({
         order_id: orderData.id,
-        menu_item_id: item.menu_item_id,
+        menu_id: item.menu_item_id,
         name_snapshot: item.name,
         price_snapshot: item.price,
         qty: item.quantity,
         notes: item.notes || null,
+        line_total: item.price * item.quantity,
+        tenant_id: currentTenant.id,
         created_at: new Date().toISOString()
       }));
 
@@ -225,13 +245,28 @@ export function CashierTab() {
       // Clear cart and reset form
       clearCart();
       setShowCustomerForm(false);
-      setShowPaymentModal(false);
-      setPaymentMethod(null);
 
       showSuccess('Order Created', `Order ${orderCode} has been created successfully!`);
+      
+      // Redirect to order success page
+             setTimeout(() => {
+               navigate(`/${currentTenant?.slug}/success/${orderCode}`, { 
+                 state: { fromAdmin: true } 
+               });
+             }, 1500);
     } catch (error: any) {
       console.error('Error creating order:', error);
-      showError('Order Failed', 'Failed to create order: ' + error.message);
+      
+      // More specific error handling
+      if (error.message?.includes('payment_method')) {
+        showError('Payment Error', 'Metode pembayaran tidak valid. Silakan pilih metode pembayaran yang tersedia.');
+      } else if (error.message?.includes('tenant_id')) {
+        showError('Tenant Error', 'Terjadi kesalahan dengan tenant. Silakan refresh halaman.');
+      } else if (error.message?.includes('menu_id')) {
+        showError('Menu Error', 'Terjadi kesalahan dengan menu item. Silakan coba lagi.');
+      } else {
+        showError('Order Failed', 'Gagal membuat pesanan: ' + (error.message || 'Terjadi kesalahan tidak diketahui'));
+      }
     } finally {
       setProcessingOrder(false);
     }
@@ -282,10 +317,10 @@ export function CashierTab() {
           {/* Category Filter */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Menu Items
-              </CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Menu
+                </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2 mb-4">
@@ -294,7 +329,7 @@ export function CashierTab() {
                   size="sm"
                   onClick={() => setSelectedCategory('all')}
                 >
-                  All Items
+                  Semua Item
                 </Button>
                 {categories.map((category) => (
                   <Button
@@ -338,11 +373,11 @@ export function CashierTab() {
               {filteredMenuItems.length === 0 && (
                 <div className="text-center py-8">
                   <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Items Found</h3>
+                  <h3 className="text-lg font-semibold mb-2">Tidak Ada Item</h3>
                   <p className="text-muted-foreground">
                     {selectedCategory === 'all' 
-                      ? 'No menu items available' 
-                      : 'No items in this category'
+                      ? 'Tidak ada menu yang tersedia' 
+                      : 'Tidak ada item dalam kategori ini'
                     }
                   </p>
                 </div>
@@ -358,10 +393,10 @@ export function CashierTab() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5" />
-                  Cart
+                  Keranjang
                 </CardTitle>
                 <Badge variant="secondary">
-                  {getTotalItems()} items
+                  {getTotalItems()} item
                 </Badge>
               </div>
             </CardHeader>
@@ -369,9 +404,9 @@ export function CashierTab() {
               {cart.length === 0 ? (
                 <div className="text-center py-8">
                   <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Cart is Empty</h3>
+                  <h3 className="text-lg font-semibold mb-2">Keranjang Kosong</h3>
                   <p className="text-muted-foreground">
-                    Add items from the menu to get started
+                    Tambahkan item dari menu untuk memulai
                   </p>
                 </div>
               ) : (
@@ -433,12 +468,15 @@ export function CashierTab() {
 
                   <div className="space-y-2">
                     <Button
-                      onClick={() => setShowCustomerForm(true)}
+                      onClick={() => {
+                        setShowCustomerForm(true);
+                        setValue('payment_method', 'QRIS'); // Ensure QRIS is selected when opening dialog
+                      }}
                       className="w-full"
                       disabled={cart.length === 0}
                     >
-                      <User className="h-4 w-4 mr-2" />
-                      Add Customer Info
+                      <Receipt className="h-4 w-4 mr-2" />
+                      Proses Pesanan
                     </Button>
                     <Button
                       variant="outline"
@@ -447,7 +485,7 @@ export function CashierTab() {
                       disabled={cart.length === 0}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Clear Cart
+                      Kosongkan Keranjang
                     </Button>
                   </div>
                 </div>
@@ -461,34 +499,32 @@ export function CashierTab() {
       <Dialog open={showCustomerForm} onOpenChange={setShowCustomerForm}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Customer Information</DialogTitle>
+            <DialogTitle>Informasi Pesanan</DialogTitle>
             <DialogDescription>
-              Enter customer details for the order
+              Masukkan detail pelanggan (opsional) dan pilih metode pembayaran
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <FormInput
               {...register('customer_name')}
-              label="Customer Name"
-              placeholder="Enter customer name"
+              label="Nama Pelanggan (Opsional)"
+              placeholder="Masukkan nama pelanggan atau kosongkan"
               error={errors.customer_name?.message}
-              required
               disabled={processingOrder}
             />
 
             <FormInput
               {...register('customer_phone')}
-              label="Phone Number"
-              placeholder="Enter phone number"
+              label="Nomor Telepon (Opsional)"
+              placeholder="Masukkan nomor telepon"
               error={errors.customer_phone?.message}
-              required
               disabled={processingOrder}
             />
 
             <FormTextarea
               {...register('notes')}
-              label="Order Notes (Optional)"
-              placeholder="Any special instructions..."
+              label="Catatan Pesanan (Opsional)"
+              placeholder="Instruksi khusus atau catatan..."
               error={errors.notes?.message}
               disabled={processingOrder}
               rows={3}
@@ -496,14 +532,15 @@ export function CashierTab() {
 
             <FormSelect
               {...register('payment_method')}
-              label="Payment Method"
+              label="Metode Pembayaran"
               error={errors.payment_method?.message}
               required
               disabled={processingOrder}
+              defaultValue="QRIS"
             >
-              <SelectItem value="COD">Cash on Delivery</SelectItem>
-              <SelectItem value="TRANSFER">Bank Transfer</SelectItem>
-              <SelectItem value="QRIS">QRIS</SelectItem>
+              <SelectItem value="QRIS">QRIS (Default)</SelectItem>
+              <SelectItem value="COD">Tunai</SelectItem>
+              <SelectItem value="TRANSFER">Transfer Bank</SelectItem>
             </FormSelect>
 
             <div className="flex justify-end space-x-2">
@@ -513,7 +550,7 @@ export function CashierTab() {
                 onClick={() => setShowCustomerForm(false)}
                 disabled={processingOrder}
               >
-                Cancel
+                Batal
               </Button>
               <Button
                 type="submit"
@@ -522,12 +559,12 @@ export function CashierTab() {
                 {processingOrder ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Creating Order...
+                    Memproses Pesanan...
                   </>
                 ) : (
                   <>
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Create Order
+                    Buat Pesanan
                   </>
                 )}
               </Button>

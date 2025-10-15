@@ -39,7 +39,7 @@ export const menuFormSchema = z.object({
   category_id: z.string().min(1, "Kategori harus dipilih"),
   is_available: z.boolean().default(true),
   image_url: z.string().url("URL gambar tidak valid").optional().or(z.literal("")),
-  preparation_time: z.number().min(0, "Waktu persiapan tidak boleh negatif").optional(),
+  // preparation_time field removed as it doesn't exist in database schema
 });
 
 export const categoryFormSchema = z.object({
@@ -106,9 +106,9 @@ export const adminFormSchema = z.object({
 
 // Cashier Schemas
 export const cashierOrderSchema = z.object({
-  customerName: z.string().min(1, "Nama customer harus diisi").max(100, "Nama terlalu panjang"),
-  phone: z.string().min(1, "Nomor telepon harus diisi").max(20, "Nomor telepon terlalu panjang"),
-  paymentMethod: z.enum(["CASH", "CARD", "QRIS"]),
+  customer_name: z.string().max(100, "Nama terlalu panjang").optional(),
+  customer_phone: z.string().max(20, "Nomor telepon terlalu panjang").optional(),
+  payment_method: z.enum(["TRANSFER", "QRIS", "COD"]),
   notes: z.string().max(500, "Catatan terlalu panjang").optional(),
 });
 
@@ -122,13 +122,6 @@ export const settingsFormSchema = z.object({
   storePhone: z.string().max(20, "Nomor telepon terlalu panjang").optional(),
   storeEmail: z.string().email("Email tidak valid").optional().or(z.literal("")),
   storeHours: z.string().max(100, "Jam operasional terlalu panjang").optional(),
-  currency: z.string().default("IDR"),
-  timezone: z.string().default("Asia/Jakarta"),
-  language: z.string().default("id"),
-  theme: z.string().default("light"),
-  notifications: z.boolean().default(true),
-  emailNotifications: z.boolean().default(true),
-  smsNotifications: z.boolean().default(false),
   autoAcceptOrders: z.boolean().default(false),
   requirePhoneVerification: z.boolean().default(false),
   allowGuestCheckout: z.boolean().default(true),

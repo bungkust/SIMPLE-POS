@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
 import React from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Header } from './components/HeaderNew';
@@ -86,10 +86,25 @@ function InvoicePageWrapper() {
 function OrderSuccessPageWrapper() {
   const { orderCode } = useParams<{ orderCode: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Check if user came from admin dashboard (kasir)
+  const isFromAdmin = location.state?.fromAdmin || 
+                     document.referrer.includes('/admin/dashboard') ||
+                     document.referrer.includes('/admin');
+  
   return <OrderSuccessPage
     orderCode={orderCode || ''}
     onViewInvoice={() => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)}
-    onBackToMenu={() => navigate(`/${getCurrentTenantSlug()}`)}
+    onBackToMenu={() => {
+      if (isFromAdmin) {
+        navigate(`/${getCurrentTenantSlug()}/admin/dashboard`, { 
+          state: { activeTab: 'kasir' } 
+        });
+      } else {
+        navigate(`/${getCurrentTenantSlug()}`);
+      }
+    }}
   />;
 }
 
@@ -129,10 +144,11 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
-        <ConfigProvider>
-          <CartProvider>
-            <div className="min-h-screen bg-slate-50">
-              <Routes>
+        <AuthProvider>
+          <ConfigProvider>
+            <CartProvider>
+              <div className="min-h-screen bg-slate-50">
+                <Routes>
                 {/* Public Routes - Landing Page and Customer Interface */}
                 <Route path="/" element={<LandingPageWrapper />} />
                 <Route path="/:tenantSlug" element={<MenuPageWrapper />} />
@@ -149,34 +165,19 @@ function App() {
                 <Route path="/success/:orderCode" element={<Navigate to={`/${getCurrentTenantSlug()}/success/${getOrderCode()}`} replace />} />
 
                 {/* Admin Routes - Following Test Login pattern */}
-                <Route path="/login" element={
-                  <AuthProvider>
-                    <AdminLoginPageWrapper />
-                  </AuthProvider>
-                } />
-                <Route path="/super-admin/login" element={
-                  <AuthProvider>
-                    <SuperAdminLoginPageWrapper />
-                  </AuthProvider>
-                } />
-                <Route path="/super-admin/dashboard" element={
-                  <AuthProvider>
-                    <SuperAdminDashboardWrapper />
-                  </AuthProvider>
-                } />
-                <Route path="/:tenantSlug/admin/dashboard" element={
-                  <AuthProvider>
-                    <AdminDashboardWrapper />
-                  </AuthProvider>
-                } />
+                <Route path="/login" element={<AdminLoginPageWrapper />} />
+                <Route path="/super-admin/login" element={<SuperAdminLoginPageWrapper />} />
+                <Route path="/super-admin/dashboard" element={<SuperAdminDashboardWrapper />} />
+                <Route path="/:tenantSlug/admin/dashboard" element={<AdminDashboardWrapper />} />
                 <Route path="/:tenantSlug/admin/setup" element={<TenantSetupPage />} />
 
                 {/* Catch all - redirect to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>
-          </CartProvider>
-        </ConfigProvider>
+            </CartProvider>
+          </ConfigProvider>
+        </AuthProvider>
       </Router>
     </ErrorBoundary>
   );

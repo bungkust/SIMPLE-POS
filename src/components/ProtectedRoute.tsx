@@ -15,7 +15,7 @@ export function ProtectedRoute({
   requireSuperAdmin = false,
   requireAuth = false
 }: ProtectedRouteProps) {
-  const { user, loading, isTenantOwner, isSuperAdmin, checkPermission, validateAuth } = useAuth();
+  const { user, loading, isTenantOwner, isSuperAdmin, checkPermission, validateAuth, signOut } = useAuth();
   const [hasChecked, setHasChecked] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [permissionValidated, setPermissionValidated] = useState(false);
@@ -211,18 +211,32 @@ export function ProtectedRoute({
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-3 sm:p-4">
         <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 max-w-sm sm:max-w-md w-full text-center">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-3 sm:mb-4">Access Denied</h2>
-          <p className="text-slate-600 mb-4 sm:mb-6 text-sm sm:text-base">You don't have permission to access this page.</p>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-3 sm:mb-4">Access Error</h2>
+          <p className="text-slate-600 mb-4 sm:mb-6 text-sm sm:text-base">You don't have permission to access this tenant dashboard.</p>
 
           {user ? (
-            // User is authenticated but not admin
+            // User is authenticated but no tenant data
             <div className="mb-4">
               <p className="text-sm text-slate-500 mb-3 sm:mb-4">
-                Your account ({user.email}) doesn't have admin privileges.
+                Your account ({user.email}) doesn't have a tenant associated with it.
               </p>
-              <p className="text-xs text-slate-400">
-                Contact your tenant administrator for access.
+              <p className="text-xs text-slate-400 mb-4">
+                This usually means your account hasn't been set up with a tenant yet.
               </p>
+              
+              {/* Add logout button */}
+              <button
+                onClick={async () => {
+                  await signOut();
+                  window.location.href = '/';
+                }}
+                className="w-full bg-red-600 text-white py-3 sm:py-4 px-4 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:gap-3 mb-4 touch-manipulation min-h-[48px]"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="text-sm sm:text-base">Logout</span>
+              </button>
             </div>
           ) : (
             // User is not authenticated
