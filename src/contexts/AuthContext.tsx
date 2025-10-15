@@ -97,8 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: userRoleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
 
       if (roleError) {
         console.error('❌ AUTH: Role validation failed:', roleError);
@@ -107,24 +106,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (!userRoleData || userRoleData.length === 0) {
+        console.log('⚠️ AUTH: No role found for user:', user.email);
+        setUserRole(null);
+        setCurrentTenant(null);
+        return;
+      }
+
       console.log('✅ AUTH: Role validation successful');
       
       // Update state with validated data
-      setUserRole(userRoleData.role);
+      setUserRole(userRoleData[0].role);
       
       // Load tenant data if user is a tenant
-      if (userRoleData.role === 'tenant') {
+      if (userRoleData[0].role === 'tenant') {
+        console.log('🔍 AUTH: Loading tenant data for email:', user.email);
+        
         const { data: tenantData, error: tenantError } = await supabase
           .from('tenants')
           .select('id, name, slug, owner_email')
-          .eq('owner_email', user.email)
-          .single();
+          .eq('owner_email', user.email);
 
         if (tenantError) {
           console.error('❌ AUTH: Failed to load tenant data:', tenantError);
           setCurrentTenant(null);
+        } else if (tenantData && tenantData.length > 0) {
+          console.log('✅ AUTH: Tenant data loaded:', tenantData[0]);
+          setCurrentTenant(tenantData[0]);
         } else {
-          setCurrentTenant(tenantData);
+          console.log('⚠️ AUTH: No tenant found for email:', user.email);
+          setCurrentTenant(null);
         }
       } else {
         setCurrentTenant(null);
