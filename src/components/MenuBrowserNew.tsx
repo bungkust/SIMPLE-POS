@@ -277,7 +277,7 @@ export function MenuBrowser() {
                               {/* Discount Badge */}
                               {discount > 0 && (
                                 <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-                                  <span className="bg-orange-100 text-orange-800 text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded">
+                                  <span className="bg-primary/10 text-primary text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded">
                                     Diskon Rp{discount.toLocaleString('id-ID')}
                                   </span>
                                   {item.base_price && (
@@ -394,7 +394,7 @@ export function MenuBrowser() {
                           {/* Discount Badge */}
                           {discount > 0 && (
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
+                              <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded">
                                 Diskon Rp{discount.toLocaleString('id-ID')}
                               </span>
                               {item.base_price && (

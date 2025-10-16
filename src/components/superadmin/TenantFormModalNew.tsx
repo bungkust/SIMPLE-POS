@@ -602,7 +602,7 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="instagram" className="flex items-center gap-2">
-                    <Instagram className="w-4 h-4 text-pink-500" />
+                    <Instagram className="w-4 h-4 text-muted-foreground" />
                     Instagram
                   </Label>
                   <Input
@@ -636,7 +636,7 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="twitter" className="flex items-center gap-2">
-                    <Twitter className="w-4 h-4 text-blue-500" />
+                    <Twitter className="w-4 h-4 text-muted-foreground" />
                     X (Twitter)
                   </Label>
                   <Input
@@ -652,7 +652,7 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
 
                 <div className="space-y-2">
                   <Label htmlFor="facebook" className="flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-blue-600" />
+                    <MessageCircle className="w-4 h-4 text-muted-foreground" />
                     Facebook
                   </Label>
                   <Input
@@ -749,7 +749,7 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
       <Dialog open={showInvitationSuccess} onOpenChange={setShowInvitationSuccess}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
+            <DialogTitle className="flex items-center gap-2 text-primary">
               <CheckCircle className="w-5 h-5" />
               Tenant Berhasil Dibuat!
             </DialogTitle>
