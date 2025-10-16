@@ -170,6 +170,12 @@ export const superAdminTenantFormSchema = z.object({
     minimum_order_amount: z.number().min(0, "Minimum order tidak boleh negatif").default(0),
     delivery_fee: z.number().min(0, "Biaya pengiriman tidak boleh negatif").default(0),
     free_delivery_threshold: z.number().min(0, "Threshold gratis ongkir tidak boleh negatif").default(0),
+    // Additional restaurant info fields
+    rating: z.string().optional(),
+    reviewCount: z.string().optional(),
+    estimatedTime: z.string().optional(),
+    distance: z.string().optional(),
+    isOpen: z.boolean().default(true),
   }).optional(),
 });
 

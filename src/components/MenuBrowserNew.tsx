@@ -23,6 +23,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
+import { useConfig } from '../contexts/ConfigContext';
 import { formatCurrency } from '@/lib/form-utils';
 import { getTenantInfo, getTenantId } from '../lib/tenantUtils';
 import { MenuDetailSheet } from './MenuDetailSheet';
@@ -33,6 +34,7 @@ type Category = Database['public']['Tables']['categories']['Row'];
 
 export function MenuBrowser() {
   const { addItem, removeItem, getItemQuantity } = useCart();
+  const { config } = useConfig();
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -195,6 +197,7 @@ export function MenuBrowser() {
             ))}
           </div>
         </div>
+
 
         {/* Search Bar */}
         <div className="mb-3 sm:mb-6">

@@ -78,7 +78,13 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
         allow_guest_checkout: true,
         minimum_order_amount: 0,
         delivery_fee: 0,
-        free_delivery_threshold: 0
+        free_delivery_threshold: 0,
+        // Additional restaurant info fields
+        rating: '',
+        reviewCount: '',
+        estimatedTime: '',
+        distance: '',
+        isOpen: true
       }
     }
   });
@@ -121,7 +127,13 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
           allow_guest_checkout: settings.allow_guest_checkout ?? true,
           minimum_order_amount: settings.minimum_order_amount || 0,
           delivery_fee: settings.delivery_fee || 0,
-          free_delivery_threshold: settings.free_delivery_threshold || 0
+          free_delivery_threshold: settings.free_delivery_threshold || 0,
+          // Additional restaurant info fields
+          rating: settings.rating || '',
+          reviewCount: settings.reviewCount || '',
+          estimatedTime: settings.estimatedTime || '',
+          distance: settings.distance || '',
+          isOpen: settings.isOpen ?? true
         }
       });
 
@@ -494,6 +506,86 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
                 {errors.operating_hours && (
                   <p className="text-sm text-red-600">{errors.operating_hours.message}</p>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Restaurant Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Restaurant Information</CardTitle>
+              <CardDescription>
+                Additional restaurant details for public display
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="rating">Rating</Label>
+                  <Input
+                    id="rating"
+                    {...register('settings.rating')}
+                    placeholder="4.8"
+                    className={errors.settings?.rating ? 'border-red-500' : ''}
+                  />
+                  {errors.settings?.rating && (
+                    <p className="text-sm text-red-600">{errors.settings.rating.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reviewCount">Review Count</Label>
+                  <Input
+                    id="reviewCount"
+                    {...register('settings.reviewCount')}
+                    placeholder="127 reviews"
+                    className={errors.settings?.reviewCount ? 'border-red-500' : ''}
+                  />
+                  {errors.settings?.reviewCount && (
+                    <p className="text-sm text-red-600">{errors.settings.reviewCount.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="estimatedTime">Estimated Time</Label>
+                  <Input
+                    id="estimatedTime"
+                    {...register('settings.estimatedTime')}
+                    placeholder="15-20 menit"
+                    className={errors.settings?.estimatedTime ? 'border-red-500' : ''}
+                  />
+                  {errors.settings?.estimatedTime && (
+                    <p className="text-sm text-red-600">{errors.settings.estimatedTime.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="distance">Distance</Label>
+                  <Input
+                    id="distance"
+                    {...register('settings.distance')}
+                    placeholder="1.2 km"
+                    className={errors.settings?.distance ? 'border-red-500' : ''}
+                  />
+                  {errors.settings?.distance && (
+                    <p className="text-sm text-red-600">{errors.settings.distance.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="isOpen">Restaurant Status</Label>
+                <Select onValueChange={(value) => setValue('settings.isOpen', value === 'true')}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Open</SelectItem>
+                    <SelectItem value="false">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>

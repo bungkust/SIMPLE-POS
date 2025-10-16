@@ -231,21 +231,29 @@ export function TenantSetupPage() {
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Password strength:</div>
                   <div className="flex space-x-1">
-                    {[1, 2, 3, 4].map((level) => (
-                      <div
-                        key={level}
-                        className={`h-2 flex-1 rounded ${
-                          password.length >= level * 1.5
-                            ? 'bg-green-500'
-                            : 'bg-gray-200'
-                        }`}
-                      />
-                    ))}
+                    {[1, 2, 3, 4].map((level) => {
+                      let color = 'bg-gray-200';
+                      if (password.length >= 6 && password.length < 8) {
+                        color = level <= 1 ? 'bg-red-500' : 'bg-gray-200';
+                      } else if (password.length >= 8 && password.length < 12) {
+                        color = level <= 2 ? 'bg-yellow-500' : 'bg-gray-200';
+                      } else if (password.length >= 12) {
+                        color = level <= 3 ? 'bg-green-500' : 'bg-gray-200';
+                      }
+                      
+                      return (
+                        <div
+                          key={level}
+                          className={`h-2 flex-1 rounded ${color}`}
+                        />
+                      );
+                    })}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {password.length < 6 && 'Password must be at least 6 characters'}
-                    {password.length >= 6 && password.length < 8 && 'Good password'}
-                    {password.length >= 8 && 'Strong password'}
+                    {password.length >= 6 && password.length < 8 && 'Weak password'}
+                    {password.length >= 8 && password.length < 12 && 'Good password'}
+                    {password.length >= 12 && 'Strong password'}
                   </div>
                 </div>
               )}

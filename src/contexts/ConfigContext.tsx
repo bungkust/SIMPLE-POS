@@ -18,6 +18,19 @@ interface AppConfig {
   minimumOrderAmount?: number;
   deliveryFee?: number;
   freeDeliveryThreshold?: number;
+  // Additional restaurant info fields
+  rating?: string;
+  reviewCount?: string;
+  estimatedTime?: string;
+  distance?: string;
+  isOpen?: boolean;
+  // Social media links
+  socialMedia?: {
+    instagram?: string;
+    tiktok?: string;
+    twitter?: string;
+    facebook?: string;
+  };
 }
 
 interface ConfigContextType {
@@ -166,7 +179,15 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             allowGuestCheckout: tenantSettings.allowGuestCheckout || tenantSettings.allow_guest_checkout,
             minimumOrderAmount: tenantSettings.minimumOrderAmount || tenantSettings.minimum_order_amount,
             deliveryFee: tenantSettings.deliveryFee || tenantSettings.delivery_fee,
-            freeDeliveryThreshold: tenantSettings.freeDeliveryThreshold || tenantSettings.free_delivery_threshold
+            freeDeliveryThreshold: tenantSettings.freeDeliveryThreshold || tenantSettings.free_delivery_threshold,
+            // Additional restaurant info fields
+            rating: tenantSettings.rating,
+            reviewCount: tenantSettings.reviewCount,
+            estimatedTime: tenantSettings.estimatedTime,
+            distance: tenantSettings.distance,
+            isOpen: tenantSettings.isOpen,
+            // Social media links
+            socialMedia: tenantSettings.social_media
           };
           
           setConfig(dbConfig);
@@ -204,7 +225,15 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
               allowGuestCheckout: tenantSettings.allowGuestCheckout || tenantSettings.allow_guest_checkout,
               minimumOrderAmount: tenantSettings.minimumOrderAmount || tenantSettings.minimum_order_amount,
               deliveryFee: tenantSettings.deliveryFee || tenantSettings.delivery_fee,
-              freeDeliveryThreshold: tenantSettings.freeDeliveryThreshold || tenantSettings.free_delivery_threshold
+              freeDeliveryThreshold: tenantSettings.freeDeliveryThreshold || tenantSettings.free_delivery_threshold,
+              // Additional restaurant info fields
+              rating: tenantSettings.rating,
+              reviewCount: tenantSettings.reviewCount,
+              estimatedTime: tenantSettings.estimatedTime,
+              distance: tenantSettings.distance,
+              isOpen: tenantSettings.isOpen,
+              // Social media links
+              socialMedia: tenantSettings.social_media
             };
             
             setConfig(dbConfig);
@@ -272,6 +301,14 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             minimumOrderAmount: newConfig.minimumOrderAmount,
             deliveryFee: newConfig.deliveryFee,
             freeDeliveryThreshold: newConfig.freeDeliveryThreshold,
+            // Additional restaurant info fields
+            rating: newConfig.rating,
+            reviewCount: newConfig.reviewCount,
+            estimatedTime: newConfig.estimatedTime,
+            distance: newConfig.distance,
+            isOpen: newConfig.isOpen,
+            // Social media links
+            social_media: newConfig.socialMedia,
             // Also save logo_url for super admin tenant form compatibility
             logo_url: newConfig.storeIconType === 'uploaded' ? newConfig.storeIcon : currentSettings.logo_url
           };

@@ -12,13 +12,18 @@ import {
   Settings,
   LogOut,
   Home,
-  MapPin,
   Clock,
   Star,
-  Info
+  Package,
+  MapPin,
+  Phone,
+  Instagram,
+  Twitter,
+  Facebook
 } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
+import { formatCurrency } from '@/lib/form-utils';
 
 const iconMap = {
   Coffee,
@@ -119,7 +124,7 @@ export function Header() {
                   {config.storeName || ('tenant_name' in tenantInfo ? tenantInfo.tenant_name : tenantInfo.name)}
                 </h1>
                 <p className="text-sm sm:text-base text-muted-foreground truncate">
-                  Cemilan, Kopi
+                  {config.storeDescription || 'Restaurant & Cafe'}
                 </p>
               </div>
             </Button>
@@ -155,50 +160,141 @@ export function Header() {
           )}
         </div>
 
-        {/* Tenant Information Bar */}
-        <div className="border-t border-border bg-muted/30 py-2 sm:py-3">
-          <div className="flex items-center justify-between">
-            {/* Left Side - Rating and Info */}
-            <div className="flex items-center gap-4 sm:gap-6">
-              {/* Rating */}
-              <div className="flex items-center gap-1">
-                <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 fill-current" />
-                <span className="text-sm sm:text-base font-semibold">4.8</span>
-                <span className="text-sm text-muted-foreground hidden sm:inline">(127 reviews)</span>
+        {/* Tenant Information Bar - Enhanced with complete info */}
+        <div className="border-t border-border bg-muted/30 py-3 sm:py-4">
+          <div className="space-y-3">
+            {/* Top Row - Key Info */}
+            <div className="flex items-center justify-between">
+              {/* Left Side - Key Info */}
+              <div className="flex items-center gap-4 sm:gap-6">
+                {/* Rating */}
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 fill-current" />
+                  <span className="text-sm sm:text-base font-semibold">
+                    {config.rating || '4.8'}
+                  </span>
+                  <span className="text-sm text-muted-foreground hidden sm:inline">
+                    ({config.reviewCount || '127'} reviews)
+                  </span>
+                </div>
+
+                {/* Estimated Time */}
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                  <span className="text-sm sm:text-base text-muted-foreground">
+                    {config.estimatedTime || '15-20 menit'}
+                  </span>
+                </div>
+
+                {/* Delivery Info */}
+                <div className="flex items-center gap-1">
+                  <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                  <span className="text-sm sm:text-base text-muted-foreground">
+                    {config.deliveryFee && config.deliveryFee > 0 
+                      ? `Ongkir ${formatCurrency(config.deliveryFee)}`
+                      : 'Gratis Ongkir'
+                    }
+                  </span>
+                </div>
               </div>
 
-              {/* Estimated Time */}
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                <span className="text-sm sm:text-base text-muted-foreground">15-20 menit</span>
-              </div>
+              {/* Right Side - Status */}
+              <div className="flex items-center gap-3 sm:gap-4">
+                {/* Operating Hours - Compact */}
+                <div className="text-right hidden sm:block">
+                  <div className="text-sm font-medium">Jam Buka</div>
+                  <div className="text-sm text-muted-foreground">
+                    {config.storeHours || '08:00-21:00'}
+                  </div>
+                </div>
 
-              {/* Distance (if available) */}
-              <div className="hidden sm:flex items-center gap-1">
-                <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                <span className="text-sm sm:text-base text-muted-foreground">1.2 km</span>
+                {/* Status Badge */}
+                <Badge className={`text-sm sm:text-base px-3 py-1 ${
+                  config.isOpen !== false 
+                    ? 'bg-green-100 text-green-800 border-green-200' 
+                    : 'bg-red-100 text-red-800 border-red-200'
+                }`}>
+                  {config.isOpen !== false ? 'Buka' : 'Tutup'}
+                </Badge>
               </div>
             </div>
 
-            {/* Right Side - Status and Hours */}
-            <div className="flex items-center gap-3 sm:gap-4">
-              {/* Operating Hours */}
-              <div className="text-right">
-                <div className="text-sm sm:text-base font-medium">Jam Buka</div>
-                <div className="text-sm text-muted-foreground">Hari ini 08:00-21:00</div>
+            {/* Bottom Row - Address, Contact & Social Media */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+              {/* Left Side - Address & Contact */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                {/* Address */}
+                {config.storeAddress && (
+                  <div className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mt-0.5 flex-shrink-0" />
+                    <span className="line-clamp-1">{config.storeAddress}</span>
+                  </div>
+                )}
+                
+                {/* Phone */}
+                {config.storePhone && (
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <Phone className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span>{config.storePhone}</span>
+                  </div>
+                )}
               </div>
 
-              {/* Status Badge */}
-              <Badge className="bg-green-100 text-green-800 border-green-200 text-sm sm:text-base px-3 py-1">
-                Buka
-              </Badge>
+              {/* Right Side - Social Media */}
+              {config.socialMedia && (
+                <div className="flex items-center gap-3">
+                  {config.socialMedia.instagram && (
+                    <a 
+                      href={config.socialMedia.instagram} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs sm:text-sm text-pink-600 hover:text-pink-700 transition-colors"
+                    >
+                      <Instagram className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Instagram</span>
+                    </a>
+                  )}
+                  
+                  {config.socialMedia.tiktok && (
+                    <a 
+                      href={config.socialMedia.tiktok} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs sm:text-sm text-black hover:text-gray-800 transition-colors"
+                    >
+                      <svg className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                      </svg>
+                      <span className="hidden sm:inline">TikTok</span>
+                    </a>
+                  )}
+                  
+                  {config.socialMedia.twitter && (
+                    <a 
+                      href={config.socialMedia.twitter} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs sm:text-sm text-blue-500 hover:text-blue-600 transition-colors"
+                    >
+                      <Twitter className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Twitter</span>
+                    </a>
+                  )}
+                  
+                  {config.socialMedia.facebook && (
+                    <a 
+                      href={config.socialMedia.facebook} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      <Facebook className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Facebook</span>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* Additional Info */}
-          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <Info className="h-4 w-4" />
-            <span>Biaya pemesanan senilai Rp3.000 berlaku di restoran ini.</span>
           </div>
         </div>
       </div>
