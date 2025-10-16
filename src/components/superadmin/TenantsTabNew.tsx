@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit, Trash2, Eye, Shield, Building2, Mail, Calendar, AlertCircle, CheckCircle, XCircle, Link, Copy, ExternalLink, Check } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Shield, Building2, Mail, Calendar, AlertCircle, CheckCircle, XCircle, Link, Copy, ExternalLink, Check, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { ColumnDef } from '@tanstack/react-table';
@@ -29,6 +29,7 @@ export function TenantsTab() {
   const [showInvitationDialog, setShowInvitationDialog] = useState(false);
   const [selectedTenantForInvitation, setSelectedTenantForInvitation] = useState<Tenant | null>(null);
   const [copied, setCopied] = useState(false);
+  const [invitationLink, setInvitationLink] = useState<string>('');
   const { currentTenant } = useAuth();
 
   const loadTenants = async () => {
@@ -103,8 +104,22 @@ export function TenantsTab() {
   };
 
   const generateInvitationLink = (tenant: Tenant) => {
-    const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
-    return `${baseUrl}/${tenant.slug}/admin/setup?token=${tenant.id}`;
+    const baseUrl = import.meta.env.VITE_SITE_URL;
+    
+    console.log('🔍 DEBUG - VITE_SITE_URL:', import.meta.env.VITE_SITE_URL);
+    console.log('🔍 DEBUG - window.location.origin:', window.location.origin);
+    
+    if (!baseUrl) {
+      logger.error('VITE_SITE_URL not configured, using window.location.origin', { component: 'TenantsTab' });
+      // Show warning to user in production
+      if (import.meta.env.PROD) {
+        alert('WARNING: Site URL not configured. Please contact administrator.');
+      }
+    }
+    
+    const finalUrl = baseUrl || window.location.origin;
+    console.log('🔍 DEBUG - baseUrl used:', finalUrl);
+    return `${finalUrl}/${tenant.slug}/admin/setup?token=${tenant.id}`;
   };
 
   const copyToClipboard = async (text: string) => {
@@ -128,7 +143,19 @@ export function TenantsTab() {
 
   const handleViewInvitation = (tenant: Tenant) => {
     setSelectedTenantForInvitation(tenant);
+    const link = generateInvitationLink(tenant);
+    setInvitationLink(link);
     setShowInvitationDialog(true);
+  };
+
+  const regenerateInvitationLink = () => {
+    if (!selectedTenantForInvitation) return;
+    
+    const newLink = generateInvitationLink(selectedTenantForInvitation);
+    setInvitationLink(newLink);
+    
+    // Show success message
+    logger.log('Invitation link regenerated', { component: 'TenantsTab' });
   };
 
   const getStatusBadge = (tenant: Tenant) => {
@@ -483,13 +510,13 @@ export function TenantsTab() {
                   <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
                     <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <code className="flex-1 text-sm break-all">
-                      {generateInvitationLink(selectedTenantForInvitation)}
+                      {invitationLink}
                     </code>
                   </div>
                   
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => copyToClipboard(generateInvitationLink(selectedTenantForInvitation))}
+                      onClick={() => copyToClipboard(invitationLink)}
                       variant="outline"
                       className="flex-1"
                     >
@@ -507,12 +534,23 @@ export function TenantsTab() {
                     </Button>
                     
                     <Button
-                      onClick={() => window.open(generateInvitationLink(selectedTenantForInvitation), '_blank')}
+                      onClick={() => window.open(invitationLink, '_blank')}
                       variant="outline"
                       className="flex-1"
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
                       Open Link
+                    </Button>
+                  </div>
+                  
+                  <div className="flex justify-center">
+                    <Button
+                      onClick={regenerateInvitationLink}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Regenerate Link
                     </Button>
                   </div>
                 </CardContent>

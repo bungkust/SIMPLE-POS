@@ -255,8 +255,22 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
         }
 
         // Generate invitation link for new tenant
-        const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
-        const invitationLink = `${baseUrl}/${data.slug}/admin/setup?token=${newTenantData.id}`;
+        const baseUrl = import.meta.env.VITE_SITE_URL;
+        
+        console.log('🔍 DEBUG - VITE_SITE_URL:', import.meta.env.VITE_SITE_URL);
+        console.log('🔍 DEBUG - window.location.origin:', window.location.origin);
+        
+        if (!baseUrl) {
+          logger.error('VITE_SITE_URL not configured, using window.location.origin', { component: 'TenantFormModal' });
+          // Show warning to user in production
+          if (import.meta.env.PROD) {
+            alert('WARNING: Site URL not configured. Please contact administrator.');
+          }
+        }
+        
+        const finalUrl = baseUrl || window.location.origin;
+        console.log('🔍 DEBUG - baseUrl used:', finalUrl);
+        const invitationLink = `${finalUrl}/${data.slug}/admin/setup?token=${newTenantData.id}`;
         setInvitationLink(invitationLink);
         setShowInvitationSuccess(true);
         return; // Don't call onSuccess() yet, show invitation dialog first
