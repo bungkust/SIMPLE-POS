@@ -65,7 +65,7 @@ export async function uploadFile(
           error: 'Unable to identify tenant for upload'
         };
       }
-      tenantIdentifier = tenantData.slug;
+      tenantIdentifier = (tenantData as any).slug;
     } else {
       return {
         success: false,
@@ -141,17 +141,17 @@ export const uploadConfigs = {
   }),
 
   // Menu item image upload
-  menuItem: (tenantId: string): UploadConfig => ({
+  menuItem: (tenantSlug: string): UploadConfig => ({
     bucket: 'menu-images',
     folder: 'menu-items',
-    tenantId
+    tenantSlug
   }),
 
   // QRIS image upload
-  qrisImage: (tenantId: string): UploadConfig => ({
+  qrisImage: (tenantSlug: string): UploadConfig => ({
     bucket: 'qris-images',
     folder: 'qris',
-    tenantId
+    tenantSlug
   })
 };
 
@@ -167,13 +167,13 @@ export async function getTenantSlug(tenantId: string): Promise<string | null> {
       .single();
 
     if (error || !data) {
-      logger.error('Error getting tenant slug:', error);
+      logger.error('Error getting tenant slug:', error as any);
       return null;
     }
 
-    return data.slug;
+    return (data as any).slug;
   } catch (error) {
-    logger.error('Unexpected error getting tenant slug:', error);
+    logger.error('Unexpected error getting tenant slug:', error as any);
     return null;
   }
 }
@@ -184,7 +184,7 @@ export async function getTenantSlug(tenantId: string): Promise<string | null> {
  */
 export async function ensureTenantFolders(tenantSlug: string): Promise<boolean> {
   try {
-    logger.log('🔧 Ensuring tenant folders exist for:', tenantSlug);
+    logger.log('🔧 Ensuring tenant folders exist for:', tenantSlug as any);
 
     const buckets = [
       { bucket: 'store-icons', folder: 'logo' },
@@ -211,21 +211,21 @@ export async function ensureTenantFolders(tenantSlug: string): Promise<boolean> 
             .upload(placeholderPath, placeholderContent);
 
           if (uploadError) {
-            logger.error(`Failed to create folder ${tenantSlug}/${folder} in ${bucket}:`, uploadError);
+            logger.error(`Failed to create folder ${tenantSlug}/${folder} in ${bucket}:`, uploadError as any);
           } else {
-            logger.log(`✅ Created folder ${tenantSlug}/${folder} in ${bucket}`);
+            logger.log(`✅ Created folder ${tenantSlug}/${folder} in ${bucket}` as any);
           }
         } else if (existingFiles) {
-          logger.log(`✅ Folder ${tenantSlug}/${folder} already exists in ${bucket}`);
+          logger.log(`✅ Folder ${tenantSlug}/${folder} already exists in ${bucket}` as any);
         }
       } catch (error) {
-        logger.error(`Error ensuring folder ${tenantSlug}/${folder} in ${bucket}:`, error);
+        logger.error(`Error ensuring folder ${tenantSlug}/${folder} in ${bucket}:`, error as any);
       }
     }
 
     return true;
   } catch (error) {
-    logger.error('Error ensuring tenant folders:', error);
+    logger.error('Error ensuring tenant folders:', error as any);
     return false;
   }
 }
@@ -236,11 +236,11 @@ export async function ensureTenantFolders(tenantSlug: string): Promise<boolean> 
  */
 export async function createTenantStorageStructure(tenantSlug: string): Promise<void> {
   try {
-    logger.log('🏗️ Creating storage structure for new tenant:', tenantSlug);
+    logger.log('🏗️ Creating storage structure for new tenant:', tenantSlug as any);
     await ensureTenantFolders(tenantSlug);
     logger.log('✅ Tenant storage structure created successfully');
   } catch (error) {
-    logger.error('❌ Failed to create tenant storage structure:', error);
+    logger.error('❌ Failed to create tenant storage structure:', error as any);
     throw error;
   }
 }
@@ -251,7 +251,7 @@ export async function createTenantStorageStructure(tenantSlug: string): Promise<
  */
 export async function deleteTenantStorageStructure(tenantSlug: string): Promise<void> {
   try {
-    logger.log('🗑️ Deleting storage structure for tenant:', tenantSlug);
+    logger.log('🗑️ Deleting storage structure for tenant:', tenantSlug as any);
 
     const buckets = [
       { bucket: 'store-icons', folder: 'logo' },
@@ -268,7 +268,7 @@ export async function deleteTenantStorageStructure(tenantSlug: string): Promise<
           .list(`${tenantSlug}/${folder}`);
 
         if (listError && !listError.message.includes('not found')) {
-          logger.error(`Error listing files in ${bucket}/${tenantSlug}/${folder}:`, listError);
+          logger.error(`Error listing files in ${bucket}/${tenantSlug}/${folder}:`, listError as any);
           continue;
         }
 
@@ -281,21 +281,21 @@ export async function deleteTenantStorageStructure(tenantSlug: string): Promise<
             .remove(filePaths);
 
           if (deleteError) {
-            logger.error(`Error deleting files from ${bucket}/${tenantSlug}/${folder}:`, deleteError);
+            logger.error(`Error deleting files from ${bucket}/${tenantSlug}/${folder}:`, deleteError as any);
           } else {
-            logger.log(`✅ Deleted ${files.length} files from ${bucket}/${tenantSlug}/${folder}`);
+            logger.log(`✅ Deleted ${files.length} files from ${bucket}/${tenantSlug}/${folder}` as any);
           }
         } else {
-          logger.log(`ℹ️ No files found in ${bucket}/${tenantSlug}/${folder}`);
+          logger.log(`ℹ️ No files found in ${bucket}/${tenantSlug}/${folder}` as any);
         }
       } catch (error) {
-        logger.error(`Error cleaning up ${bucket}/${tenantSlug}/${folder}:`, error);
+        logger.error(`Error cleaning up ${bucket}/${tenantSlug}/${folder}:`, error as any);
       }
     }
 
     logger.log('✅ Tenant storage structure deleted successfully');
   } catch (error) {
-    logger.error('❌ Failed to delete tenant storage structure:', error);
+    logger.error('❌ Failed to delete tenant storage structure:', error as any);
     throw error;
   }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +43,8 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
     formState: { errors },
     watch,
     setValue,
-    reset
+    reset,
+    control
   } = useForm<MenuFormData>({
     resolver: zodResolver(menuFormSchema),
     defaultValues: {
@@ -62,12 +63,15 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !currentTenant) return;
+    if (!file) return;
 
     setUploading(true);
     try {
+      // Get tenant slug from currentTenant or use temporary identifier
+      const tenantSlug = currentTenant?.slug || 'temp-tenant';
+      
       // Use standardized upload utility with tenant-specific folder structure
-      const result = await uploadFile(file, uploadConfigs.menuItem(currentTenant.tenant_id));
+      const result = await uploadFile(file, uploadConfigs.menuItem(tenantSlug));
 
       if (result.success && result.url) {
         setValue('image_url', result.url);
@@ -104,7 +108,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
     setLoading(true);
     try {
       const menuData = {
-        tenant_id: currentTenant.tenant_id,
+        tenant_id: currentTenant.id,
         name: data.name,
         description: data.description,
         price: data.price,
@@ -222,20 +226,27 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
                 {/* Preparation time field removed as it doesn't exist in database schema */}
               </div>
 
-              <FormSelect
-                {...register('category_id')}
-                label="Category"
-                placeholder="Select a category"
-                error={errors.category_id?.message}
-                required
-                disabled={loading}
-              >
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </FormSelect>
+              <Controller
+                name="category_id"
+                control={control}
+                render={({ field }) => (
+                  <FormSelect
+                    label="Category"
+                    placeholder="Select a category"
+                    error={errors.category_id?.message}
+                    required
+                    disabled={loading}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </FormSelect>
+                )}
+              />
 
               <FormCheckbox
                 {...register('is_available')}

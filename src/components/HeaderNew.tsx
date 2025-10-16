@@ -12,9 +12,6 @@ import {
   Settings,
   LogOut,
   Home,
-  Clock,
-  Star,
-  Package,
   MapPin,
   Phone,
   Instagram,
@@ -23,7 +20,6 @@ import {
 } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency } from '@/lib/form-utils';
 
 const iconMap = {
   Coffee,
@@ -35,6 +31,7 @@ const iconMap = {
 export function Header() {
   const navigate = useNavigate();
   const { config } = useConfig();
+  
   
   // Get auth context safely
   let currentTenant = null;
@@ -160,54 +157,60 @@ export function Header() {
           )}
         </div>
 
-        {/* Tenant Information Bar - Single Column Layout */}
-        <div className="border-t border-border bg-muted/30 py-3 sm:py-4">
-          <div className="space-y-3">
+        {/* Simple Restaurant Information Bar */}
+        <div className="border-t border-border/30 bg-muted/20 py-2 sm:py-3">
+          <div className="space-y-2">
             {/* Operating Hours & Status */}
-            <div className="flex items-center gap-3">
-              <div>
-                <div className="text-sm font-medium">Jam Buka</div>
-                <div className="text-sm text-muted-foreground">
-                  {config.storeHours || '08:00-21:00'}
+            {(config.headerDisplaySettings?.showOperatingHours !== false) && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                  <span className="text-sm text-muted-foreground">
+                    {config.storeHours || '08:00-21:00'}
+                  </span>
                 </div>
+                <Badge className={`text-xs px-2 py-0.5 ${
+                  config.isOpen !== false 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-red-100 text-red-700'
+                }`}>
+                  {config.isOpen !== false ? 'Buka' : 'Tutup'}
+                </Badge>
               </div>
-              <Badge className={`text-xs px-2 py-1 ${
-                config.isOpen !== false 
-                  ? 'bg-primary/10 text-primary border-primary/20' 
-                  : 'bg-destructive/10 text-destructive border-destructive/20'
-              }`}>
-                {config.isOpen !== false ? 'Buka' : 'Tutup'}
-              </Badge>
-            </div>
+            )}
 
             {/* Address */}
-            {config.storeAddress && (
-              <div className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
-                <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mt-0.5 flex-shrink-0" />
-                <span className="line-clamp-2">{config.storeAddress}</span>
+            {(config.headerDisplaySettings?.showAddress !== false) && config.storeAddress && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-3 w-3 flex-shrink-0" />
+                <span className="line-clamp-1">{config.storeAddress}</span>
               </div>
             )}
             
             {/* Phone */}
-            {config.storePhone && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                <Phone className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span>{config.storePhone}</span>
+            {(config.headerDisplaySettings?.showPhone !== false) && config.storePhone && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Phone className="h-3 w-3 flex-shrink-0" />
+                <a 
+                  href={`tel:${config.storePhone}`}
+                  className="hover:text-primary transition-colors"
+                >
+                  {config.storePhone}
+                </a>
               </div>
             )}
 
             {/* Social Media */}
-            {config.socialMedia && (
+            {(config.headerDisplaySettings?.showSocialMedia !== false) && config.socialMedia && (
               <div className="flex items-center gap-3">
                 {config.socialMedia.instagram && (
                   <a 
                     href={config.socialMedia.instagram} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors"
+                    className="text-muted-foreground hover:text-pink-500 transition-colors"
                   >
-                    <Instagram className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Instagram</span>
+                    <Instagram className="h-4 w-4" />
                   </a>
                 )}
                 
@@ -216,12 +219,11 @@ export function Header() {
                     href={config.socialMedia.tiktok} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors"
+                    className="text-muted-foreground hover:text-black transition-colors"
                   >
-                    <svg className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
                     </svg>
-                    <span className="hidden sm:inline">TikTok</span>
                   </a>
                 )}
                 
@@ -230,10 +232,9 @@ export function Header() {
                     href={config.socialMedia.twitter} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors"
+                    className="text-muted-foreground hover:text-blue-500 transition-colors"
                   >
-                    <Twitter className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Twitter</span>
+                    <Twitter className="h-4 w-4" />
                   </a>
                 )}
                 
@@ -242,10 +243,9 @@ export function Header() {
                     href={config.socialMedia.facebook} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors"
+                    className="text-muted-foreground hover:text-blue-600 transition-colors"
                   >
-                    <Facebook className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Facebook</span>
+                    <Facebook className="h-4 w-4" />
                   </a>
                 )}
               </div>

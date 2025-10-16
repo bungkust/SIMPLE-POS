@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,7 @@ export function SettingsTab() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isValid, isDirty },
     setValue,
     watch,
     reset
@@ -80,6 +80,18 @@ export function SettingsTab() {
       minimumOrderAmount: config.minimumOrderAmount || 0,
       deliveryFee: config.deliveryFee || 0,
       freeDeliveryThreshold: config.freeDeliveryThreshold || 0,
+      socialMedia: {
+        instagram: config.socialMedia?.instagram || '',
+        tiktok: config.socialMedia?.tiktok || '',
+        twitter: config.socialMedia?.twitter || '',
+        facebook: config.socialMedia?.facebook || '',
+      },
+      headerDisplaySettings: {
+        showOperatingHours: config.headerDisplaySettings?.showOperatingHours ?? true,
+        showAddress: config.headerDisplaySettings?.showAddress ?? true,
+        showPhone: config.headerDisplaySettings?.showPhone ?? true,
+        showSocialMedia: config.headerDisplaySettings?.showSocialMedia ?? true,
+      },
     }
   });
 
@@ -111,9 +123,14 @@ export function SettingsTab() {
   };
 
   const onSubmit = async (data: SettingsFormData) => {
+    console.log('🔧 onSubmit triggered with data:', data);
+    console.log('🔧 Form validation errors:', errors);
+    console.log('🔧 Form is valid:', Object.keys(errors).length === 0);
+    console.log('🔧 Form isValid:', isValid);
+    console.log('🔧 Form isDirty:', isDirty);
     setLoading(true);
     try {
-      updateConfig({
+      await updateConfig({
         storeName: data.storeName,
         storeIcon: data.storeIcon,
         storeIconType: data.storeIconType,
@@ -128,16 +145,56 @@ export function SettingsTab() {
         minimumOrderAmount: data.minimumOrderAmount,
         deliveryFee: data.deliveryFee,
         freeDeliveryThreshold: data.freeDeliveryThreshold,
+        socialMedia: data.socialMedia,
+        headerDisplaySettings: data.headerDisplaySettings,
       });
 
       showSuccess('Settings Saved', 'Pengaturan toko berhasil disimpan.');
     } catch (error: any) {
+      console.error('❌ Error saving settings:', error);
       logger.error('Error saving settings:', error);
       showError('Save Failed', 'Gagal menyimpan pengaturan toko.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Sync form with config changes only when config is first loaded
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  useEffect(() => {
+    if (config.storeName && !isInitialized) { // Only reset if config has data and not initialized
+      reset({
+        storeName: config.storeName || '',
+        storeIcon: config.storeIcon || '',
+        storeIconType: config.storeIconType || 'Coffee',
+        storeDescription: config.storeDescription || '',
+        storeAddress: config.storeAddress || '',
+        storePhone: config.storePhone || '',
+        storeEmail: config.storeEmail || '',
+        storeHours: config.storeHours || '',
+        autoAcceptOrders: config.autoAcceptOrders || false,
+        requirePhoneVerification: config.requirePhoneVerification || false,
+        allowGuestCheckout: config.allowGuestCheckout || true,
+        minimumOrderAmount: config.minimumOrderAmount || 0,
+        deliveryFee: config.deliveryFee || 0,
+        freeDeliveryThreshold: config.freeDeliveryThreshold || 0,
+        socialMedia: {
+          instagram: config.socialMedia?.instagram || '',
+          tiktok: config.socialMedia?.tiktok || '',
+          twitter: config.socialMedia?.twitter || '',
+          facebook: config.socialMedia?.facebook || '',
+        },
+        headerDisplaySettings: {
+          showOperatingHours: config.headerDisplaySettings?.showOperatingHours ?? true,
+          showAddress: config.headerDisplaySettings?.showAddress ?? true,
+          showPhone: config.headerDisplaySettings?.showPhone ?? true,
+          showSocialMedia: config.headerDisplaySettings?.showSocialMedia ?? true,
+        },
+      });
+      setIsInitialized(true);
+    }
+  }, [config.storeName, reset, isInitialized]);
 
   const resetToDefaults = () => {
     reset({
@@ -155,6 +212,18 @@ export function SettingsTab() {
       minimumOrderAmount: 0,
       deliveryFee: 0,
       freeDeliveryThreshold: 0,
+      socialMedia: {
+        instagram: '',
+        tiktok: '',
+        twitter: '',
+        facebook: '',
+      },
+      headerDisplaySettings: {
+        showOperatingHours: true,
+        showAddress: true,
+        showPhone: true,
+        showSocialMedia: true,
+      },
     });
   };
 
@@ -188,7 +257,20 @@ export function SettingsTab() {
               </TabsTrigger>
             </TabsList>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={(e) => {
+              console.log('🔧 Form submit event triggered');
+              e.preventDefault();
+              console.log('🔧 Form preventDefault called');
+              console.log('🔧 Form errors before submit:', errors);
+              console.log('🔧 Form isValid before submit:', isValid);
+              console.log('🔧 Form isDirty before submit:', isDirty);
+              try {
+                const result = handleSubmit(onSubmit)(e);
+                console.log('🔧 handleSubmit result:', result);
+              } catch (error) {
+                console.error('🔧 handleSubmit error:', error);
+              }
+            }} className="space-y-6">
               {/* General Settings */}
               <TabsContent value="general" className="space-y-6">
                 <Card>
@@ -346,6 +428,128 @@ export function SettingsTab() {
                   </CardContent>
                 </Card>
 
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Social Media Links</CardTitle>
+                    <CardDescription>
+                      Add your social media profiles to connect with customers
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormInput
+                        {...register('socialMedia.instagram')}
+                        label="Instagram"
+                        placeholder="https://instagram.com/yourusername"
+                        error={errors.socialMedia?.instagram?.message}
+                        disabled={loading}
+                        helperText="Your Instagram profile URL"
+                      />
+
+                      <FormInput
+                        {...register('socialMedia.tiktok')}
+                        label="TikTok"
+                        placeholder="https://tiktok.com/@yourusername"
+                        error={errors.socialMedia?.tiktok?.message}
+                        disabled={loading}
+                        helperText="Your TikTok profile URL"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormInput
+                        {...register('socialMedia.twitter')}
+                        label="X (Twitter)"
+                        placeholder="https://x.com/yourusername"
+                        error={errors.socialMedia?.twitter?.message}
+                        disabled={loading}
+                        helperText="Your X (Twitter) profile URL"
+                      />
+
+                      <FormInput
+                        {...register('socialMedia.facebook')}
+                        label="Facebook"
+                        placeholder="https://facebook.com/yourusername"
+                        error={errors.socialMedia?.facebook?.message}
+                        disabled={loading}
+                        helperText="Your Facebook profile URL"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Header Display Settings</CardTitle>
+                    <CardDescription>
+                      Choose which information to display in the restaurant header
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="showOperatingHours">Operating Hours & Status</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Show restaurant operating hours and open/closed status
+                          </p>
+                        </div>
+                        <Switch
+                          id="showOperatingHours"
+                          checked={watch('headerDisplaySettings.showOperatingHours') ?? true}
+                          onCheckedChange={(checked) => setValue('headerDisplaySettings.showOperatingHours', checked)}
+                          disabled={loading}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="showAddress">Restaurant Address</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Show restaurant address with location icon
+                          </p>
+                        </div>
+                        <Switch
+                          id="showAddress"
+                          checked={watch('headerDisplaySettings.showAddress') ?? true}
+                          onCheckedChange={(checked) => setValue('headerDisplaySettings.showAddress', checked)}
+                          disabled={loading}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="showPhone">Phone Number</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Show restaurant phone number for contact
+                          </p>
+                        </div>
+                        <Switch
+                          id="showPhone"
+                          checked={watch('headerDisplaySettings.showPhone') ?? true}
+                          onCheckedChange={(checked) => setValue('headerDisplaySettings.showPhone', checked)}
+                          disabled={loading}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="showSocialMedia">Social Media Links</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Show social media links (Instagram, TikTok, Twitter, Facebook)
+                          </p>
+                        </div>
+                        <Switch
+                          id="showSocialMedia"
+                          checked={watch('headerDisplaySettings.showSocialMedia') ?? true}
+                          onCheckedChange={(checked) => setValue('headerDisplaySettings.showSocialMedia', checked)}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
               </TabsContent>
 
 
@@ -462,6 +666,13 @@ export function SettingsTab() {
                 <Button
                   type="submit"
                   disabled={loading}
+                  onClick={(e) => {
+                    console.log('🔧 Save button clicked');
+                    console.log('🔧 Button disabled:', loading);
+                    console.log('🔧 Form errors:', errors);
+                    console.log('🔧 Form isValid:', isValid);
+                    console.log('🔧 Form isDirty:', isDirty);
+                  }}
                 >
                   {loading ? (
                     <>

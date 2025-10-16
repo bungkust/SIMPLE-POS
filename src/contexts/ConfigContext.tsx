@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -30,6 +30,13 @@ interface AppConfig {
     tiktok?: string;
     twitter?: string;
     facebook?: string;
+  };
+  // Header display settings
+  headerDisplaySettings?: {
+    showOperatingHours?: boolean;
+    showAddress?: boolean;
+    showPhone?: boolean;
+    showSocialMedia?: boolean;
   };
 }
 
@@ -164,22 +171,22 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           .single();
 
         if (tenantData && !tenantError) {
-          const tenantSettings = tenantData.settings as any || {};
+          const tenantSettings = (tenantData as any).settings || {};
           const dbConfig: AppConfig = {
-            storeName: tenantSettings.storeName || tenantData.name || getDefaultConfigForTenant(tenantSlug).storeName,
+            storeName: tenantSettings.storeName || (tenantData as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
             storeIcon: tenantSettings.logo_url || tenantSettings.storeIcon || getDefaultConfigForTenant(tenantSlug).storeIcon,
             storeIconType: tenantSettings.logo_url ? 'uploaded' : (tenantSettings.storeIconType || 'predefined'),
-            storeDescription: tenantSettings.description || tenantSettings.storeDescription,
-            storeAddress: tenantSettings.address || tenantSettings.storeAddress,
-            storePhone: tenantSettings.phone || tenantSettings.storePhone,
-            storeEmail: tenantSettings.email || tenantSettings.storeEmail,
-            storeHours: tenantSettings.operating_hours || tenantSettings.storeHours,
-            autoAcceptOrders: tenantSettings.autoAcceptOrders || tenantSettings.auto_accept_orders,
-            requirePhoneVerification: tenantSettings.requirePhoneVerification || tenantSettings.require_phone_verification,
-            allowGuestCheckout: tenantSettings.allowGuestCheckout || tenantSettings.allow_guest_checkout,
-            minimumOrderAmount: tenantSettings.minimumOrderAmount || tenantSettings.minimum_order_amount,
-            deliveryFee: tenantSettings.deliveryFee || tenantSettings.delivery_fee,
-            freeDeliveryThreshold: tenantSettings.freeDeliveryThreshold || tenantSettings.free_delivery_threshold,
+            storeDescription: tenantSettings.description,
+            storeAddress: tenantSettings.address,
+            storePhone: tenantSettings.phone,
+            storeEmail: tenantSettings.email,
+            storeHours: tenantSettings.operating_hours,
+            autoAcceptOrders: tenantSettings.auto_accept_orders,
+            requirePhoneVerification: tenantSettings.require_phone_verification,
+            allowGuestCheckout: tenantSettings.allow_guest_checkout,
+            minimumOrderAmount: tenantSettings.minimum_order_amount,
+            deliveryFee: tenantSettings.delivery_fee,
+            freeDeliveryThreshold: tenantSettings.free_delivery_threshold,
             // Additional restaurant info fields
             rating: tenantSettings.rating,
             reviewCount: tenantSettings.reviewCount,
@@ -187,7 +194,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             distance: tenantSettings.distance,
             isOpen: tenantSettings.isOpen,
             // Social media links
-            socialMedia: tenantSettings.social_media
+            socialMedia: tenantSettings.social_media,
+            // Header display settings
+            headerDisplaySettings: tenantSettings.headerDisplaySettings
           };
           
           setConfig(dbConfig);
@@ -210,16 +219,16 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             .single();
 
           if (tenantData && !tenantError) {
-            const tenantSettings = tenantData.settings as any || {};
+            const tenantSettings = (tenantData as any).settings || {};
             const dbConfig: AppConfig = {
-              storeName: tenantSettings.storeName || tenantData.name || getDefaultConfigForTenant(tenantSlug).storeName,
+              storeName: tenantSettings.storeName || (tenantData as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
               storeIcon: tenantSettings.logo_url || tenantSettings.storeIcon || getDefaultConfigForTenant(tenantSlug).storeIcon,
               storeIconType: tenantSettings.logo_url ? 'uploaded' : (tenantSettings.storeIconType || 'predefined'),
-              storeDescription: tenantSettings.description || tenantSettings.storeDescription,
-              storeAddress: tenantSettings.address || tenantSettings.storeAddress,
-              storePhone: tenantSettings.phone || tenantSettings.storePhone,
-              storeEmail: tenantSettings.email || tenantSettings.storeEmail,
-              storeHours: tenantSettings.operating_hours || tenantSettings.storeHours,
+              storeDescription: tenantSettings.storeDescription || tenantSettings.description,
+              storeAddress: tenantSettings.storeAddress || tenantSettings.address,
+              storePhone: tenantSettings.storePhone || tenantSettings.phone,
+              storeEmail: tenantSettings.storeEmail || tenantSettings.email,
+              storeHours: tenantSettings.storeHours || tenantSettings.operating_hours,
               autoAcceptOrders: tenantSettings.autoAcceptOrders || tenantSettings.auto_accept_orders,
               requirePhoneVerification: tenantSettings.requirePhoneVerification || tenantSettings.require_phone_verification,
               allowGuestCheckout: tenantSettings.allowGuestCheckout || tenantSettings.allow_guest_checkout,
@@ -233,7 +242,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
               distance: tenantSettings.distance,
               isOpen: tenantSettings.isOpen,
               // Social media links
-              socialMedia: tenantSettings.social_media
+              socialMedia: tenantSettings.social_media,
+              // Header display settings
+              headerDisplaySettings: tenantSettings.headerDisplaySettings
             };
             
             setConfig(dbConfig);
@@ -245,7 +256,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             return;
           }
         } catch (error) {
-          logger.error('Error loading tenant data for public page:', error);
+          logger.error('Error loading tenant data for public page:', error as any);
         }
       }
 
@@ -257,14 +268,14 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           const parsedConfig = JSON.parse(savedConfig);
           setConfig({ ...getDefaultConfigForTenant(tenantSlug), ...parsedConfig });
         } catch (error) {
-          logger.error('Error loading tenant config from localStorage:', error);
+          logger.error('Error loading tenant config from localStorage:', error as any);
           setConfig(getDefaultConfigForTenant(tenantSlug));
         }
       } else {
         setConfig(getDefaultConfigForTenant(tenantSlug));
       }
     } catch (error) {
-      logger.error('Error loading config:', error);
+      logger.error('Error loading config:', error as any);
       setConfig(getDefaultConfigForTenant(tenantSlug));
     }
   };
@@ -272,6 +283,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   // Save config to database and localStorage
   const saveConfig = async (tenantSlug: string, newConfig: AppConfig) => {
     try {
+      console.log('🔧 saveConfig called with:', { tenantSlug, newConfig, user: !!user, currentTenant: !!currentTenant });
       // Save to database if user is authenticated
       if (user && currentTenant) {
         // Get current tenant settings
@@ -282,7 +294,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           .single();
 
         if (currentTenantData && !fetchError) {
-          const currentSettings = currentTenantData.settings as any || {};
+          const currentSettings = (currentTenantData as any).settings || {};
           
           // Update settings with new config
           const updatedSettings = {
@@ -290,17 +302,17 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             storeName: newConfig.storeName,
             storeIcon: newConfig.storeIcon,
             storeIconType: newConfig.storeIconType,
-            storeDescription: newConfig.storeDescription,
-            storeAddress: newConfig.storeAddress,
-            storePhone: newConfig.storePhone,
-            storeEmail: newConfig.storeEmail,
-            storeHours: newConfig.storeHours,
-            autoAcceptOrders: newConfig.autoAcceptOrders,
-            requirePhoneVerification: newConfig.requirePhoneVerification,
-            allowGuestCheckout: newConfig.allowGuestCheckout,
-            minimumOrderAmount: newConfig.minimumOrderAmount,
-            deliveryFee: newConfig.deliveryFee,
-            freeDeliveryThreshold: newConfig.freeDeliveryThreshold,
+            description: newConfig.storeDescription,
+            address: newConfig.storeAddress,
+            phone: newConfig.storePhone,
+            email: newConfig.storeEmail,
+            operating_hours: newConfig.storeHours,
+            auto_accept_orders: newConfig.autoAcceptOrders,
+            require_phone_verification: newConfig.requirePhoneVerification,
+            allow_guest_checkout: newConfig.allowGuestCheckout,
+            minimum_order_amount: newConfig.minimumOrderAmount,
+            delivery_fee: newConfig.deliveryFee,
+            free_delivery_threshold: newConfig.freeDeliveryThreshold,
             // Additional restaurant info fields
             rating: newConfig.rating,
             reviewCount: newConfig.reviewCount,
@@ -309,11 +321,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             isOpen: newConfig.isOpen,
             // Social media links
             social_media: newConfig.socialMedia,
+            // Header display settings
+            headerDisplaySettings: newConfig.headerDisplaySettings,
             // Also save logo_url for super admin tenant form compatibility
             logo_url: newConfig.storeIconType === 'uploaded' ? newConfig.storeIcon : currentSettings.logo_url
           };
 
-          const { error: updateError } = await supabase
+          const { error: updateError } = await (supabase as any)
             .from('tenants')
             .update({ 
               settings: updatedSettings,
@@ -322,7 +336,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             .eq('id', currentTenant.id);
 
           if (updateError) {
-            logger.error('Error saving config to database:', updateError);
+            logger.error('Error saving config to database:', updateError as any);
             // Continue with localStorage fallback
           }
         }
@@ -332,7 +346,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       const storageKey = `tenant-config-${tenantSlug}`;
       localStorage.setItem(storageKey, JSON.stringify(newConfig));
     } catch (error) {
-      logger.error('Error saving config:', error);
+      logger.error('Error saving config:', error as any);
     }
   };
 
@@ -344,6 +358,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   }, [currentTenant, user]);
 
   const updateConfig = async (newConfig: Partial<AppConfig>) => {
+    console.log('🔧 updateConfig called with:', { newConfig, tenantSlug: currentTenant?.slug || getTenantSlugFromUrl(), currentTenant: !!currentTenant });
+    
     // Use currentTenant if available (for authenticated users), otherwise use URL
     const tenantSlug = currentTenant?.slug || getTenantSlugFromUrl();
     
@@ -351,7 +367,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     setConfig(updatedConfig);
 
     // Save to both database and localStorage
-    await saveConfig(tenantSlug, updatedConfig);
+    await saveConfig(tenantSlug, updatedConfig as AppConfig);
   };
 
   return (

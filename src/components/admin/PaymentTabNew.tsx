@@ -211,7 +211,7 @@ export function PaymentTab() {
     
     try {
       // Use standardized upload utility with tenant-specific folder structure
-      const result = await uploadFile(file, uploadConfigs.qrisImage(currentTenant.id));
+      const result = await uploadFile(file, uploadConfigs.qrisImage(currentTenant.slug));
 
       if (result.success && result.url) {
         methodForm.setValue('qris_image_url', result.url);

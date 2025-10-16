@@ -128,6 +128,20 @@ export const settingsFormSchema = z.object({
   minimumOrderAmount: z.number().min(0, "Minimum order tidak boleh negatif").default(0),
   deliveryFee: z.number().min(0, "Biaya pengiriman tidak boleh negatif").default(0),
   freeDeliveryThreshold: z.number().min(0, "Threshold gratis ongkir tidak boleh negatif").default(0),
+  // Social media links
+  socialMedia: z.object({
+    instagram: z.string().url("Instagram URL tidak valid").optional().or(z.literal("")),
+    tiktok: z.string().url("TikTok URL tidak valid").optional().or(z.literal("")),
+    twitter: z.string().url("X/Twitter URL tidak valid").optional().or(z.literal("")),
+    facebook: z.string().url("Facebook URL tidak valid").optional().or(z.literal("")),
+  }).optional(),
+  // Header display settings
+  headerDisplaySettings: z.object({
+    showOperatingHours: z.boolean().default(true),
+    showAddress: z.boolean().default(true),
+    showPhone: z.boolean().default(true),
+    showSocialMedia: z.boolean().default(true),
+  }).optional(),
 });
 
 // Super Admin Schemas
