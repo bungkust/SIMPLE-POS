@@ -133,11 +133,11 @@ export const uploadConfigs = {
     tenantSlug
   }),
 
-  // Store logo upload (Admin Settings)
-  storeLogo: (tenantId: string): UploadConfig => ({
-    bucket: 'store-assets',
-    folder: 'store-logos',
-    tenantId
+  // Store logo upload (Admin Settings) - Use same structure as super admin
+  storeLogo: (tenantSlug: string): UploadConfig => ({
+    bucket: 'store-icons',
+    folder: 'logo',
+    tenantSlug
   }),
 
   // Menu item image upload
@@ -188,7 +188,6 @@ export async function ensureTenantFolders(tenantSlug: string): Promise<boolean> 
 
     const buckets = [
       { bucket: 'store-icons', folder: 'logo' },
-      { bucket: 'store-assets', folder: 'store-logos' },
       { bucket: 'menu-images', folder: 'menu-items' },
       { bucket: 'qris-images', folder: 'qris' }
     ];
@@ -255,7 +254,6 @@ export async function deleteTenantStorageStructure(tenantSlug: string): Promise<
 
     const buckets = [
       { bucket: 'store-icons', folder: 'logo' },
-      { bucket: 'store-assets', folder: 'store-logos' },
       { bucket: 'menu-images', folder: 'menu-items' },
       { bucket: 'qris-images', folder: 'qris' }
     ];

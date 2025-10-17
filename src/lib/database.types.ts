@@ -234,6 +234,77 @@ export interface Database {
           owner_id?: string | null;
         };
       };
+      tenant_info: {
+        Row: {
+          tenant_id: string;
+          description: string | null;
+          address: string | null;
+          phone: string | null;
+          email: string | null;
+          operating_hours: string | null;
+          logo_url: string | null;
+          website: string | null;
+          category: string | null;
+          currency: string | null;
+          language: string | null;
+          instagram_url: string | null;
+          tiktok_url: string | null;
+          twitter_url: string | null;
+          facebook_url: string | null;
+          show_operating_hours: boolean | null;
+          show_address: boolean | null;
+          show_phone: boolean | null;
+          show_social_media: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          tenant_id: string;
+          description?: string | null;
+          address?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          operating_hours?: string | null;
+          logo_url?: string | null;
+          website?: string | null;
+          category?: string | null;
+          currency?: string | null;
+          language?: string | null;
+          instagram_url?: string | null;
+          tiktok_url?: string | null;
+          twitter_url?: string | null;
+          facebook_url?: string | null;
+          show_operating_hours?: boolean | null;
+          show_address?: boolean | null;
+          show_phone?: boolean | null;
+          show_social_media?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          tenant_id?: string;
+          description?: string | null;
+          address?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          operating_hours?: string | null;
+          logo_url?: string | null;
+          website?: string | null;
+          category?: string | null;
+          currency?: string | null;
+          language?: string | null;
+          instagram_url?: string | null;
+          tiktok_url?: string | null;
+          twitter_url?: string | null;
+          facebook_url?: string | null;
+          show_operating_hours?: boolean | null;
+          show_address?: boolean | null;
+          show_phone?: boolean | null;
+          show_social_media?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
     };
     Functions: {
       get_user_access_status: {

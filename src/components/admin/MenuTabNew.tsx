@@ -1,13 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AdvancedTable } from '@/components/ui/advanced-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Plus, 
   Edit, 
@@ -16,9 +13,7 @@ import {
   Eye, 
   EyeOff,
   Coffee,
-  DollarSign,
   Tag,
-  Image,
   AlertCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -85,9 +80,12 @@ export function MenuTab() {
   const toggleActive = async (itemId: string, currentState: boolean) => {
     console.log('🔄 MenuTab: Toggling active state for item:', itemId);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('menu_items')
-        .update({ is_active: !currentState, updated_at: new Date().toISOString() })
+        .update({ 
+          is_active: !currentState, 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', itemId);
 
       if (error) {
@@ -184,8 +182,9 @@ export function MenuTab() {
       cell: ({ row }) => (
         <StatusBadge 
           status={row.original.is_active ? 'active' : 'inactive'}
-          label={row.original.is_active ? 'Aktif' : 'Nonaktif'}
-        />
+        >
+          {row.original.is_active ? 'Aktif' : 'Nonaktif'}
+        </StatusBadge>
       ),
     },
     {
@@ -349,7 +348,6 @@ export function MenuTab() {
               data={menuItems}
               columns={columns}
               searchPlaceholder="Cari menu..."
-              emptyMessage="Tidak ada menu yang ditemukan"
             />
           )}
         </CardContent>
@@ -413,7 +411,6 @@ export function MenuTab() {
       {showOptionsManager && selectedMenuItem && (
         <OptionsManagerModal
           menuItem={selectedMenuItem}
-          currentTenant={currentTenant}
           onClose={() => {
             setShowOptionsManager(false);
             setSelectedMenuItem(null);
@@ -428,11 +425,9 @@ export function MenuTab() {
 // Options Management Modal Component
 function OptionsManagerModal({
   menuItem,
-  currentTenant,
   onClose,
 }: {
   menuItem: MenuItem;
-  currentTenant: any;
   onClose: () => void;
 }) {
   const [options, setOptions] = useState<any[]>([]);
@@ -454,7 +449,7 @@ function OptionsManagerModal({
       if (optionsData) {
         setOptions(optionsData);
 
-        const optionIds = optionsData.map(opt => opt.id);
+        const optionIds = optionsData.map((opt: any) => opt.id);
         if (optionIds.length > 0) {
           const { data: itemsData } = await supabase
             .from('menu_option_items')

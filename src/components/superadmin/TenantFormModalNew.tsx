@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { superAdminTenantFormSchema, type SuperAdminTenantFormData } from '@/lib/form-schemas';
 import { uploadFile, uploadConfigs, createTenantStorageStructure } from '@/lib/storage-utils';
 import { logger } from '@/lib/logger';
+import { createTenantInfo } from '@/lib/tenant-helpers';
 
 type Tenant = Database['public']['Tables']['tenants']['Row'];
 
@@ -203,41 +204,63 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
       setIsSubmitting(true);
       logger.database('Submitting tenant data', { component: 'TenantFormModal', data: { name: data.name, slug: data.slug } });
 
-      // Only submit fields that exist in the database schema
+      // Prepare tenant data for tenants table
       const tenantData = {
         name: data.name,
         slug: data.slug,
         owner_email: data.owner_email,
         is_active: data.status === 'active',
         settings: {
-          // Store additional form data in settings JSON field
-          description: data.description,
-          address: data.address,
-          phone: data.phone,
-          email: data.email,
-          website: data.website,
-          operating_hours: data.operating_hours,
-          category: data.category,
-          owner_name: data.owner_name,
-          owner_phone: data.owner_phone,
-          logo_url: data.logo_url,
-          social_media: data.social_media,
-          // Include the original settings
-          ...data.settings
+          // Keep only order-related settings in tenants.settings
+          auto_accept_orders: false,
+          require_phone_verification: false,
+          allow_guest_checkout: true,
+          minimum_order_amount: 0,
+          delivery_fee: 0,
+          free_delivery_threshold: 0,
         }
+      };
+
+      // Prepare tenant_info data for normalized table
+      const tenantInfoData = {
+        description: data.description,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
+        website: data.website,
+        operating_hours: data.operating_hours,
+        category: data.category,
+        logo_url: data.logo_url,
+        currency: 'IDR',
+        language: 'id',
+        instagram_url: data.social_media?.instagram,
+        tiktok_url: data.social_media?.tiktok,
+        twitter_url: data.social_media?.twitter,
+        facebook_url: data.social_media?.facebook,
+        show_operating_hours: true,
+        show_address: true,
+        show_phone: true,
+        show_social_media: true,
       };
 
       if (isEditing && tenant) {
         // Update existing tenant
-        const { error } = await supabase
+        const { error: tenantUpdateError } = await supabase
           .from('tenants')
           .update(tenantData)
           .eq('id', tenant.id);
 
-        if (error) {
-          logger.error('Error updating tenant', { error: error.message, component: 'TenantFormModal' });
-          onError(`Failed to update tenant: ${error.message}`);
+        if (tenantUpdateError) {
+          logger.error('Error updating tenant', { error: tenantUpdateError.message, component: 'TenantFormModal' });
+          onError(`Failed to update tenant: ${tenantUpdateError.message}`);
           return;
+        }
+
+        // Update tenant_info
+        const { error: tenantInfoError } = await createTenantInfo(tenant.id, tenantInfoData);
+        if (tenantInfoError) {
+          logger.error('Error updating tenant info', { error: tenantInfoError.message, component: 'TenantFormModal' });
+          // Don't fail the whole operation, just log the error
         }
 
         logger.database('Tenant updated successfully', { component: 'TenantFormModal' });
@@ -256,6 +279,13 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
         }
 
         logger.database('Tenant created successfully', { component: 'TenantFormModal' });
+        
+        // Create tenant_info record
+        const { error: tenantInfoError } = await createTenantInfo(newTenantData.id, tenantInfoData);
+        if (tenantInfoError) {
+          logger.error('Error creating tenant info', { error: tenantInfoError.message, component: 'TenantFormModal' });
+          // Don't fail the whole operation, just log the error
+        }
         
         // Create storage folder structure for new tenant
         try {

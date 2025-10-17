@@ -105,7 +105,7 @@ export function SettingsTab() {
     setUploading(true);
     try {
       // Use standardized upload utility with tenant-specific folder structure
-      const result = await uploadFile(file, uploadConfigs.storeLogo(currentTenant.id));
+      const result = await uploadFile(file, uploadConfigs.storeLogo(currentTenant.slug));
 
       if (result.success && result.url) {
         setValue('storeIcon', result.url);
@@ -128,8 +128,12 @@ export function SettingsTab() {
     console.log('🔧 Form is valid:', Object.keys(errors).length === 0);
     console.log('🔧 Form isValid:', isValid);
     console.log('🔧 Form isDirty:', isDirty);
+    console.log('🔧 Current tenant:', currentTenant);
+    console.log('🔧 updateConfig function:', typeof updateConfig);
+    
     setLoading(true);
     try {
+      console.log('🔧 Calling updateConfig...');
       await updateConfig({
         storeName: data.storeName,
         storeIcon: data.storeIcon,
@@ -257,20 +261,7 @@ export function SettingsTab() {
               </TabsTrigger>
             </TabsList>
 
-            <form onSubmit={(e) => {
-              console.log('🔧 Form submit event triggered');
-              e.preventDefault();
-              console.log('🔧 Form preventDefault called');
-              console.log('🔧 Form errors before submit:', errors);
-              console.log('🔧 Form isValid before submit:', isValid);
-              console.log('🔧 Form isDirty before submit:', isDirty);
-              try {
-                const result = handleSubmit(onSubmit)(e);
-                console.log('🔧 handleSubmit result:', result);
-              } catch (error) {
-                console.error('🔧 handleSubmit error:', error);
-              }
-            }} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* General Settings */}
               <TabsContent value="general" className="space-y-6">
                 <Card>
@@ -666,13 +657,6 @@ export function SettingsTab() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  onClick={(e) => {
-                    console.log('🔧 Save button clicked');
-                    console.log('🔧 Button disabled:', loading);
-                    console.log('🔧 Form errors:', errors);
-                    console.log('🔧 Form isValid:', isValid);
-                    console.log('🔧 Form isDirty:', isDirty);
-                  }}
                 >
                   {loading ? (
                     <>
