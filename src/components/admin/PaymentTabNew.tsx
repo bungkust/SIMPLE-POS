@@ -381,7 +381,14 @@ export function PaymentTab() {
   };
 
   const onSubmitMethod = async (data: any) => {
-    if (!currentTenant?.id) return;
+    console.log('🔍 onSubmitMethod called with data:', data);
+    console.log('🔍 Current tenant:', currentTenant?.id);
+    console.log('🔍 Editing method:', editingMethod?.id);
+    
+    if (!currentTenant?.id) {
+      console.error('❌ No current tenant ID available');
+      return;
+    }
 
     logger.log('🔍 Form data received:', data);
     logger.log('🔍 Form data validation:');
@@ -747,6 +754,7 @@ export function PaymentTab() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
+                        console.log('🔍 Edit button clicked for method:', method);
                         setEditingMethod(method);
                         setShowPaymentForm(true);
                         // Set form values
@@ -755,6 +763,14 @@ export function PaymentTab() {
                         methodForm.setValue('payment_type', method.payment_type);
                         methodForm.setValue('account_holder', method.account_holder || '');
                         methodForm.setValue('qris_image_url', method.qris_image_url || '');
+                        
+                        console.log('🔍 Form values set:', {
+                          name: method.name,
+                          description: method.description || '',
+                          payment_type: method.payment_type,
+                          account_holder: method.account_holder || '',
+                          qris_image_url: method.qris_image_url || ''
+                        });
                         
                         // Set uploaded file name if there's an existing image
                         if (method.qris_image_url) {

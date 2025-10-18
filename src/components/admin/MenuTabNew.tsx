@@ -430,9 +430,32 @@ function OptionsManagerModal({
   menuItem: MenuItem;
   onClose: () => void;
 }) {
+  const { currentTenant } = useAuth();
   const [options, setOptions] = useState<any[]>([]);
   const [optionItems, setOptionItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddOptionForm, setShowAddOptionForm] = useState(false);
+  const [newOptionLabel, setNewOptionLabel] = useState('');
+  const [newOptionType, setNewOptionType] = useState('single_required');
+  const [newOptionRequired, setNewOptionRequired] = useState(true);
+  const [newOptionMaxSelections, setNewOptionMaxSelections] = useState(1);
+  const [addingOption, setAddingOption] = useState(false);
+  
+  // Option Items (sub-options) state
+  const [showAddItemForm, setShowAddItemForm] = useState(false);
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemPrice, setNewItemPrice] = useState(0);
+  const [newItemAvailable, setNewItemAvailable] = useState(true);
+  const [addingItem, setAddingItem] = useState(false);
+  
+  // Edit states
+  const [editingOption, setEditingOption] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [showEditOptionForm, setShowEditOptionForm] = useState(false);
+  const [showEditItemForm, setShowEditItemForm] = useState(false);
+  const [deletingOption, setDeletingOption] = useState<string | null>(null);
+  const [deletingItem, setDeletingItem] = useState<string | null>(null);
 
   useEffect(() => {
     loadOptions();
@@ -471,6 +494,205 @@ function OptionsManagerModal({
     return optionItems.filter(item => item.menu_option_id === optionId);
   };
 
+  const handleAddOption = async () => {
+    if (!newOptionLabel.trim() || !currentTenant) return;
+
+    setAddingOption(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('menu_options')
+        .insert({
+          menu_item_id: menuItem.id,
+          tenant_id: currentTenant.id,
+          label: newOptionLabel.trim(),
+          selection_type: newOptionType,
+          is_required: newOptionRequired,
+          max_selections: newOptionMaxSelections,
+          sort_order: options.length
+        });
+
+      if (error) throw error;
+
+      // Reset form
+      setNewOptionLabel('');
+      setNewOptionType('single_required');
+      setNewOptionRequired(true);
+      setNewOptionMaxSelections(1);
+      setShowAddOptionForm(false);
+
+      // Reload options
+      await loadOptions();
+    } catch (error) {
+      console.error('Error adding option:', error);
+    } finally {
+      setAddingOption(false);
+    }
+  };
+
+  const handleAddOptionItem = async () => {
+    if (!newItemName.trim() || !selectedOptionId || !currentTenant) return;
+
+    setAddingItem(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('menu_option_items')
+        .insert({
+          menu_option_id: selectedOptionId,
+          tenant_id: currentTenant.id,
+          name: newItemName.trim(),
+          additional_price: newItemPrice,
+          is_available: newItemAvailable,
+          sort_order: getOptionItems(selectedOptionId).length
+        });
+
+      if (error) throw error;
+
+      // Reset form
+      setNewItemName('');
+      setNewItemPrice(0);
+      setNewItemAvailable(true);
+      setSelectedOptionId(null);
+      setShowAddItemForm(false);
+
+      // Reload options
+      await loadOptions();
+    } catch (error) {
+      console.error('Error adding option item:', error);
+    } finally {
+      setAddingItem(false);
+    }
+  };
+
+  const openAddItemForm = (optionId: string) => {
+    setSelectedOptionId(optionId);
+    setShowAddItemForm(true);
+  };
+
+  const handleEditOption = (option: any) => {
+    setEditingOption(option);
+    setNewOptionLabel(option.label);
+    setNewOptionType(option.selection_type);
+    setNewOptionRequired(option.is_required);
+    setNewOptionMaxSelections(option.max_selections);
+    setShowEditOptionForm(true);
+  };
+
+  const handleUpdateOption = async () => {
+    if (!editingOption || !newOptionLabel.trim()) return;
+
+    setAddingOption(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('menu_options')
+        .update({
+          label: newOptionLabel.trim(),
+          selection_type: newOptionType,
+          is_required: newOptionRequired,
+          max_selections: newOptionMaxSelections,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingOption.id);
+
+      if (error) throw error;
+
+      // Reset form
+      setEditingOption(null);
+      setNewOptionLabel('');
+      setNewOptionType('single_required');
+      setNewOptionRequired(true);
+      setNewOptionMaxSelections(1);
+      setShowEditOptionForm(false);
+
+      // Reload options
+      await loadOptions();
+    } catch (error) {
+      console.error('Error updating option:', error);
+    } finally {
+      setAddingOption(false);
+    }
+  };
+
+  const handleDeleteOption = async (optionId: string) => {
+    setDeletingOption(optionId);
+    try {
+      const { error } = await (supabase as any)
+        .from('menu_options')
+        .delete()
+        .eq('id', optionId);
+
+      if (error) throw error;
+
+      // Reload options
+      await loadOptions();
+    } catch (error) {
+      console.error('Error deleting option:', error);
+    } finally {
+      setDeletingOption(null);
+    }
+  };
+
+  const handleEditItem = (item: any) => {
+    setEditingItem(item);
+    setNewItemName(item.name);
+    setNewItemPrice(item.additional_price);
+    setNewItemAvailable(item.is_available);
+    setSelectedOptionId(item.menu_option_id);
+    setShowEditItemForm(true);
+  };
+
+  const handleUpdateItem = async () => {
+    if (!editingItem || !newItemName.trim()) return;
+
+    setAddingItem(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('menu_option_items')
+        .update({
+          name: newItemName.trim(),
+          additional_price: newItemPrice,
+          is_available: newItemAvailable,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingItem.id);
+
+      if (error) throw error;
+
+      // Reset form
+      setEditingItem(null);
+      setNewItemName('');
+      setNewItemPrice(0);
+      setNewItemAvailable(true);
+      setSelectedOptionId(null);
+      setShowEditItemForm(false);
+
+      // Reload options
+      await loadOptions();
+    } catch (error) {
+      console.error('Error updating item:', error);
+    } finally {
+      setAddingItem(false);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    setDeletingItem(itemId);
+    try {
+      const { error } = await (supabase as any)
+        .from('menu_option_items')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // Reload options
+      await loadOptions();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    } finally {
+      setDeletingItem(null);
+    }
+  };
+
   if (loading) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
@@ -496,7 +718,173 @@ function OptionsManagerModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">
-          {options.length === 0 ? (
+          {showAddItemForm || showEditItemForm ? (
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {showEditItemForm ? 'Edit Item Opsi' : 'Tambah Item Opsi'}
+                </CardTitle>
+                <CardDescription>
+                  {showEditItemForm ? 'Edit pilihan opsi' : `Tambah pilihan untuk opsi "${options.find(opt => opt.id === selectedOptionId)?.label}"`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Nama Item
+                  </label>
+                  <input
+                    type="text"
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    placeholder="Contoh: Kecil, Sedang, Besar"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Harga Tambahan
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="500"
+                    value={newItemPrice}
+                    onChange={(e) => setNewItemPrice(parseInt(e.target.value) || 0)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Harga tambahan untuk item ini (0 jika tidak ada tambahan)
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newItemAvailable}
+                      onChange={(e) => setNewItemAvailable(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-slate-700">Tersedia</span>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAddItemForm(false);
+                      setShowEditItemForm(false);
+                      setEditingItem(null);
+                      setSelectedOptionId(null);
+                    }}
+                    className="flex-1"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    onClick={showEditItemForm ? handleUpdateItem : handleAddOptionItem}
+                    disabled={!newItemName.trim() || addingItem}
+                    className="flex-1"
+                  >
+                    {addingItem ? 'Menyimpan...' : (showEditItemForm ? 'Update Item' : 'Tambah Item')}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {showAddOptionForm || showEditOptionForm ? (
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {showEditOptionForm ? 'Edit Opsi' : 'Tambah Opsi Baru'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Label Opsi
+                  </label>
+                  <input
+                    type="text"
+                    value={newOptionLabel}
+                    onChange={(e) => setNewOptionLabel(e.target.value)}
+                    placeholder="Contoh: Ukuran, Level Pedas, Topping"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Tipe Seleksi
+                  </label>
+                  <select
+                    value={newOptionType}
+                    onChange={(e) => setNewOptionType(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="single_required">Single Required (Wajib pilih 1)</option>
+                    <option value="single_optional">Single Optional (Opsional pilih 1)</option>
+                    <option value="multiple">Multiple (Bisa pilih banyak)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newOptionRequired}
+                      onChange={(e) => setNewOptionRequired(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-slate-700">Wajib dipilih</span>
+                  </label>
+                </div>
+
+                {newOptionType === 'multiple' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Max Selections
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newOptionMaxSelections}
+                      onChange={(e) => setNewOptionMaxSelections(parseInt(e.target.value) || 1)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAddOptionForm(false);
+                      setShowEditOptionForm(false);
+                      setEditingOption(null);
+                    }}
+                    className="flex-1"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    onClick={showEditOptionForm ? handleUpdateOption : handleAddOption}
+                    disabled={!newOptionLabel.trim() || addingOption}
+                    className="flex-1"
+                  >
+                    {addingOption ? 'Menyimpan...' : (showEditOptionForm ? 'Update Opsi' : 'Tambah Opsi')}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {options.length === 0 && !showAddOptionForm ? (
             <div className="text-center py-8">
               <Settings className="w-12 h-12 text-slate-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-slate-900 mb-2">Belum ada opsi</h3>
@@ -529,12 +917,27 @@ function OptionsManagerModal({
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditOption(option)}
+                            disabled={showEditOptionForm || showAddOptionForm}
+                          >
                             <Edit className="w-4 h-4 mr-1" />
                             Edit
                           </Button>
-                          <Button variant="outline" size="sm" className="text-red-600">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteOption(option.id)}
+                            disabled={deletingOption === option.id}
+                          >
+                            {deletingOption === option.id ? (
+                              <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                            ) : (
                             <Trash2 className="w-4 h-4" />
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -544,33 +947,62 @@ function OptionsManagerModal({
                         {items.length} pilihan • Max selections: {option.max_selections}
                       </div>
 
-                      {items.length > 0 && (
                         <div className="space-y-2">
-                          {items.map((item) => (
+                        {items.length > 0 && items.map((item) => (
                             <div key={item.id} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
                               <div className="flex items-center gap-3">
-                                {item.is_available && (
+                              {item.is_available ? (
                                   <Badge variant="secondary" className="text-xs">
-                                    Default
+                                  Tersedia
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs text-slate-500">
+                                  Tidak Tersedia
                                   </Badge>
                                 )}
                                 <span className="font-medium text-slate-900">{item.name}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm text-slate-600">
-                                  +{formatRupiah(item.additional_price)}
+                                {item.additional_price > 0 ? `+${formatRupiah(item.additional_price)}` : 'Tidak ada tambahan'}
                                 </span>
-                                <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleEditItem(item)}
+                                disabled={showEditItemForm || showAddItemForm}
+                              >
                                   <Edit className="w-3 h-3" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="text-red-600">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-red-600 hover:bg-red-50"
+                                onClick={() => handleDeleteItem(item.id)}
+                                disabled={deletingItem === item.id}
+                              >
+                                {deletingItem === item.id ? (
+                                  <div className="w-3 h-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                                ) : (
                                   <Trash2 className="w-3 h-3" />
+                                )}
                                 </Button>
                               </div>
                             </div>
                           ))}
+                        
+                        {!showAddItemForm && !showEditItemForm && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openAddItemForm(option.id)}
+                            className="w-full mt-2"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Tambah Item
+                          </Button>
+                        )}
                         </div>
-                      )}
                     </CardContent>
                   </Card>
                 );
@@ -583,10 +1015,15 @@ function OptionsManagerModal({
           <Button variant="outline" onClick={onClose} className="flex-1">
             Tutup
           </Button>
-          <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
+          {!showAddOptionForm && !showAddItemForm && !showEditOptionForm && !showEditItemForm && (
+            <Button 
+              onClick={() => setShowAddOptionForm(true)}
+              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
             <Plus className="w-4 h-4 mr-2" />
             Tambah Opsi
           </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

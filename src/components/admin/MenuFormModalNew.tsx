@@ -7,7 +7,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { FormInput } from '@/components/forms/FormInput';
 import { FormTextarea } from '@/components/forms/FormTextarea';
 import { FormSelect, SelectItem } from '@/components/forms/FormSelect';
-import { FormCheckbox } from '@/components/forms/FormCheckbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -52,9 +51,9 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
       description: item?.description || '',
       price: item?.price || 0,
       category_id: item?.category_id || '',
-      is_available: item?.is_active ?? true,
       image_url: item?.photo_url || '',
       // preparation_time field removed as it doesn't exist in database schema
+      // is_available removed - status is managed via toggle button in menu list
     }
   });
 
@@ -114,7 +113,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
         price: data.price,
         category_id: data.category_id,
         photo_url: data.image_url || null,
-        is_active: data.is_available,
+        is_active: true, // New items are active by default, can be toggled via menu list
         base_price: data.price, // Set base_price same as price initially
         short_description: data.description ? data.description.substring(0, 100) : null, // Truncate description for short_description
         search_text: `${data.name} ${data.description || ''}`.toLowerCase(), // Create search text for filtering
@@ -248,11 +247,6 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
                 )}
               />
 
-              <FormCheckbox
-                {...register('is_available')}
-                label="Available for Order"
-                disabled={loading}
-              />
             </CardContent>
           </Card>
 

@@ -54,7 +54,7 @@ export function CartBar() {
     const path = window.location.pathname;
     const pathParts = path.split('/').filter(Boolean);
     
-    if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'auth') {
+    if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'auth' && pathParts[0] !== 'undefined' && pathParts[0] !== 'null') {
       return {
         tenant_slug: pathParts[0],
         tenant_id: null,
@@ -72,7 +72,12 @@ export function CartBar() {
   }, [currentTenant]);
 
   const handleCheckoutClick = () => {
-    const tenantSlug = tenantInfo.tenant_slug;
+    // Handle both currentTenant structure (slug) and fallback structure (tenant_slug)
+    const tenantSlug = tenantInfo.slug || tenantInfo.tenant_slug;
+    console.log('🔍 CartBar: handleCheckoutClick called');
+    console.log('🔍 CartBar: tenantInfo:', tenantInfo);
+    console.log('🔍 CartBar: tenantSlug:', tenantSlug);
+    console.log('🔍 CartBar: navigating to:', `/${tenantSlug}/checkout`);
     navigate(`/${tenantSlug}/checkout`);
   };
 

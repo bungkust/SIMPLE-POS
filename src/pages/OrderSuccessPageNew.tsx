@@ -11,6 +11,7 @@ interface OrderSuccessPageProps {
   orderCode: string;
   onViewInvoice: () => void;
   onBackToMenu: () => void;
+  isFromAdmin?: boolean;
 }
 
 interface OrderData {
@@ -30,7 +31,7 @@ interface OrderData {
   order_items: any[];
 }
 
-export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu }: OrderSuccessPageProps) {
+export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFromAdmin = false }: OrderSuccessPageProps) {
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -433,8 +434,17 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu }: Ord
                 className="flex-1 text-xs sm:text-base"
                 size="sm"
               >
-                <Calculator className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                Kembali ke Kasir
+                {isFromAdmin ? (
+                  <>
+                    <Calculator className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                    Kembali ke Kasir
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                    Kembali ke Menu
+                  </>
+                )}
               </Button>
             </div>
 

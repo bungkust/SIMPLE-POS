@@ -77,6 +77,30 @@ export interface Database {
           updated_at: string;
           tenant_id: string;
         };
+        Insert: {
+          id?: string;
+          menu_item_id: string;
+          label: string;
+          selection_type: 'single_required' | 'single_optional' | 'multiple';
+          max_selections?: number;
+          is_required?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          tenant_id: string;
+        };
+        Update: {
+          id?: string;
+          menu_item_id?: string;
+          label?: string;
+          selection_type?: 'single_required' | 'single_optional' | 'multiple';
+          max_selections?: number;
+          is_required?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          tenant_id?: string;
+        };
       };
       menu_option_items: {
         Row: {
@@ -89,6 +113,28 @@ export interface Database {
           created_at: string;
           updated_at: string;
           tenant_id: string;
+        };
+        Insert: {
+          id?: string;
+          menu_option_id: string;
+          name: string;
+          additional_price?: number;
+          is_available?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          tenant_id: string;
+        };
+        Update: {
+          id?: string;
+          menu_option_id?: string;
+          name?: string;
+          additional_price?: number;
+          is_available?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          tenant_id?: string;
         };
       };
       orders: {

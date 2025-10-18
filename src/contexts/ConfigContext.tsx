@@ -151,7 +151,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     const pathParts = path.split('/').filter(Boolean);
     
     // Check if path starts with tenant slug pattern
-    if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'auth') {
+    if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'auth' && pathParts[0] !== 'undefined' && pathParts[0] !== 'null') {
       return pathParts[0];
     }
     

@@ -62,17 +62,29 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   useEffect(() => {
     const resolveTenantId = async () => {
       try {
+        console.log('🔍 CheckoutPage: Starting to resolve tenant ID...');
         const resolvedTenantInfo = await getTenantInfo();
+        console.log('🔍 CheckoutPage: Resolved tenant info:', resolvedTenantInfo);
+        
         if (resolvedTenantInfo) {
           setTenantInfo(resolvedTenantInfo);
           setResolvedTenantId(resolvedTenantInfo.tenant_id);
+          console.log('🔍 CheckoutPage: Set resolved tenant ID:', resolvedTenantInfo.tenant_id);
+          
           // Load payment methods after tenant ID is resolved
-          await loadAvailablePaymentMethods(resolvedTenantInfo.tenant_id);
+          if (resolvedTenantInfo.tenant_id) {
+            await loadAvailablePaymentMethods(resolvedTenantInfo.tenant_id);
+          } else {
+            console.error('❌ CheckoutPage: No tenant_id available, cannot load payment methods');
+            setAvailablePaymentMethods([]);
+            setLoadingPaymentMethods(false);
+          }
         } else {
+          console.error('❌ CheckoutPage: Failed to resolve tenant information');
           showError('Error', 'Failed to resolve tenant information.');
         }
       } catch (error) {
-        console.error('Error in resolveTenantId:', error);
+        console.error('❌ CheckoutPage: Error in resolveTenantId:', error);
         showError('Error', 'Failed to resolve tenant information.');
       }
     };

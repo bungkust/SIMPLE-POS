@@ -50,7 +50,7 @@ export function CashierTab() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [processingOrder, setProcessingOrder] = useState(false);
-  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>(['QRIS', 'COD', 'TRANSFER']);
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>([]);
 
   const {
     register,
@@ -98,6 +98,24 @@ export function CashierTab() {
 
       if (menuError) throw menuError;
       setMenuItems(menuData || []);
+
+      // Load payment methods
+      const { data: paymentMethodsData, error: paymentError } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (paymentError) {
+        logger.error('Error loading payment methods:', paymentError);
+        // Fallback to default methods if database query fails
+        setAvailablePaymentMethods(['QRIS', 'COD', 'TRANSFER']);
+      } else {
+        const methods = paymentMethodsData?.map(method => method.payment_type) || [];
+        setAvailablePaymentMethods(methods);
+        logger.log('✅ Payment methods loaded:', methods);
+      }
 
     } catch (error) {
       logger.error('Error loading data:', error);

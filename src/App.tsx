@@ -27,7 +27,7 @@ const getCurrentTenantSlug = (): string => {
   const pathParts = path.split('/').filter(Boolean);
 
   // Check if path starts with tenant slug pattern (not admin, not other routes)
-  if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success') {
+  if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'undefined' && pathParts[0] !== 'null') {
     return pathParts[0];
   }
 
@@ -89,19 +89,37 @@ function OrderSuccessPageWrapper() {
   const location = useLocation();
   
   // Check if user came from admin dashboard (kasir)
+  // Priority: location.state.fromAdmin > referrer detection
   const isFromAdmin = location.state?.fromAdmin || 
-                     document.referrer.includes('/admin/dashboard') ||
-                     document.referrer.includes('/admin');
+                     (document.referrer && (
+                       document.referrer.includes('/admin/dashboard') ||
+                       document.referrer.includes('/admin')
+                     ));
+  
+  console.log('🔍 OrderSuccess: Navigation detection:', {
+    locationState: location.state,
+    referrer: document.referrer,
+    isFromAdmin: isFromAdmin,
+    fromAdminState: location.state?.fromAdmin,
+    referrerCheck: document.referrer ? {
+      includesAdminDashboard: document.referrer.includes('/admin/dashboard'),
+      includesAdmin: document.referrer.includes('/admin')
+    } : 'No referrer'
+  });
   
   return <OrderSuccessPage
     orderCode={orderCode || ''}
+    isFromAdmin={isFromAdmin}
     onViewInvoice={() => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)}
     onBackToMenu={() => {
+      console.log('🔍 OrderSuccess: onBackToMenu called, isFromAdmin:', isFromAdmin);
       if (isFromAdmin) {
+        console.log('🔍 OrderSuccess: Navigating to admin dashboard (kasir)');
         navigate(`/${getCurrentTenantSlug()}/admin/dashboard`, { 
           state: { activeTab: 'kasir' } 
         });
       } else {
+        console.log('🔍 OrderSuccess: Navigating to menu browser');
         navigate(`/${getCurrentTenantSlug()}`);
       }
     }}

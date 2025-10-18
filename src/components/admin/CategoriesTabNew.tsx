@@ -108,7 +108,13 @@ export function CategoriesTab() {
 
         showSuccess('Category Updated', 'Category berhasil diperbarui.');
       } else {
-        // Create new category
+        // Create new category - ensure unique sort_order
+        const existingSortOrder = categories.find(c => c.sort_order === data.sort_order);
+        if (existingSortOrder) {
+          showError('Sort Order Conflict', 'Sort order already exists. Please choose a different number.');
+          return;
+        }
+
         const { error } = await supabase
           .from('categories')
           .insert({
@@ -136,6 +142,17 @@ export function CategoriesTab() {
     setEditingCategory(category);
     setValue('name', category.name);
     setValue('sort_order', category.sort_order);
+    setShowForm(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingCategory(null);
+    reset();
+    // Suggest next available sort_order
+    const maxSortOrder = categories.length > 0 
+      ? Math.max(...categories.map(c => c.sort_order || 0)) 
+      : 0;
+    setValue('sort_order', maxSortOrder + 1);
     setShowForm(true);
   };
 
@@ -183,16 +200,20 @@ export function CategoriesTab() {
     setUpdatingOrder(category.id);
 
     try {
-      // Swap sort orders
-      const { error } = await supabase
+      // Swap sort orders - use separate updates to avoid primary key conflicts
+      const { error: error1 } = await supabase
         .from('categories')
-        .update([
-          { id: category.id, sort_order: targetCategory.sort_order },
-          { id: targetCategory.id, sort_order: category.sort_order }
-        ])
-        .in('id', [category.id, targetCategory.id]);
+        .update({ sort_order: targetCategory.sort_order })
+        .eq('id', category.id);
 
-      if (error) throw error;
+      if (error1) throw error1;
+
+      const { error: error2 } = await supabase
+        .from('categories')
+        .update({ sort_order: category.sort_order })
+        .eq('id', targetCategory.id);
+
+      if (error2) throw error2;
 
       // Update local state
       setCategories(prev => {
@@ -329,11 +350,7 @@ export function CategoriesTab() {
                 Manage menu categories and their display order
               </CardDescription>
             </div>
-            <Button onClick={() => {
-              setEditingCategory(null);
-              reset();
-              setShowForm(true);
-            }}>
+            <Button onClick={handleAddNew}>
               <Plus className="h-4 w-4 mr-2" />
               Add Category
             </Button>
@@ -347,11 +364,7 @@ export function CategoriesTab() {
               <p className="text-muted-foreground mb-4">
                 Create your first category to organize your menu items.
               </p>
-              <Button onClick={() => {
-                setEditingCategory(null);
-                reset();
-                setShowForm(true);
-              }}>
+              <Button onClick={handleAddNew}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Category
               </Button>

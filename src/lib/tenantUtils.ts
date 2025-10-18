@@ -102,7 +102,9 @@ export async function getTenantInfo(tenantSlug?: string) {
         pathParts[0] !== 'orders' && 
         pathParts[0] !== 'invoice' && 
         pathParts[0] !== 'success' && 
-        pathParts[0] !== 'auth') {
+        pathParts[0] !== 'auth' &&
+        pathParts[0] !== 'undefined' &&
+        pathParts[0] !== 'null') {
       tenantSlug = pathParts[0];
       console.log('✅ getTenantInfo: Extracted tenant slug from URL:', tenantSlug);
     } else {
