@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { loginSchema, type LoginData } from '@/lib/form-schemas';
 import { User, Session } from '@supabase/supabase-js';
+import { useIsMobile } from '@/hooks/use-media-query';
 
 interface AdminLoginPageProps {
   onBack: () => void;
@@ -23,6 +24,7 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const isMobile = useIsMobile();
 
   const isSuperAdmin = location.pathname === '/super-admin/login';
 
@@ -117,18 +119,18 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="shadow-xl">
-          <CardHeader className="space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Coffee className="h-8 w-8 text-primary" />
-                <div>
-                  <CardTitle className="text-2xl font-bold">
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center ${isMobile ? 'p-3' : 'p-4'}`}>
+      <div className={`w-full ${isMobile ? 'max-w-sm' : 'max-w-md'}`}>
+        <Card className={`shadow-xl ${isMobile ? 'border-0 shadow-2xl' : ''}`}>
+          <CardHeader className={`${isMobile ? 'space-y-2 pb-4' : 'space-y-1'}`}>
+            <div className={`flex items-center ${isMobile ? 'flex-col space-y-3' : 'justify-between'}`}>
+              <div className={`flex items-center ${isMobile ? 'flex-col space-y-2 text-center' : 'space-x-2'}`}>
+                <Coffee className={`${isMobile ? 'h-10 w-10' : 'h-8 w-8'} text-primary`} />
+                <div className={isMobile ? 'space-y-1' : ''}>
+                  <CardTitle className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold`}>
                     {isSuperAdmin ? 'Super Admin' : 'Admin'} Login
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className={isMobile ? 'text-sm' : ''}>
                     {isSuperAdmin 
                       ? 'Access the super admin dashboard' 
                       : 'Sign in to your admin account'
@@ -136,19 +138,32 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
                   </CardDescription>
                 </div>
               </div>
+              {!isMobile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onBack}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {isMobile && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onBack}
-                className="text-muted-foreground hover:text-foreground"
+                className="w-full text-muted-foreground hover:text-foreground"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
               </Button>
-            </div>
+            )}
           </CardHeader>
           
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <CardContent className={isMobile ? 'px-4 pb-6' : ''}>
+            <form onSubmit={handleSubmit(onSubmit)} className={`${isMobile ? 'space-y-6' : 'space-y-4'}`}>
               <FormInput
                 {...register('email')}
                 label="Email"
@@ -175,29 +190,36 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-0 top-8 h-8 w-8 p-0 hover:bg-transparent"
+                  className={`absolute right-0 ${isMobile ? 'top-9 h-9 w-9' : 'top-8 h-8 w-8'} p-0 hover:bg-transparent`}
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={loading}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <EyeOff className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'} text-muted-foreground`} />
                   ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'} text-muted-foreground`} />
                   )}
                 </Button>
               </div>
 
               <Button
                 type="submit"
-                className="w-full"
+                className={`w-full ${isMobile ? 'h-12 text-base font-medium' : ''}`}
                 disabled={loading}
               >
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <div className={`animate-spin rounded-full border-2 border-current border-t-transparent ${isMobile ? 'h-5 w-5 mr-2' : 'h-4 w-4 mr-2'}`}></div>
+                    Signing in...
+                  </div>
+                ) : (
+                  'Sign In'
+                )}
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className={`${isMobile ? 'mt-8' : 'mt-6'} text-center`}>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
                 Need help? Contact your system administrator.
               </p>
             </div>

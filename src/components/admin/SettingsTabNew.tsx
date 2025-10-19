@@ -238,7 +238,7 @@ export function SettingsTab() {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-hidden">
+    <div className="space-y-6 w-full max-w-full overflow-hidden mobile-container">
       <Card className="w-full max-w-full overflow-hidden">
         <CardHeader>
           <div className="space-y-3">
