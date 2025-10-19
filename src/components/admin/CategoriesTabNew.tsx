@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormInput } from '@/components/forms/FormInput';
 import { AdvancedTable } from '@/components/ui/advanced-table';
+import { ResponsiveTable, createMobileCardConfig } from '@/components/ui/responsive-table';
+import { useIsMobile } from '@/hooks/use-media-query';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
@@ -36,6 +38,7 @@ type Category = {
 export function CategoriesTab() {
   const { currentTenant } = useAuth();
   const { showSuccess, showError } = useAppToast();
+  const isMobile = useIsMobile();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -378,7 +381,7 @@ export function CategoriesTab() {
                 </AlertDescription>
               </Alert>
               
-              <AdvancedTable
+              <ResponsiveTable
                 columns={categoryColumns}
                 data={categories}
                 searchKey="name"
@@ -387,6 +390,86 @@ export function CategoriesTab() {
                 showColumnToggle={false}
                 showExport={false}
                 pageSize={10}
+                mobileCardConfig={createMobileCardConfig<Category>({
+                  primaryField: 'name',
+                  secondaryField: 'sort_order',
+                  statusField: 'sort_order',
+                  statusConfig: {
+                    getStatus: (category) => ({
+                      label: `Order: ${category.sort_order}`,
+                      variant: 'outline' as const
+                    })
+                  },
+                  iconField: 'name',
+                  iconConfig: {
+                    getIcon: () => <Tag className="h-4 w-4 text-primary" />
+                  },
+                  subtitleField: 'created_at',
+                  getSubtitle: (category) => `Created: ${new Date(category.created_at).toLocaleDateString('id-ID')}`,
+                  expandable: false,
+                  getActions: (category) => {
+                    const currentIndex = categories.findIndex(c => c.id === category.id);
+                    const canMoveUp = currentIndex > 0;
+                    const canMoveDown = currentIndex < categories.length - 1;
+
+                    return (
+                      <div className="flex items-center space-x-0.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => moveCategory(category, 'up')}
+                          disabled={!canMoveUp || updatingOrder === category.id}
+                          title="Move Up"
+                          className="h-7 w-7 p-0"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => moveCategory(category, 'down')}
+                          disabled={!canMoveDown || updatingOrder === category.id}
+                          title="Move Down"
+                          className="h-7 w-7 p-0"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(category)}
+                          title="Edit Category"
+                          className="h-7 w-7 p-0"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setDeletingCategory(category);
+                            setShowDeleteDialog(true);
+                          }}
+                          title="Delete Category"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    );
+                  }
+                })}
+                emptyState={{
+                  icon: <Tag className="h-12 w-12" />,
+                  title: "No Categories Found",
+                  description: "Create your first category to organize your menu items.",
+                  action: (
+                    <Button onClick={handleAddNew}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add First Category
+                    </Button>
+                  )
+                }}
               />
             </div>
           )}
@@ -395,7 +478,7 @@ export function CategoriesTab() {
 
       {/* Category Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent>
+        <DialogContent fullScreenOnMobile={true}>
           <DialogHeader>
             <DialogTitle>
               {editingCategory ? 'Edit Category' : 'Add New Category'}

@@ -12,16 +12,16 @@ import {
   Home, 
   AlertCircle, 
   Calculator,
-  Menu,
   X,
   User,
   Building2,
   Clock
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-media-query';
+import { BottomNavigation, useAdminBottomNav } from '@/components/ui/bottom-navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sheet as SheetComponent, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '../contexts/AuthContext';
@@ -53,8 +53,9 @@ export function AdminDashboard({}: AdminDashboardProps) {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>('orders');
   const [loadingTimeout, setLoadingTimeout] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { signOut, user, currentTenant, isTenantOwner, loading, tenantLoading } = useAuth();
+  const isMobile = useIsMobile();
+  const { navItems } = useAdminBottomNav(activeTab);
 
   // Handle activeTab from location state
   useEffect(() => {
@@ -62,6 +63,19 @@ export function AdminDashboard({}: AdminDashboardProps) {
       setActiveTab(location.state.activeTab);
     }
   }, [location.state]);
+
+  // Handle bottom navigation clicks
+  useEffect(() => {
+    const handleNavClick = (event: CustomEvent) => {
+      const tabId = event.detail as TabType;
+      setActiveTab(tabId);
+    };
+
+    window.addEventListener('admin-nav', handleNavClick as EventListener);
+    return () => {
+      window.removeEventListener('admin-nav', handleNavClick as EventListener);
+    };
+  }, []);
 
   // Debug logging
   useEffect(() => {
@@ -270,69 +284,45 @@ export function AdminDashboard({}: AdminDashboardProps) {
                 disabled={item.comingSoon}
               >
                 <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
-                <div className="text-left flex-1 min-w-0">
-                  <div className="font-medium flex items-center gap-2">
-                    {item.label}
-                    {item.comingSoon && (
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-                        Coming Soon
-                      </Badge>
-                    )}
-                  </div>
-                  <div className={`text-xs ${
-                    isActive ? 'text-primary-foreground/80' : 'text-slate-500'
-                  }`}>
-                    {item.description}
-                  </div>
-                </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <div className="font-medium flex items-center gap-2">
+                        {item.label}
+                        {item.comingSoon && (
+                          <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                            Coming Soon
+                          </Badge>
+                        )}
+                      </div>
+                      {!isMobile && (
+                        <div className={`text-xs ${
+                          isActive ? 'text-primary-foreground/80' : 'text-slate-500'
+                        }`}>
+                          {item.description}
+                        </div>
+                      )}
+                    </div>
               </Button>
             );
           })}
         </nav>
       </div>
 
-      {/* Quick Links & Logout */}
-      <div className="p-4 border-t border-border space-y-3">
-        {/* Quick Links */}
-        <div className="space-y-2">
-          <a
-            href="/kopipendekar"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <Home className="w-4 h-4" />
-            <span>Homepage</span>
-          </a>
-          
-          <a
-            href="/kopipendekar/admin/login"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <Shield className="w-4 h-4" />
-            <span>Admin Login</span>
-          </a>
-        </div>
-
-        <Separator />
-
-        {/* Logout Button */}
-        <Button
-          variant="ghost"
-          onClick={handleSignOut}
-          className="w-full justify-start text-red-600 hover:bg-red-50 hover:text-red-700"
-        >
-          <LogOut className="w-4 h-4 mr-3" />
-          <span>Keluar</span>
-        </Button>
-      </div>
+          {/* Logout Button */}
+          <div className="p-4 border-t border-border">
+            <Button
+              variant="ghost"
+              onClick={handleSignOut}
+              className="w-full justify-start text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <LogOut className="w-4 h-4 mr-3" />
+              <span>Keluar</span>
+            </Button>
+          </div>
     </div>
   );
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100 mobile-container">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
         <div className="flex flex-col flex-grow bg-background border-r border-border overflow-y-auto">
@@ -340,46 +330,40 @@ export function AdminDashboard({}: AdminDashboardProps) {
         </div>
       </aside>
 
-      {/* Mobile Sidebar */}
-      <SheetComponent open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-64 p-0">
-          <SidebarContent />
-        </SheetContent>
-      </SheetComponent>
+      {/* Mobile Sidebar - Removed */}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:pl-64">
         {/* Header */}
         <header className="bg-background border-b border-border sticky top-0 z-10">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              {/* Mobile Menu Button */}
-              <div className="flex items-center gap-4">
-                <SheetComponent>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="sm" className="lg:hidden">
-                      <Menu className="w-5 h-5" />
-                    </Button>
-                  </SheetTrigger>
-                </SheetComponent>
-                
-                {/* Breadcrumb */}
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    {navigationItems.find(item => item.id === activeTab)?.label || 'Dashboard'}
+          <div className="px-3 sm:px-6 lg:px-8">
+            <div className={`flex items-center justify-between ${isMobile ? 'h-12' : 'h-16'}`}>
+              {/* Mobile Header - Simplified */}
+              <div className="flex items-center gap-2 sm:gap-4">
+                {/* Store Name/Logo */}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-4 h-4 text-primary" />
+                  </div>
+                  <h2 className={`font-semibold text-slate-900 truncate ${isMobile ? 'text-base' : 'text-lg'}`}>
+                    {currentTenant?.name || 'Store'}
                   </h2>
-                  <Badge variant="outline" className="text-xs">
-                    {navigationItems.find(item => item.id === activeTab)?.description || ''}
-                  </Badge>
+                  {!isMobile && (
+                    <Badge variant="outline" className="text-xs hidden sm:inline-flex">
+                      {navigationItems.find(item => item.id === activeTab)?.description || ''}
+                    </Badge>
+                  )}
                 </div>
               </div>
 
               {/* Header Actions */}
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:flex items-center gap-2 text-sm text-slate-600">
-                  <User className="w-4 h-4" />
-                  <span className="truncate max-w-[120px]">{user?.email}</span>
-                </div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                {!isMobile && (
+                  <div className="hidden sm:flex items-center gap-2 text-sm text-slate-600">
+                    <User className="w-4 h-4" />
+                    <span className="truncate max-w-[120px]">{user?.email}</span>
+                  </div>
+                )}
                 
                 <Button
                   variant="ghost"
@@ -387,7 +371,7 @@ export function AdminDashboard({}: AdminDashboardProps) {
                   onClick={handleSignOut}
                   className="text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">Keluar</span>
                 </Button>
               </div>
@@ -395,13 +379,21 @@ export function AdminDashboard({}: AdminDashboardProps) {
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 lg:p-8">
-            {renderActiveTab()}
-          </div>
-        </main>
+            {/* Main Content Area */}
+            <main className={`flex-1 overflow-y-auto overflow-x-hidden ${isMobile ? 'pb-24' : ''}`}>
+              <div className="p-2 sm:p-4 lg:p-6 max-w-full overflow-hidden">
+                {renderActiveTab()}
+              </div>
+            </main>
       </div>
+
+      {/* Bottom Navigation for Mobile */}
+      {isMobile && (
+        <BottomNavigation 
+          items={navItems} 
+          activeItem={activeTab}
+        />
+      )}
     </div>
   );
 }

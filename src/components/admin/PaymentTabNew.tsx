@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-media-query';
 import { paymentSettingsSchema, type PaymentSettingsData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { uploadFile, uploadConfigs } from '@/lib/storage-utils';
@@ -52,6 +53,7 @@ interface PaymentMethod {
 export function PaymentTab() {
   const { currentTenant } = useAuth();
   const { showSuccess, showError } = useAppToast();
+  const isMobile = useIsMobile();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPaymentForm, setShowPaymentForm] = useState(false);

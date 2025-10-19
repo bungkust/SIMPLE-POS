@@ -16,16 +16,48 @@ const SheetPortal = SheetPrimitive.Portal
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-    ref={ref}
-  />
-))
+>(({ className, ...props }, ref) => {
+  React.useEffect(() => {
+    const handleOpenChange = (open: boolean) => {
+      if (open) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    };
+
+    // Listen for open state changes
+    const overlay = ref as React.RefObject<HTMLDivElement>;
+    if (overlay?.current) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {
+            const isOpen = overlay.current?.getAttribute('data-state') === 'open';
+            handleOpenChange(isOpen);
+          }
+        });
+      });
+      
+      observer.observe(overlay.current, { attributes: true });
+      
+      return () => {
+        observer.disconnect();
+        document.body.style.overflow = '';
+      };
+    }
+  }, [ref]);
+
+  return (
+    <SheetPrimitive.Overlay
+      className={cn(
+        "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        className
+      )}
+      {...props}
+      ref={ref}
+    />
+  );
+})
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const sheetVariants = cva(

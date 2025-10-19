@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-media-query';
 import { formatCurrency, normalizePhone } from '@/lib/form-utils';
 import { generateOrderCode } from '@/lib/orderUtils';
 import { cashierOrderSchema, type CashierOrderData } from '@/lib/form-schemas';
@@ -43,6 +44,7 @@ export function CashierTab() {
   const { currentTenant } = useAuth();
   const { showSuccess, showError } = useAppToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -300,7 +302,7 @@ export function CashierTab() {
               <CardContent className="p-6">
                 <div className="animate-pulse">
                   <div className="h-4 bg-muted rounded w-1/4 mb-4"></div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
                     {[...Array(6)].map((_, i) => (
                       <div key={i} className="h-32 bg-muted rounded"></div>
                     ))}
@@ -329,19 +331,28 @@ export function CashierTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="space-y-4 w-full max-w-full overflow-hidden">
+      <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
         {/* Menu Items */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className={`space-y-4 ${isMobile ? 'order-1' : 'lg:col-span-2'}`}>
           {/* Category Filter */}
-          <Card>
+          <Card className="w-full max-w-full overflow-hidden">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Menu
-                </CardTitle>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      Menu Items
+                    </CardTitle>
+                    <CardDescription>
+                      Pilih menu untuk ditambahkan ke keranjang
+                    </CardDescription>
+                  </div>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-hidden w-full max-w-full">
               <div className="flex flex-wrap gap-2 mb-4">
                 <Button
                   variant={selectedCategory === 'all' ? 'default' : 'outline'}
@@ -362,7 +373,7 @@ export function CashierTab() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
                 {filteredMenuItems.map((item) => (
                   <Card key={item.id} className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardContent className="p-4">
@@ -406,20 +417,27 @@ export function CashierTab() {
         </div>
 
         {/* Cart */}
-        <div className="space-y-4">
-          <Card>
+        <div className={`space-y-4 ${isMobile ? 'order-2' : ''}`}>
+          <Card className="w-full max-w-full overflow-hidden">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5" />
-                  Keranjang
-                </CardTitle>
-                <Badge variant="secondary">
-                  {getTotalItems()} item
-                </Badge>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="flex items-center gap-2">
+                      <ShoppingCart className="h-5 w-5" />
+                      Keranjang
+                    </CardTitle>
+                    <CardDescription>
+                      Review pesanan sebelum checkout
+                    </CardDescription>
+                  </div>
+                  <Badge variant="secondary">
+                    {getTotalItems()} item
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-hidden w-full max-w-full">
               {cart.length === 0 ? (
                 <div className="text-center py-8">
                   <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -516,20 +534,21 @@ export function CashierTab() {
 
       {/* Customer Form Dialog */}
       <Dialog open={showCustomerForm} onOpenChange={setShowCustomerForm}>
-        <DialogContent>
+        <DialogContent className={`${isMobile ? 'w-full h-full max-w-full max-h-full' : 'max-w-2xl'}`}>
           <DialogHeader>
             <DialogTitle>Informasi Pesanan</DialogTitle>
             <DialogDescription>
               Masukkan detail pelanggan (opsional) dan pilih metode pembayaran
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className={`space-y-4 ${isMobile ? 'space-y-6' : ''}`}>
             <FormInput
               {...register('customer_name')}
               label="Nama Pelanggan (Opsional)"
               placeholder="Masukkan nama pelanggan atau kosongkan"
               error={errors.customer_name?.message}
               disabled={processingOrder}
+              className={isMobile ? 'w-full' : ''}
             />
 
             <FormInput
@@ -538,6 +557,7 @@ export function CashierTab() {
               placeholder="Masukkan nomor telepon"
               error={errors.customer_phone?.message}
               disabled={processingOrder}
+              className={isMobile ? 'w-full' : ''}
             />
 
             <FormTextarea
@@ -547,6 +567,7 @@ export function CashierTab() {
               error={errors.notes?.message}
               disabled={processingOrder}
               rows={3}
+              className={isMobile ? 'w-full' : ''}
             />
 
             <FormSelect
@@ -556,24 +577,27 @@ export function CashierTab() {
               required
               disabled={processingOrder}
               defaultValue="QRIS"
+              className={isMobile ? 'w-full' : ''}
             >
               <SelectItem value="QRIS">QRIS (Default)</SelectItem>
               <SelectItem value="COD">Tunai</SelectItem>
               <SelectItem value="TRANSFER">Transfer Bank</SelectItem>
             </FormSelect>
 
-            <div className="flex justify-end space-x-2">
+            <div className={`flex space-x-2 ${isMobile ? 'flex-col space-y-2' : 'justify-end'}`}>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowCustomerForm(false)}
                 disabled={processingOrder}
+                className={isMobile ? 'w-full' : ''}
               >
                 Batal
               </Button>
               <Button
                 type="submit"
                 disabled={processingOrder}
+                className={isMobile ? 'w-full' : ''}
               >
                 {processingOrder ? (
                   <>

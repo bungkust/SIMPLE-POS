@@ -33,6 +33,7 @@ import { formatCurrency, formatDateTime } from '@/lib/form-utils';
 import { googleSheetsSettingsSchema, type GoogleSheetsConfigData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { useAuth } from '../../contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-media-query';
 import { Database as DB } from '../../lib/database.types';
 
 type Order = DB['public']['Tables']['orders']['Row'];
@@ -41,6 +42,7 @@ type OrderItem = DB['public']['Tables']['order_items']['Row'];
 export function GoogleSheetsTab() {
   const { currentTenant } = useAuth();
   const { showSuccess, showError } = useAppToast();
+  const isMobile = useIsMobile();
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);

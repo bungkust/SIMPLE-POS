@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AdvancedTable } from '@/components/ui/advanced-table';
+import { ResponsiveTable, createMobileCardConfig } from '@/components/ui/responsive-table';
+import { useIsMobile } from '@/hooks/use-media-query';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -28,6 +29,7 @@ type Category = Database['public']['Tables']['categories']['Row'];
 
 export function MenuTab() {
   const { currentTenant } = useAuth();
+  const isMobile = useIsMobile();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,77 +256,108 @@ export function MenuTab() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Kelola Menu</h2>
-          <p className="text-slate-600 mt-1">
-            Kelola menu, kategori, dan opsi untuk tenant Anda
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditingItem(null);
-            setShowForm(true);
-          }}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Menu
-        </Button>
-      </div>
+    <div className="space-y-6 w-full max-w-full overflow-hidden">
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="shadow-xl border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-              <Coffee className="w-4 h-4" />
-              Total Menu
-            </CardTitle>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full max-w-full">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Menu</CardTitle>
+            <Coffee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{menuItems.length}</div>
+            <div className="text-xl font-bold">{menuItems.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {menuItems.filter(item => item.is_active).length} aktif
+            </p>
           </CardContent>
         </Card>
         
-        <Card className="shadow-xl border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-              <Eye className="w-4 h-4" />
-              Menu Aktif
-            </CardTitle>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Kategori</CardTitle>
+            <Tag className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {menuItems.filter(item => item.is_active).length}
-            </div>
+            <div className="text-xl font-bold">{categories.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Kategori tersedia
+            </p>
           </CardContent>
         </Card>
         
-        <Card className="shadow-xl border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-              <Tag className="w-4 h-4" />
-              Kategori
-            </CardTitle>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Aktif</CardTitle>
+            <Eye className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{categories.length}</div>
+            <div className="text-xl font-bold">{menuItems.filter(item => item.is_active).length}</div>
+            <p className="text-xs text-muted-foreground">
+              Menu tersedia
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Nonaktif</CardTitle>
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold">{menuItems.filter(item => !item.is_active).length}</div>
+            <p className="text-xs text-muted-foreground">
+              Menu tersembunyi
+            </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Menu Table */}
-      <Card className="shadow-xl border-0">
-        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10">
-          <CardTitle className="text-lg font-semibold text-slate-900">Daftar Menu</CardTitle>
-          <CardDescription>
-            Kelola semua menu item dengan mudah menggunakan tabel interaktif
-          </CardDescription>
+      <Card className="w-full max-w-full overflow-hidden">
+        <CardHeader>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <CardTitle>Menu Items</CardTitle>
+                <CardDescription>
+                  Kelola menu, kategori, dan opsi untuk tenant Anda
+                </CardDescription>
+              </div>
+              {!isMobile && (
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={() => {
+                      setEditingItem(null);
+                      setShowForm(true);
+                    }}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah Menu
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            {/* Mobile Add Button */}
+            {isMobile && (
+              <div className="flex items-center justify-between">
+                <Button
+                  onClick={() => {
+                    setEditingItem(null);
+                    setShowForm(true);
+                  }}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tambah Menu
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="overflow-hidden w-full max-w-full">
           {menuItems.length === 0 ? (
             <div className="text-center py-12">
               <Coffee className="w-12 h-12 text-slate-400 mx-auto mb-4" />
@@ -344,10 +377,92 @@ export function MenuTab() {
               </Button>
             </div>
           ) : (
-            <AdvancedTable
-              data={menuItems}
+            <ResponsiveTable
               columns={columns}
+              data={menuItems}
+              searchKey="name"
               searchPlaceholder="Cari menu..."
+              mobileCardConfig={createMobileCardConfig<MenuItem>({
+                primaryField: 'name',
+                secondaryField: 'price',
+                statusField: 'is_active',
+                statusMap: {
+                  'true': { label: 'Aktif', variant: 'default' },
+                  'false': { label: 'Nonaktif', variant: 'outline' }
+                },
+                subtitleField: 'price',
+                getSubtitle: (item) => `${formatRupiah(item.price)} • ${getCategoryName(item.category_id)}`,
+                getActions: (item) => (
+                  <div className="flex items-center gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingItem(item);
+                        setShowForm(true);
+                      }}
+                      className="h-8 w-8 p-0"
+                      title="Edit Menu"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedMenuItem(item);
+                        setShowOptionsManager(true);
+                      }}
+                      className="h-8 w-8 p-0"
+                      title="Manage Options"
+                    >
+                      <Settings className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleActive(item.id, item.is_active)}
+                      className="h-8 w-8 p-0"
+                      title={item.is_active ? "Hide Menu" : "Show Menu"}
+                    >
+                      {item.is_active ? (
+                        <EyeOff className="h-3 w-3 text-orange-600" />
+                      ) : (
+                        <Eye className="h-3 w-3 text-green-600" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setDeleteItem({ id: item.id, name: item.name });
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      title="Delete Menu"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )
+              })}
+              emptyState={{
+                icon: <Coffee className="w-12 h-12" />,
+                title: "Belum ada menu",
+                description: "Mulai dengan menambahkan menu pertama Anda",
+                action: (
+                  <Button
+                    onClick={() => {
+                      setEditingItem(null);
+                      setShowForm(true);
+                    }}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah Menu Pertama
+                  </Button>
+                )
+              }}
             />
           )}
         </CardContent>

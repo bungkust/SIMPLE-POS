@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { FormInput } from '@/components/forms/FormInput';
 import { FormTextarea } from '@/components/forms/FormTextarea';
 import { FormSelect, SelectItem } from '@/components/forms/FormSelect';
@@ -16,17 +17,13 @@ import { Label } from '@/components/ui/label';
 import { 
   Coffee, 
   Store, 
-  ShoppingBag, 
-  Utensils, 
   Save, 
   RotateCcw, 
   Upload, 
   X,
   Settings,
   Image,
-  Shield,
   Clock,
-  MapPin,
   Phone,
   Mail,
   Eye,
@@ -34,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-media-query';
 import { supabase } from '@/lib/supabase';
 import { settingsFormSchema, type SettingsFormData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
@@ -50,6 +48,7 @@ export function SettingsTab() {
   const { config, updateConfig } = useConfig();
   const { currentTenant } = useAuth();
   const { showSuccess, showError } = useAppToast();
+  const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
@@ -237,33 +236,33 @@ export function SettingsTab() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-6 w-full max-w-full overflow-hidden">
+      <Card className="w-full max-w-full overflow-hidden">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Store Settings
-          </CardTitle>
-          <CardDescription>
-            Configure your store information and preferences
-          </CardDescription>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Store Settings
+                </CardTitle>
+                <CardDescription>
+                  Configure your store information and preferences
+                </CardDescription>
+              </div>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="general" className="flex items-center gap-2">
-                <Store className="h-4 w-4" />
-                General
-              </TabsTrigger>
-              <TabsTrigger value="orders" className="flex items-center gap-2">
-                <ShoppingBag className="h-4 w-4" />
-                Orders
-              </TabsTrigger>
-            </TabsList>
-
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* General Settings */}
-              <TabsContent value="general" className="space-y-6">
+        <CardContent className="overflow-hidden">
+          {isMobile ? (
+            <Accordion type="single" collapsible defaultValue="general" className="w-full">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-full overflow-hidden">
+                <AccordionItem value="general">
+                  <AccordionTrigger className="flex items-center gap-2">
+                    <Store className="h-4 w-4" />
+                    General Settings
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Store Information</CardTitle>
@@ -272,7 +271,7 @@ export function SettingsTab() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
                       <FormInput
                         {...register('storeName')}
                         label="Store Name"
@@ -280,6 +279,7 @@ export function SettingsTab() {
                         error={errors.storeName?.message}
                         required
                         disabled={loading}
+                        className={isMobile ? 'w-full' : ''}
                       />
 
                       <FormSelect
@@ -288,6 +288,7 @@ export function SettingsTab() {
                         error={errors.storeIconType?.message}
                         required
                         disabled={loading}
+                        className={isMobile ? 'w-full' : ''}
                       >
                         {iconOptions.map((option) => {
                           const IconComponent = option.icon;
@@ -310,6 +311,7 @@ export function SettingsTab() {
                       error={errors.storeDescription?.message}
                       disabled={loading}
                       rows={3}
+                      className={isMobile ? 'w-full' : ''}
                     />
 
                     <div className="space-y-2">
@@ -380,13 +382,14 @@ export function SettingsTab() {
                     <CardTitle className="text-lg">Contact Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
                       <FormInput
                         {...register('storeAddress')}
                         label="Store Address"
                         placeholder="Enter store address"
                         error={errors.storeAddress?.message}
                         disabled={loading}
+                        className={isMobile ? 'w-full' : ''}
                       />
 
                       <FormInput
@@ -395,10 +398,11 @@ export function SettingsTab() {
                         placeholder="Enter phone number"
                         error={errors.storePhone?.message}
                         disabled={loading}
+                        className={isMobile ? 'w-full' : ''}
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
                       <FormInput
                         {...register('storeEmail')}
                         label="Email"
@@ -406,6 +410,7 @@ export function SettingsTab() {
                         placeholder="Enter email address"
                         error={errors.storeEmail?.message}
                         disabled={loading}
+                        className={isMobile ? 'w-full' : ''}
                       />
 
                       <FormInput
@@ -414,6 +419,7 @@ export function SettingsTab() {
                         placeholder="e.g., Mon-Fri 8AM-10PM"
                         error={errors.storeHours?.message}
                         disabled={loading}
+                        className={isMobile ? 'w-full' : ''}
                       />
                     </div>
                   </CardContent>
@@ -427,7 +433,7 @@ export function SettingsTab() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
                       <FormInput
                         {...register('socialMedia.instagram')}
                         label="Instagram"
@@ -435,6 +441,7 @@ export function SettingsTab() {
                         error={errors.socialMedia?.instagram?.message}
                         disabled={loading}
                         helperText="Your Instagram profile URL"
+                        className={isMobile ? 'w-full' : ''}
                       />
 
                       <FormInput
@@ -444,10 +451,11 @@ export function SettingsTab() {
                         error={errors.socialMedia?.tiktok?.message}
                         disabled={loading}
                         helperText="Your TikTok profile URL"
+                        className={isMobile ? 'w-full' : ''}
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
                       <FormInput
                         {...register('socialMedia.twitter')}
                         label="X (Twitter)"
@@ -455,6 +463,7 @@ export function SettingsTab() {
                         error={errors.socialMedia?.twitter?.message}
                         disabled={loading}
                         helperText="Your X (Twitter) profile URL"
+                        className={isMobile ? 'w-full' : ''}
                       />
 
                       <FormInput
@@ -464,6 +473,7 @@ export function SettingsTab() {
                         error={errors.socialMedia?.facebook?.message}
                         disabled={loading}
                         helperText="Your Facebook profile URL"
+                        className={isMobile ? 'w-full' : ''}
                       />
                     </div>
                   </CardContent>
@@ -541,12 +551,15 @@ export function SettingsTab() {
                   </CardContent>
                 </Card>
 
-              </TabsContent>
+                </AccordionContent>
+                </AccordionItem>
 
-
-
-              {/* Order Settings */}
-              <TabsContent value="orders" className="space-y-6">
+                <AccordionItem value="orders">
+                  <AccordionTrigger className="flex items-center gap-2">
+                    <ShoppingBag className="h-4 w-4" />
+                    Order Settings
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Order Management</CardTitle>
@@ -639,40 +652,276 @@ export function SettingsTab() {
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
+                  </AccordionContent>
+                </AccordionItem>
 
-              <Separator />
+                <Separator />
 
-              {/* Action Buttons */}
-              <div className="flex justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={resetToDefaults}
-                  disabled={loading}
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset to Defaults
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Settings
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Tabs>
+                {/* Action Buttons */}
+                <div className="flex flex-col space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetToDefaults}
+                    disabled={loading}
+                    className="w-full"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reset to Defaults
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Settings
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Accordion>
+          ) : (
+            <Tabs defaultValue="general" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="general" className="flex items-center gap-2">
+                  <Store className="h-4 w-4" />
+                  General
+                </TabsTrigger>
+                <TabsTrigger value="orders" className="flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4" />
+                  Orders
+                </TabsTrigger>
+              </TabsList>
+
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-full overflow-hidden">
+                {/* General Settings */}
+                <TabsContent value="general" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Store Information</CardTitle>
+                      <CardDescription>
+                        Basic information about your store
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormInput
+                          {...register('storeName')}
+                          label="Store Name"
+                          placeholder="Enter store name"
+                          error={errors.storeName?.message}
+                          required
+                          disabled={loading}
+                        />
+
+                        <FormSelect
+                          {...register('storeIconType')}
+                          label="Store Icon"
+                          error={errors.storeIconType?.message}
+                          required
+                          disabled={loading}
+                        >
+                          {iconOptions.map((option) => {
+                            const IconComponent = option.icon;
+                            return (
+                              <SelectItem key={option.value} value={option.value}>
+                                <div className="flex items-center gap-2">
+                                  <IconComponent className="h-4 w-4" />
+                                  {option.label}
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </FormSelect>
+                      </div>
+
+                      <FormTextarea
+                        {...register('storeDescription')}
+                        label="Store Description"
+                        placeholder="Brief description of your store"
+                        error={errors.storeDescription?.message}
+                        disabled={loading}
+                        rows={3}
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormInput
+                          {...register('storeAddress')}
+                          label="Store Address"
+                          placeholder="Enter store address"
+                          error={errors.storeAddress?.message}
+                          disabled={loading}
+                        />
+
+                        <FormInput
+                          {...register('storePhone')}
+                          label="Store Phone"
+                          placeholder="Enter phone number"
+                          error={errors.storePhone?.message}
+                          disabled={loading}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormInput
+                          {...register('storeEmail')}
+                          label="Store Email"
+                          type="email"
+                          placeholder="Enter email address"
+                          error={errors.storeEmail?.message}
+                          disabled={loading}
+                        />
+
+                        <FormInput
+                          {...register('storeHours')}
+                          label="Operating Hours"
+                          placeholder="e.g., Mon-Fri 9AM-6PM"
+                          error={errors.storeHours?.message}
+                          disabled={loading}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Order Limits & Fees</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormInput
+                          {...register('minimumOrderAmount', { valueAsNumber: true })}
+                          label="Minimum Order Amount"
+                          type="number"
+                          placeholder="0"
+                          error={errors.minimumOrderAmount?.message}
+                          disabled={loading}
+                          helperText="Minimum amount for order placement"
+                        />
+
+                        <FormInput
+                          {...register('deliveryFee', { valueAsNumber: true })}
+                          label="Delivery Fee"
+                          type="number"
+                          placeholder="0"
+                          error={errors.deliveryFee?.message}
+                          disabled={loading}
+                          helperText="Standard delivery fee"
+                        />
+
+                        <FormInput
+                          {...register('freeDeliveryThreshold', { valueAsNumber: true })}
+                          label="Free Delivery Threshold"
+                          type="number"
+                          placeholder="0"
+                          error={errors.freeDeliveryThreshold?.message}
+                          disabled={loading}
+                          helperText="Order amount for free delivery"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Order Settings */}
+                <TabsContent value="orders" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Order Management</CardTitle>
+                      <CardDescription>
+                        Configure order processing and customer requirements
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Auto Accept Orders</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Automatically accept new orders without manual approval
+                            </p>
+                          </div>
+                          <Switch
+                            checked={watch('autoAcceptOrders')}
+                            onCheckedChange={(checked) => setValue('autoAcceptOrders', checked)}
+                            disabled={loading}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Require Phone Verification</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Require phone number verification for all orders
+                            </p>
+                          </div>
+                          <Switch
+                            checked={watch('requirePhoneVerification')}
+                            onCheckedChange={(checked) => setValue('requirePhoneVerification', checked)}
+                            disabled={loading}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Allow Guest Checkout</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Allow customers to place orders without creating an account
+                            </p>
+                          </div>
+                          <Switch
+                            checked={watch('allowGuestCheckout')}
+                            onCheckedChange={(checked) => setValue('allowGuestCheckout', checked)}
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <Separator />
+
+                {/* Action Buttons */}
+                <div className="flex justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetToDefaults}
+                    disabled={loading}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reset to Defaults
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Settings
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Tabs>
+          )}
         </CardContent>
       </Card>
     </div>

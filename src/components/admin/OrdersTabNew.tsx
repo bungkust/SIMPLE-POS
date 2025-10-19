@@ -4,6 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AdvancedTable } from '@/components/ui/advanced-table';
+import { ResponsiveTable, createMobileCardConfig } from '@/components/ui/responsive-table';
+import { MobileActionGroup } from '@/components/ui/mobile-action-button';
+import { useIsMobile } from '@/hooks/use-media-query';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -24,11 +27,12 @@ import {
   TrendingUp, 
   Clock, 
   AlertCircle,
-  Eye,
   Edit,
+  Eye,
   Calendar,
   DollarSign,
-  X
+  X,
+  Copy
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency, formatDateTime } from '@/lib/form-utils';
@@ -45,6 +49,7 @@ type OrderItem = Database['public']['Tables']['order_items']['Row'];
 
 export function OrdersTab() {
   const { currentTenant } = useAuth();
+  const isMobile = useIsMobile();
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +60,7 @@ export function OrdersTab() {
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [showStatusUpdate, setShowStatusUpdate] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set());
   const [menuOptions, setMenuOptions] = useState<Record<string, any>>({});
   const [showReceiptGenerator, setShowReceiptGenerator] = useState(false);
   const [selectedOrderForReceipt, setSelectedOrderForReceipt] = useState<Order | null>(null);
@@ -242,47 +248,6 @@ export function OrdersTab() {
     }
   };
 
-  // Test database permissions
-  const testDatabasePermissions = async () => {
-    if (!currentTenant?.id) return;
-    
-    try {
-      logger.log('🧪 Testing database permissions...');
-      
-      // Test read permission
-      const { data: testRead, error: readError } = await supabase
-        .from('orders')
-        .select('id, status')
-        .eq('tenant_id', currentTenant.id)
-        .limit(1);
-        
-      if (readError) {
-        logger.error('❌ Read permission test failed:', readError);
-      } else {
-        logger.log('✅ Read permission test passed:', testRead);
-      }
-      
-      // Test update permission (dry run)
-      if (testRead && testRead.length > 0) {
-        const testOrder = testRead[0];
-        logger.log('🧪 Testing update permission on order:', testOrder.id);
-        
-        const { data: testUpdate, error: updateError } = await supabase
-          .from('orders')
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', testOrder.id)
-          .select();
-          
-        if (updateError) {
-          logger.error('❌ Update permission test failed:', updateError);
-        } else {
-          logger.log('✅ Update permission test passed:', testUpdate);
-        }
-      }
-    } catch (error) {
-      logger.error('❌ Permission test error:', error);
-    }
-  };
 
   const getOrderItems = (orderId: string) => {
     return orderItems.filter(item => item.order_id === orderId);
@@ -438,6 +403,9 @@ export function OrdersTab() {
   const cancelOrder = async (order: Order) => {
     if (!currentTenant?.id) return;
 
+    const actionKey = `cancel-${order.id}`;
+    setLoadingActions(prev => new Set(prev).add(actionKey));
+
     try {
       logger.log('🗑️ Cancelling order:', order.order_code);
       
@@ -455,8 +423,8 @@ export function OrdersTab() {
       logger.log('✅ Order cancelled successfully');
       
       toast({
-        title: "Order Cancelled",
-        description: `Order ${order.order_code} has been cancelled and removed from the list.`,
+        title: "Pesanan Dibatalkan",
+        description: `Pesanan ${order.order_code} berhasil dibatalkan.`,
         variant: "default",
       });
       
@@ -465,9 +433,15 @@ export function OrdersTab() {
     } catch (error: any) {
       logger.error('❌ Error cancelling order:', error);
       toast({
-        title: "Cancel Failed",
-        description: `Failed to cancel order: ${error.message}`,
+        title: "Gagal Membatalkan",
+        description: "Gagal memperbarui. Coba lagi.",
         variant: "destructive",
+      });
+    } finally {
+      setLoadingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(actionKey);
+        return newSet;
       });
     }
   };
@@ -637,27 +611,53 @@ Terima kasih dan selamat menikmati!`;
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Skeleton Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="animate-pulse">
-                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                  <div className="h-8 bg-muted rounded w-1/2"></div>
+                  <div className="h-3 bg-muted rounded w-2/3 mb-2"></div>
+                  <div className="h-6 bg-muted rounded w-1/2"></div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+        
+        {/* Skeleton Order Cards */}
         <Card>
-          <CardContent className="p-6">
+          <CardHeader>
             <div className="animate-pulse">
-              <div className="h-4 bg-muted rounded w-1/4 mb-4"></div>
-              <div className="space-y-2">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-12 bg-muted rounded"></div>
-                ))}
-              </div>
+              <div className="h-4 bg-muted rounded w-1/4 mb-2"></div>
+              <div className="h-3 bg-muted rounded w-1/2"></div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 px-4">
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="pb-2 px-4 py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <div className="w-6 h-6 bg-muted rounded-full flex-shrink-0 mt-0.5"></div>
+                        <div className="flex-1 min-w-0">
+                          <div className="h-4 bg-muted rounded w-3/4 mb-1"></div>
+                          <div className="h-3 bg-muted rounded w-1/2"></div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="w-6 h-6 bg-muted rounded-full"></div>
+                        <div className="flex items-center gap-0.5">
+                          {[...Array(4)].map((_, j) => (
+                            <div key={j} className="w-9 h-9 bg-muted rounded"></div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -666,16 +666,16 @@ Terima kasih dan selamat menikmati!`;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full overflow-hidden">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full max-w-full">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">Total</CardTitle>
             <ShoppingBag className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
               {stats.pending} pending
             </p>
@@ -684,11 +684,11 @@ Terima kasih dan selamat menikmati!`;
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Processing</CardTitle>
+            <CardTitle className="text-sm font-medium">Proses</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.processing}</div>
+            <div className="text-xl font-bold">{stats.processing}</div>
             <p className="text-xs text-muted-foreground">
               In progress
             </p>
@@ -697,11 +697,11 @@ Terima kasih dan selamat menikmati!`;
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.completed}</div>
+            <div className="text-xl font-bold">{stats.completed}</div>
             <p className="text-xs text-muted-foreground">
               Ready/Delivered
             </p>
@@ -714,7 +714,7 @@ Terima kasih dan selamat menikmati!`;
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
+            <div className="text-xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">
               From completed orders
             </p>
@@ -723,57 +723,214 @@ Terima kasih dan selamat menikmati!`;
       </div>
 
       {/* Orders Table */}
-      <Card>
+      <Card className="w-full max-w-full overflow-hidden">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Orders</CardTitle>
-              <CardDescription>
-                Manage and track all customer orders
-              </CardDescription>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <CardTitle>Orders</CardTitle>
+                <CardDescription>
+                  Manage and track all customer orders
+                </CardDescription>
+              </div>
+              {!isMobile && (
+                <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </div>
+              )}
             </div>
-            <div className="flex items-center space-x-2">
+            
+            {/* Filter Row */}
+            <div className="flex items-center justify-between">
               <FormSelect
                 value={filterStatus}
                 onValueChange={setFilterStatus}
                 placeholder="Filter by status"
+                className="w-full sm:w-auto"
               >
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="BELUM BAYAR">Belum Bayar</SelectItem>
-                <SelectItem value="SUDAH BAYAR">Sudah Bayar</SelectItem>
-                <SelectItem value="DIBATALKAN">Dibatalkan</SelectItem>
+                <SelectItem value="all">Semua</SelectItem>
+                <SelectItem value="BELUM BAYAR">Belum</SelectItem>
+                <SelectItem value="SUDAH BAYAR">Selesai</SelectItem>
+                <SelectItem value="DIBATALKAN">Batal</SelectItem>
               </FormSelect>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={testDatabasePermissions}
-              >
-                🧪 Test DB
-              </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <AdvancedTable
+        <CardContent className="overflow-hidden w-full max-w-full">
+          <ResponsiveTable
             columns={orderColumns}
             data={filteredOrders}
             searchKey="customer_name"
-            searchPlaceholder="Search by customer name..."
+            searchPlaceholder="Cari nama/kode/telepon..."
             showSearch={true}
-            showColumnToggle={true}
+            showColumnToggle={!isMobile}
             showExport={false}
             pageSize={10}
+            mobileCardConfig={createMobileCardConfig<Order>({
+              primaryField: 'customer_name',
+              secondaryField: 'order_code',
+              statusField: 'status',
+              statusConfig: {
+                getStatus: (order: Order) => {
+                  const statusMap = {
+                    'BELUM BAYAR': { label: 'Belum bayar', variant: 'destructive' as const, iconOnly: true },
+                    'SUDAH BAYAR': { label: 'Sudah bayar', variant: 'default' as const, iconOnly: true },
+                    'SEDANG DIPROSES': { label: 'Diproses', variant: 'secondary' as const, iconOnly: true },
+                    'SIAP DIAMBIL': { label: 'Siap diambil', variant: 'default' as const, iconOnly: true },
+                    'SELESAI': { label: 'Selesai', variant: 'default' as const, iconOnly: true },
+                    'DIBATALKAN': { label: 'Dibatalkan', variant: 'outline' as const, iconOnly: true },
+                  };
+                  return statusMap[order.status as keyof typeof statusMap] || { label: order.status, variant: 'secondary' as const, iconOnly: true };
+                }
+              },
+              subtitleField: 'total_amount',
+              getSubtitle: (order) => {
+                const date = new Date(order.created_at);
+                const dateStr = date.toLocaleDateString('id-ID', { 
+                  day: '2-digit', 
+                  month: 'short' 
+                });
+                const timeStr = date.toLocaleTimeString('id-ID', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                });
+                return `${order.order_code}… • ${formatCurrency(order.total_amount || 0)} • ${dateStr} ${timeStr}`;
+              },
+              getSummary: (order) => {
+                const paymentMethod = order.payment_method || 'COD';
+                const date = new Date(order.created_at);
+                const time = date.toLocaleTimeString('id-ID', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                });
+                return `${order.status} • ${paymentMethod} • ${time}`;
+              },
+              expandable: true,
+              getExpandedContent: (order) => (
+                <div className="w-full space-y-3 text-sm">
+                  {/* Status */}
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-muted-foreground text-xs">Status:</span>
+                    <span className="font-medium capitalize text-right flex-1 ml-2">{order.status.toLowerCase().replace('_', ' ')}</span>
+                  </div>
+                  
+                  {/* Payment */}
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-muted-foreground text-xs">Payment:</span>
+                    <span className="font-medium text-right flex-1 ml-2">{order.payment_method || 'COD'}</span>
+                  </div>
+                  
+                  {/* Phone */}
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-muted-foreground text-xs">Phone:</span>
+                    <button
+                      onClick={() => {
+                        if (order.phone) {
+                          const phoneUrl = order.phone.startsWith('+') 
+                            ? `tel:${order.phone}` 
+                            : `https://wa.me/${order.phone.replace(/[^0-9]/g, '')}`;
+                          window.open(phoneUrl, '_blank');
+                        }
+                      }}
+                      className="font-medium text-blue-600 hover:text-blue-700 underline text-right flex-1 ml-2 break-all"
+                      disabled={!order.phone}
+                    >
+                      {order.phone ? order.phone : '-'}
+                    </button>
+                  </div>
+                  
+                  {/* Order Code */}
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-muted-foreground text-xs">Order Code:</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(order.order_code);
+                        // You could add a toast notification here
+                      }}
+                      className="font-medium text-blue-600 hover:text-blue-700 underline text-right flex-1 ml-2 flex items-center justify-end gap-1 break-all"
+                    >
+                      {order.order_code}
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  </div>
+                  
+                  {/* Date & Time */}
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-muted-foreground text-xs">Tanggal:</span>
+                    <span className="font-medium text-right flex-1 ml-2">
+                      {new Date(order.created_at).toLocaleDateString('id-ID', { 
+                        day: '2-digit', 
+                        month: 'long', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  
+                  {/* Notes */}
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-muted-foreground text-xs">Notes:</span>
+                    <span className="font-medium text-right flex-1 ml-2">{order.notes || '–'}</span>
+                  </div>
+                </div>
+              ),
+              getActions: (order) => (
+                <MobileActionGroup
+                  actions={[
+                    {
+                      icon: <Edit className="h-4 w-4" />,
+                      label: "Edit",
+                      onClick: () => openStatusUpdate(order),
+                    },
+                    {
+                      icon: <MessageCircle className="h-4 w-4 text-green-600" />,
+                      label: "WA",
+                      onClick: () => sendReceiptToWhatsApp(order),
+                      variant: "secondary",
+                    },
+                    {
+                      icon: <X className="h-4 w-4" />,
+                      label: "Batal",
+                      onClick: () => {
+                        if (window.confirm(`Yakin ingin membatalkan pesanan ${order.order_code}?`)) {
+                          cancelOrder(order);
+                        }
+                      },
+                      variant: "destructive",
+                      loading: loadingActions.has(`cancel-${order.id}`),
+                    },
+                  ]}
+                />
+              )
+            })}
+            emptyState={{
+              icon: <ShoppingBag className="w-12 h-12" />,
+              title: "Belum ada pesanan",
+              description: "Pesanan baru akan muncul di sini",
+              action: (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFilterStatus('all');
+                    // Navigate to Kasir tab
+                    window.dispatchEvent(new CustomEvent('admin-nav', { detail: 'kasir' }));
+                  }}
+                >
+                  Buat pesanan baru
+                </Button>
+              )
+            }}
           />
         </CardContent>
       </Card>
 
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" fullScreenOnMobile={true}>
           <DialogHeader>
             <DialogTitle>Order Details</DialogTitle>
             <DialogDescription>

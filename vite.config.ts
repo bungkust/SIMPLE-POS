@@ -13,4 +13,8 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  define: {
+    // Fix for __WS_TOKEN__ undefined error (common in dev environments)
+    __WS_TOKEN__: 'undefined',
+  },
 });
