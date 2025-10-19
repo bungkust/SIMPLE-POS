@@ -83,7 +83,7 @@ export function OrdersTab() {
   } = useForm<OrderStatusUpdateData>({
     resolver: zodResolver(orderStatusUpdateSchema),
     defaultValues: {
-      status: 'BELUM BAYAR',
+      status: 'PENDING',
       notes: ''
     }
   });
@@ -292,21 +292,21 @@ export function OrdersTab() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'BELUM BAYAR': return 'warning';
-      case 'SUDAH BAYAR': return 'info';
+      case 'PENDING': return 'warning';
+      case 'PAID': return 'info';
       case 'SEDANG DISIAPKAN': return 'processing';
       case 'SIAP DIAMBIL': return 'success';
       case 'SELESAI': return 'success';
-      case 'DIBATALKAN': return 'destructive';
+      case 'CANCELLED': return 'destructive';
       default: return 'secondary';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'BELUM BAYAR': return <Clock className="h-4 w-4" />;
-      case 'SUDAH BAYAR': return <CheckCircle className="h-4 w-4" />;
-      case 'DIBATALKAN': return <XCircle className="h-4 w-4" />;
+      case 'PENDING': return <Clock className="h-4 w-4" />;
+      case 'PAID': return <CheckCircle className="h-4 w-4" />;
+      case 'CANCELLED': return <XCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -413,7 +413,7 @@ export function OrdersTab() {
       const { error } = await supabase
         .from('orders')
         .update({ 
-          status: 'DIBATALKAN',
+          status: 'CANCELLED',
           updated_at: new Date().toISOString()
         })
         .eq('id', order.id);
@@ -594,17 +594,17 @@ Terima kasih dan selamat menikmati!`;
   ];
 
   const filteredOrders = filterStatus && filterStatus !== 'all'
-    ? orders.filter(order => order.status === filterStatus && order.status !== 'DIBATALKAN')
-    : orders.filter(order => order.status !== 'DIBATALKAN');
+    ? orders.filter(order => order.status === filterStatus && order.status !== 'CANCELLED')
+    : orders.filter(order => order.status !== 'CANCELLED');
 
   const stats = {
-    total: orders.filter(o => o.status !== 'DIBATALKAN').length,
-    pending: orders.filter(o => o.status === 'BELUM BAYAR').length,
-    processing: orders.filter(o => o.status === 'SUDAH BAYAR').length,
-    completed: orders.filter(o => o.status === 'SUDAH BAYAR').length, // Using SUDAH BAYAR as completed
-    cancelled: orders.filter(o => o.status === 'DIBATALKAN').length,
+    total: orders.filter(o => o.status !== 'CANCELLED').length,
+    pending: orders.filter(o => o.status === 'PENDING').length,
+    processing: orders.filter(o => o.status === 'PAID').length,
+    completed: orders.filter(o => o.status === 'PAID').length, // Using PAID as completed
+    cancelled: orders.filter(o => o.status === 'CANCELLED').length,
     totalRevenue: orders
-      .filter(o => o.status === 'SUDAH BAYAR')
+      .filter(o => o.status === 'PAID')
       .reduce((sum, o) => sum + (o.total || 0), 0)
   };
 
@@ -752,9 +752,9 @@ Terima kasih dan selamat menikmati!`;
                 className="w-full sm:w-auto"
               >
                 <SelectItem value="all">Semua</SelectItem>
-                <SelectItem value="BELUM BAYAR">Belum</SelectItem>
-                <SelectItem value="SUDAH BAYAR">Selesai</SelectItem>
-                <SelectItem value="DIBATALKAN">Batal</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="PAID">Paid</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </FormSelect>
             </div>
           </div>
@@ -776,12 +776,12 @@ Terima kasih dan selamat menikmati!`;
               statusConfig: {
                 getStatus: (order: Order) => {
                   const statusMap = {
-                    'BELUM BAYAR': { label: 'Belum bayar', variant: 'destructive' as const, iconOnly: true },
-                    'SUDAH BAYAR': { label: 'Sudah bayar', variant: 'default' as const, iconOnly: true },
+                    'PENDING': { label: 'Pending', variant: 'destructive' as const, iconOnly: true },
+                    'PAID': { label: 'Paid', variant: 'default' as const, iconOnly: true },
                     'SEDANG DIPROSES': { label: 'Diproses', variant: 'secondary' as const, iconOnly: true },
                     'SIAP DIAMBIL': { label: 'Siap diambil', variant: 'default' as const, iconOnly: true },
                     'SELESAI': { label: 'Selesai', variant: 'default' as const, iconOnly: true },
-                    'DIBATALKAN': { label: 'Dibatalkan', variant: 'outline' as const, iconOnly: true },
+                    'CANCELLED': { label: 'Cancelled', variant: 'outline' as const, iconOnly: true },
                   };
                   return statusMap[order.status as keyof typeof statusMap] || { label: order.status, variant: 'secondary' as const, iconOnly: true };
                 }
@@ -1329,7 +1329,7 @@ Terima kasih dan selamat menikmati!`;
                 value={status}
                 onValueChange={(value) => {
                   logger.log('🔄 Status changed to:', value);
-                  setValue('status', value as 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN');
+                  setValue('status', value as 'PENDING' | 'PAID' | 'CANCELLED');
                 }}
                 disabled={updatingStatus}
               >
@@ -1337,9 +1337,9 @@ Terima kasih dan selamat menikmati!`;
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItemComponent value="BELUM BAYAR">Belum Bayar</SelectItemComponent>
-                  <SelectItemComponent value="SUDAH BAYAR">Sudah Bayar</SelectItemComponent>
-                  <SelectItemComponent value="DIBATALKAN">Dibatalkan</SelectItemComponent>
+                  <SelectItemComponent value="PENDING">Pending</SelectItemComponent>
+                  <SelectItemComponent value="PAID">Paid</SelectItemComponent>
+                  <SelectItemComponent value="CANCELLED">Cancelled</SelectItemComponent>
                 </SelectContent>
               </Select>
               {errors.status && (

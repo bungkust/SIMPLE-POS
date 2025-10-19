@@ -246,9 +246,9 @@ interface ReceiptPDFProps {
 export function ReceiptPDF({ order, items, tenantInfo, paymentMethod, qrisImageUrl }: ReceiptPDFProps) {
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'SUDAH BAYAR':
+      case 'PAID':
         return [styles.statusBadge, styles.statusPaid];
-      case 'DIBATALKAN':
+      case 'CANCELLED':
         return [styles.statusBadge, styles.statusCancelled];
       default:
         return styles.statusBadge;

@@ -199,7 +199,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         pickup_date: data.pickupDate,
         notes: data.notes || null,
         payment_method: data.paymentMethod,
-        status: 'BELUM BAYAR' as const,
+        status: 'PENDING' as const,
         subtotal,
         discount,
         service_fee: serviceFee,

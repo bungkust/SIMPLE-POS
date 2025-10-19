@@ -146,7 +146,7 @@ export interface Database {
           pickup_date: string;
           notes: string | null;
           payment_method: 'TRANSFER' | 'QRIS' | 'COD';
-          status: 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN';
+          status: 'PENDING' | 'PAID' | 'CANCELLED';
           subtotal: number;
           discount: number;
           service_fee: number;
@@ -163,7 +163,7 @@ export interface Database {
           pickup_date: string;
           notes?: string | null;
           payment_method: 'TRANSFER' | 'QRIS' | 'COD';
-          status?: 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN';
+          status?: 'PENDING' | 'PAID' | 'CANCELLED';
           subtotal: number;
           discount?: number;
           service_fee?: number;
@@ -180,7 +180,7 @@ export interface Database {
           pickup_date?: string;
           notes?: string | null;
           payment_method?: 'TRANSFER' | 'QRIS' | 'COD';
-          status?: 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN';
+          status?: 'PENDING' | 'PAID' | 'CANCELLED';
           subtotal?: number;
           discount?: number;
           service_fee?: number;

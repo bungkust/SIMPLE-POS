@@ -234,7 +234,7 @@ export function CashierTab() {
           service_fee: serviceFee,
           total,
           payment_method: data.payment_method,
-          status: 'BELUM BAYAR',
+          status: 'PENDING',
           notes: data.notes || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()

@@ -124,9 +124,9 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      'BELUM BAYAR': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'SUDAH BAYAR': 'bg-green-100 text-green-800 border-green-200',
-      'DIBATALKAN': 'bg-red-100 text-red-800 border-red-200',
+      'PENDING': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'PAID': 'bg-green-100 text-green-800 border-green-200',
+      'CANCELLED': 'bg-red-100 text-red-800 border-red-200',
     };
     
     return statusConfig[status as keyof typeof statusConfig] || 'bg-muted text-muted-foreground border-border';

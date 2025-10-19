@@ -64,7 +64,7 @@ export const checkoutFormSchema = z.object({
 });
 
 export const orderStatusUpdateSchema = z.object({
-  status: z.enum(["BELUM BAYAR", "SUDAH BAYAR", "DIBATALKAN"]),
+  status: z.enum(["PENDING", "PAID", "CANCELLED"]),
   notes: z.string().max(500, "Catatan terlalu panjang").optional(),
 });
 

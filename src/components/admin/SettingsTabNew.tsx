@@ -27,7 +27,9 @@ import {
   Phone,
   Mail,
   Eye,
-  EyeOff
+  EyeOff,
+  ShoppingBag,
+  Utensils
 } from 'lucide-react';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
