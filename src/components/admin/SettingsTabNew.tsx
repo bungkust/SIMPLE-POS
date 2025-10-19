@@ -759,6 +759,70 @@ export function SettingsTab() {
                         rows={3}
                       />
 
+                      <div className="space-y-2">
+                        <Label>Store Logo</Label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            disabled={uploading || loading}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading || loading}
+                          >
+                            {uploading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Upload Logo
+                              </>
+                            )}
+                          </Button>
+                          {storeIcon && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowLogoPreview(!showLogoPreview)}
+                            >
+                              {showLogoPreview ? (
+                                <>
+                                  <EyeOff className="h-4 w-4 mr-1" />
+                                  Hide
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Preview
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                        {storeIcon && showLogoPreview && (
+                          <div className="mt-2">
+                            <img 
+                              src={storeIcon} 
+                              alt="Store Logo Preview" 
+                              className="w-32 h-32 object-cover rounded-lg border"
+                            />
+                          </div>
+                        )}
+                        {errors.storeLogoUrl?.message && (
+                          <p className="text-sm font-medium text-destructive">{errors.storeLogoUrl?.message}</p>
+                        )}
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormInput
                           {...register('storeAddress')}
