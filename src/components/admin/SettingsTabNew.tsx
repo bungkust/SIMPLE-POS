@@ -68,7 +68,6 @@ export function SettingsTab() {
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
       storeName: config.storeName || '',
-      storeIcon: config.storeIcon || '',
       storeLogoUrl: config.storeLogoUrl || '',
       storeIconType: config.storeIconType || 'Coffee',
       storeDescription: config.storeDescription || '',
@@ -97,7 +96,7 @@ export function SettingsTab() {
     }
   });
 
-  const storeIcon = watch('storeIcon');
+  const storeLogoUrl = watch('storeLogoUrl');
   const storeIconType = watch('storeIconType');
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,7 +109,16 @@ export function SettingsTab() {
       const result = await uploadFile(file, uploadConfigs.storeLogo(currentTenant.slug));
 
       if (result.success && result.url) {
-        setValue('storeIcon', result.url);
+        console.log('🔧 Upload successful, updating config with URL:', result.url);
+        setValue('storeLogoUrl', result.url);
+        // Immediately update config to show new logo in header
+        console.log('🔧 Calling updateConfig with storeLogoUrl:', result.url);
+        try {
+          await updateConfig({ storeLogoUrl: result.url });
+          console.log('🔧 updateConfig completed successfully');
+        } catch (error) {
+          console.error('🔧 updateConfig failed:', error);
+        }
         showSuccess('Upload Success', 'Logo toko berhasil diupload.');
         logger.log('✅ Store logo uploaded successfully:', result.url);
       } else {
@@ -138,7 +146,6 @@ export function SettingsTab() {
       console.log('🔧 Calling updateConfig...');
       await updateConfig({
         storeName: data.storeName,
-        storeIcon: data.storeIcon,
         storeLogoUrl: data.storeLogoUrl,
         storeIconType: data.storeIconType,
         storeDescription: data.storeDescription,
@@ -173,7 +180,6 @@ export function SettingsTab() {
     if (config.storeName && !isInitialized) { // Only reset if config has data and not initialized
       reset({
         storeName: config.storeName || '',
-        storeIcon: config.storeIcon || '',
         storeLogoUrl: config.storeLogoUrl || '',
         storeIconType: config.storeIconType || 'Coffee',
         storeDescription: config.storeDescription || '',
@@ -207,7 +213,6 @@ export function SettingsTab() {
   const resetToDefaults = () => {
     reset({
       storeName: '',
-      storeIcon: '',
       storeIconType: 'Coffee',
       storeDescription: '',
       storeAddress: '',
@@ -348,7 +353,7 @@ export function SettingsTab() {
                             </>
                           )}
                         </Button>
-                        {storeIcon && (
+                        {storeLogoUrl && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -369,10 +374,10 @@ export function SettingsTab() {
                           </Button>
                         )}
                       </div>
-                      {storeIcon && showLogoPreview && (
+                      {storeLogoUrl && showLogoPreview && (
                         <div className="border rounded-lg p-4 bg-muted/20">
                           <img
-                            src={storeIcon}
+                            src={storeLogoUrl}
                             alt="Store logo"
                             className="w-24 h-24 object-cover rounded-lg mx-auto"
                           />
@@ -791,7 +796,7 @@ export function SettingsTab() {
                               </>
                             )}
                           </Button>
-                          {storeIcon && (
+                          {storeLogoUrl && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -812,10 +817,10 @@ export function SettingsTab() {
                             </Button>
                           )}
                         </div>
-                        {storeIcon && showLogoPreview && (
+                        {storeLogoUrl && showLogoPreview && (
                           <div className="mt-2">
                             <img 
-                              src={storeIcon} 
+                              src={storeLogoUrl} 
                               alt="Store Logo Preview" 
                               className="w-32 h-32 object-cover rounded-lg border"
                             />

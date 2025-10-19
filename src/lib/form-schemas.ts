@@ -115,7 +115,6 @@ export const cashierOrderSchema = z.object({
 // Settings Schema
 export const settingsFormSchema = z.object({
   storeName: z.string().min(1, "Nama toko harus diisi").max(100, "Nama toko terlalu panjang"),
-  storeIcon: z.string().optional(),
   storeLogoUrl: z.string().optional(), // Add missing field for logo_url
   storeIconType: z.string().default("Coffee"),
   storeDescription: z.string().max(500, "Deskripsi terlalu panjang").optional(),

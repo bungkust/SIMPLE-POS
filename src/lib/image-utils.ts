@@ -38,6 +38,12 @@ export function getOptimizedImageUrl(
     return originalUrl;
   }
 
+  // For now, return original URL to avoid transform issues
+  // TODO: Enable Supabase Storage Transform when properly configured
+  return originalUrl;
+
+  // Commented out transform logic until Supabase Storage Transform is properly configured
+  /*
   const {
     width,
     height,
@@ -68,6 +74,7 @@ export function getOptimizedImageUrl(
 
   const separator = originalUrl.includes('?') ? '&' : '?';
   return `${originalUrl}${separator}${params.toString()}`;
+  */
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { 
   Search, 
@@ -14,7 +14,7 @@ import { useCart } from '../contexts/CartContext';
 import { getTenantInfo } from '../lib/tenantUtils';
 import { MenuDetailSheet } from './MenuDetailSheet';
 import { Database } from '../lib/database.types';
-import { ThumbnailImage, MediumImage } from '@/components/ui/lazy-image';
+// import { ThumbnailImage, MediumImage } from '@/components/ui/lazy-image';
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row'] & {
   is_available?: boolean;
@@ -206,7 +206,6 @@ export function MenuBrowser() {
     setIsDetailSheetOpen(true);
   };
 
-
   if (loading || !tenantInfo) {
     return (
       <div className="space-y-6">
@@ -224,13 +223,13 @@ export function MenuBrowser() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="max-w-5xl mx-auto p-2 sm:p-4 pb-40 sm:pb-8">
         {/* Navigation Tabs - Dynamic from Database */}
-        <div className="mb-3 sm:mb-6">
-          <div className="flex space-x-2 sm:space-x-8 border-b border-border overflow-x-auto scrollbar-hide">
+        <div className="mb-3 sm:mb-6 relative">
+          <div className="flex space-x-2 sm:space-x-8 border-b border-border overflow-x-auto scrollbar-hide pb-2 sm:pb-3">
             <button 
-              className={`pb-2 sm:pb-3 font-medium border-b-2 whitespace-nowrap text-xs sm:text-base ${
+              className={`font-medium border-b-2 whitespace-nowrap text-sm sm:text-base ${
                 selectedCategory === '' 
-                  ? 'text-primary border-primary' 
-                  : 'text-muted-foreground hover:text-foreground border-transparent'
+                  ? 'text-primary border-primary font-semibold' 
+                  : 'text-muted-foreground hover:text-foreground border-transparent font-medium'
               }`}
               onClick={() => setSelectedCategory('')}
             >
@@ -239,10 +238,10 @@ export function MenuBrowser() {
             {categories.map((category) => (
               <button 
                 key={category.id}
-                className={`pb-2 sm:pb-3 font-medium border-b-2 whitespace-nowrap text-xs sm:text-base ${
+                className={`font-medium border-b-2 whitespace-nowrap text-sm sm:text-base ${
                   selectedCategory === category.id 
-                    ? 'text-primary border-primary' 
-                    : 'text-muted-foreground hover:text-foreground border-transparent'
+                    ? 'text-primary border-primary font-semibold' 
+                    : 'text-muted-foreground hover:text-foreground border-transparent font-medium'
                 }`}
                 onClick={() => setSelectedCategory(category.id)}
               >
@@ -250,6 +249,9 @@ export function MenuBrowser() {
               </button>
             ))}
           </div>
+          {/* Fade effects */}
+          <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-slate-50 to-transparent pointer-events-none"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none"></div>
         </div>
 
 
@@ -295,7 +297,7 @@ export function MenuBrowser() {
             </h2>
             
             {/* Menu Items - Responsive Layout */}
-            <div className="space-y-3 sm:space-y-4 md:hidden">
+            <div className="space-y-1 md:hidden">
               {/* Mobile: List Layout */}
               {filteredItems.map((item) => {
                 const discount = item.base_price && item.base_price > item.price 
@@ -303,26 +305,27 @@ export function MenuBrowser() {
                   : 0;
 
                 return (
-                  <Card 
+                  <div 
                     key={item.id} 
-                    className="bg-background shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer"
+                    className="bg-background border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => handleItemClick(item)}
                   >
-                    <CardContent className="p-2 sm:p-4">
+                    <div className="px-3 py-2">
                       <div className="flex items-center gap-2 sm:gap-4">
                         {/* Food Image */}
                         <div className="flex-shrink-0">
                           {item.photo_url ? (
-                            <ThumbnailImage
+                            <img
                               src={item.photo_url}
                               alt={item.name}
-                              className="w-12 h-12 sm:w-20 sm:h-20 rounded"
-                              fallback="/placeholder-image.png"
-                              showSkeleton={true}
-                              progressive={true}
+                              className="w-16 h-16 rounded-lg object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.currentTarget.src = '/placeholder-image.png';
+                              }}
                             />
                           ) : (
-                            <div className="w-12 h-12 sm:w-20 sm:h-20 rounded bg-muted flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center">
                               <Package className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
                             </div>
                           )}
@@ -359,21 +362,21 @@ export function MenuBrowser() {
                             {/* Quantity Selector */}
                             <div className="flex-shrink-0">
                             {getItemQuantity(item.id) > 0 ? (
-                              <div className="flex items-center border border-border rounded-lg overflow-hidden bg-white">
+                              <div className="flex items-center border border-border rounded-lg overflow-hidden bg-white h-10">
                                 <button 
-                                  className="w-6 h-6 sm:w-8 sm:h-8 p-0 border-0 rounded-none hover:bg-muted/50 flex items-center justify-center text-muted-foreground"
+                                  className="w-10 h-10 p-0 border-0 rounded-none hover:bg-muted/50 flex items-center justify-center text-muted-foreground"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     removeItem(item.id);
                                   }}
                                 >
-                                  <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <Minus className="h-4 w-4" />
                                 </button>
-                                <div className="w-6 sm:w-8 h-6 sm:h-8 flex items-center justify-center border-l border-r border-border bg-white">
-                                  <span className="font-medium text-xs sm:text-base">{getItemQuantity(item.id)}</span>
+                                <div className="w-10 h-10 flex items-center justify-center border-l border-r border-border bg-white">
+                                  <span className="text-sm font-medium">{getItemQuantity(item.id)}</span>
                                 </div>
                                 <button 
-                                  className="w-6 h-6 sm:w-8 sm:h-8 p-0 border-0 rounded-none hover:bg-muted/50 flex items-center justify-center text-primary"
+                                  className="w-10 h-10 p-0 border-0 rounded-none hover:bg-muted/50 flex items-center justify-center text-primary"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     addItem({
@@ -386,7 +389,7 @@ export function MenuBrowser() {
                                     });
                                   }}
                                 >
-                                  <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <Plus className="h-4 w-4" />
                                 </button>
                               </div>
                             ) : (
@@ -411,8 +414,8 @@ export function MenuBrowser() {
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -431,15 +434,16 @@ export function MenuBrowser() {
                     onClick={() => handleItemClick(item)}
                   >
                     {/* Food Image */}
-                    <div className="aspect-video w-full overflow-hidden rounded-t-lg">
+                    <div className="aspect-square w-full overflow-hidden rounded-t-lg">
                       {item.photo_url ? (
-                        <MediumImage
+                        <img
                           src={item.photo_url}
                           alt={item.name}
-                          className="w-full h-full"
-                          fallback="/placeholder-image.png"
-                          showSkeleton={true}
-                          progressive={true}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder-image.png';
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full bg-muted flex items-center justify-center">

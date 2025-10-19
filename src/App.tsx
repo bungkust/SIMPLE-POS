@@ -20,6 +20,7 @@ import { TenantSetupPage } from './pages/TenantSetupPageNew';
 import { AuthProvider } from './contexts/AuthContext';
 import { handleOAuthError } from './lib/auth-utils';
 import AuthCallback from './pages/AuthCallback';
+import { ToastProvider } from './components/ui/toast-provider';
 
 // Helper function to get current tenant slug from URL
 const getCurrentTenantSlug = (): string => {
@@ -165,7 +166,8 @@ function App() {
         <AuthProvider>
           <ConfigProvider>
             <CartProvider>
-              <div className="min-h-screen bg-slate-50">
+              <ToastProvider>
+                <div className="min-h-screen bg-slate-50">
                 <Routes>
                 {/* Public Routes - Landing Page and Customer Interface */}
                 <Route path="/" element={<LandingPageWrapper />} />
@@ -192,7 +194,8 @@ function App() {
                 {/* Catch all - redirect to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </div>
+                </div>
+              </ToastProvider>
             </CartProvider>
           </ConfigProvider>
         </AuthProvider>

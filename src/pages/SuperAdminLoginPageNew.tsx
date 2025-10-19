@@ -92,20 +92,38 @@ export function SuperAdminLoginPage({ onBack }: SuperAdminLoginPageProps) {
   const onSubmit = async (data: SuperAdminLoginData) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Attempting super admin login with email:', data.email);
+      
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
+      console.log('Super admin login response:', { authData, error });
+
       if (error) {
-        showError('Login Failed', error.message);
+        console.error('Super admin login error details:', error);
+        
+        // Provide more user-friendly error messages
+        let errorMessage = error.message;
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Email atau password salah. Silakan coba lagi.';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Email belum dikonfirmasi. Silakan periksa email Anda.';
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = 'Terlalu banyak percobaan login. Silakan tunggu beberapa saat.';
+        }
+        
+        showError('Login Gagal', errorMessage);
         return;
       }
 
+      console.log('Super admin login successful, user:', authData.user);
       // The auth state change listener will handle the redirect
     } catch (error) {
+      console.error('Unexpected super admin login error:', error);
       logger.error('Login error', { error: error.message, component: 'SuperAdminLogin' });
-      showError('Login Error', 'An unexpected error occurred during login.');
+      showError('Login Error', 'Terjadi kesalahan tak terduga. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }

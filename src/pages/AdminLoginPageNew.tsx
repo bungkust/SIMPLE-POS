@@ -99,20 +99,37 @@ export function AdminLoginPage({ onBack }: AdminLoginPageProps) {
   const onSubmit = async (data: LoginData) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Attempting login with email:', data.email);
+      
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
+      console.log('Login response:', { authData, error });
+
       if (error) {
-        showError('Login Failed', error.message);
+        console.error('Login error details:', error);
+        
+        // Provide more user-friendly error messages
+        let errorMessage = error.message;
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Email atau password salah. Silakan coba lagi.';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Email belum dikonfirmasi. Silakan periksa email Anda.';
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = 'Terlalu banyak percobaan login. Silakan tunggu beberapa saat.';
+        }
+        
+        showError('Login Gagal', errorMessage);
         return;
       }
 
+      console.log('Login successful, user:', authData.user);
       // The auth state change listener will handle the redirect
     } catch (error) {
-      console.error('Login error:', error);
-      showError('Login Error', 'An unexpected error occurred during login.');
+      console.error('Unexpected login error:', error);
+      showError('Login Error', 'Terjadi kesalahan tak terduga. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }

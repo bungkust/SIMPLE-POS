@@ -327,7 +327,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           phone: newConfig.storePhone,
           email: newConfig.storeEmail,
           operating_hours: newConfig.storeHours,
-          logo_url: newConfig.storeLogoUrl || (newConfig.storeIconType === 'uploaded' ? newConfig.storeIcon : null),
+          logo_url: newConfig.storeLogoUrl,
           website: null, // Not used in form yet
           category: null, // Not used in form yet
           currency: 'IDR', // Default
@@ -384,10 +384,12 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     const tenantSlug = currentTenant?.slug || getTenantSlugFromUrl();
     
     const updatedConfig = { ...config, ...newConfig };
+    console.log('🔧 Updated config:', updatedConfig);
     setConfig(updatedConfig);
 
     // Save to both database and localStorage
     await saveConfig(tenantSlug, updatedConfig as AppConfig);
+    console.log('🔧 Config saved successfully');
   };
 
   return (

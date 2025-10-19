@@ -74,6 +74,10 @@ export function LazyImage({
     fit
   });
 
+  // Fallback to original src if optimization fails
+  const [currentSrc, setCurrentSrc] = useState(optimizedSrc);
+  const [fallbackAttempted, setFallbackAttempted] = useState(false);
+
   const placeholderSrc = placeholder || getProgressivePlaceholder(src, {
     width: width || 200,
     height: height || 200
@@ -90,15 +94,15 @@ export function LazyImage({
       setLoadStartTime(performance.now());
       
       // Preload the image
-      preloadImage(optimizedSrc)
+      preloadImage(currentSrc)
         .then(() => {
           const loadTime = performance.now() - loadStartTime;
-          setImageSrc(optimizedSrc);
+          setImageSrc(currentSrc);
           setIsLoaded(true);
           setIsLoading(false);
           
           // Track performance
-          trackImageLoad(optimizedSrc, loadTime, true);
+          trackImageLoad(currentSrc, loadTime, true);
           
           onLoad?.();
         })
@@ -108,12 +112,12 @@ export function LazyImage({
           setIsLoading(false);
           
           // Track performance
-          trackImageLoad(optimizedSrc, loadTime, false);
+          trackImageLoad(currentSrc, loadTime, false);
           
           onError?.();
         });
     }
-  }, [optimizedSrc, isInView, onLoad, onError, loadStartTime]);
+  }, [currentSrc, isInView, onLoad, onError, loadStartTime]);
 
   // Set up Intersection Observer
   useEffect(() => {
@@ -123,15 +127,15 @@ export function LazyImage({
       setIsLoading(true);
       setLoadStartTime(performance.now());
       
-      preloadImage(optimizedSrc)
+      preloadImage(currentSrc)
         .then(() => {
           const loadTime = performance.now() - loadStartTime;
-          setImageSrc(optimizedSrc);
+          setImageSrc(currentSrc);
           setIsLoaded(true);
           setIsLoading(false);
           
           // Track performance
-          trackImageLoad(optimizedSrc, loadTime, true);
+          trackImageLoad(currentSrc, loadTime, true);
           
           onLoad?.();
         })
@@ -141,7 +145,7 @@ export function LazyImage({
           setIsLoading(false);
           
           // Track performance
-          trackImageLoad(optimizedSrc, loadTime, false);
+          trackImageLoad(currentSrc, loadTime, false);
           
           onError?.();
         });
@@ -160,7 +164,7 @@ export function LazyImage({
         observerRef.current.disconnect();
       }
     };
-  }, [imageRef, loading, handleIntersection, threshold, rootMargin, optimizedSrc, onLoad, onError]);
+  }, [imageRef, loading, handleIntersection, threshold, rootMargin, currentSrc, onLoad, onError]);
 
   // Handle image load
   const handleImageLoad = useCallback(() => {
@@ -169,12 +173,21 @@ export function LazyImage({
     onLoad?.();
   }, [onLoad]);
 
-  // Handle image error
+  // Handle image error with fallback
   const handleImageError = useCallback(() => {
+    if (!fallbackAttempted && currentSrc !== src) {
+      // Try fallback to original image
+      setFallbackAttempted(true);
+      setCurrentSrc(src);
+      setIsLoading(true);
+      setHasError(false);
+      return;
+    }
+    
     setHasError(true);
     setIsLoading(false);
     onError?.();
-  }, [onError]);
+  }, [onError, fallbackAttempted, currentSrc, src]);
 
   // Determine which image to show
   const getCurrentSrc = () => {
