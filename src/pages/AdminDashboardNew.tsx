@@ -278,7 +278,6 @@ export function AdminDashboard({}: AdminDashboardProps) {
                 onClick={() => {
                   if (!item.comingSoon) {
                     setActiveTab(item.id);
-                    setSidebarOpen(false);
                   }
                 }}
                 disabled={item.comingSoon}
