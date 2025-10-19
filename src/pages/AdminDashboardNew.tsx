@@ -364,15 +364,17 @@ export function AdminDashboard({}: AdminDashboardProps) {
                   </div>
                 )}
                 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSignOut}
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                >
-                  <LogOut className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Keluar</span>
-                </Button>
+                {/* Only show logout button in header for mobile */}
+                {isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
           </div>

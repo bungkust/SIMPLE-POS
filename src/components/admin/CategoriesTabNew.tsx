@@ -340,26 +340,36 @@ export function CategoriesTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-6 w-full max-w-full overflow-hidden">
+      <Card className="w-full max-w-full overflow-hidden">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Tag className="h-5 w-5" />
-                Categories
-              </CardTitle>
-              <CardDescription>
-                Manage menu categories and their display order
-              </CardDescription>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <CardTitle className="flex items-center gap-2">
+                  <Tag className="h-5 w-5" />
+                  Categories
+                </CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Kelola kategori menu
+                </CardDescription>
+              </div>
+              {!isMobile && (
+                <Button onClick={handleAddNew}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Category
+                </Button>
+              )}
             </div>
-            <Button onClick={handleAddNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Category
-            </Button>
+            {isMobile && (
+              <Button onClick={handleAddNew} className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Category
+              </Button>
+            )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-hidden w-full max-w-full">
           {categories.length === 0 ? (
             <div className="text-center py-12">
               <Tag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

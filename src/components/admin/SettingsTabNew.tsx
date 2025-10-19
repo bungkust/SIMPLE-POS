@@ -248,8 +248,8 @@ export function SettingsTab() {
                   <Settings className="h-5 w-5" />
                   Store Settings
                 </CardTitle>
-                <CardDescription>
-                  Configure your store information and preferences
+                <CardDescription className="text-muted-foreground">
+                  Kelola pengaturan toko dan preferensi
                 </CardDescription>
               </div>
             </div>
@@ -619,39 +619,43 @@ export function SettingsTab() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Order Limits & Fees</CardTitle>
+                    <CardDescription>
+                      Set minimum order values and delivery charges
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormInput
-                        {...register('minimumOrderAmount', { valueAsNumber: true })}
-                        label="Minimum Order Amount"
-                        type="number"
-                        placeholder="0"
-                        error={errors.minimumOrderAmount?.message}
-                        disabled={loading}
-                        helperText="Minimum amount for order placement"
-                      />
+                    <FormInput
+                      {...register('minimumOrderAmount', { valueAsNumber: true })}
+                      label="Minimum Order Amount"
+                      type="number"
+                      placeholder="0"
+                      error={errors.minimumOrderAmount?.message}
+                      disabled={loading}
+                      helperText="Minimum amount required for an order"
+                      className={isMobile ? 'w-full' : ''}
+                    />
 
-                      <FormInput
-                        {...register('deliveryFee', { valueAsNumber: true })}
-                        label="Delivery Fee"
-                        type="number"
-                        placeholder="0"
-                        error={errors.deliveryFee?.message}
-                        disabled={loading}
-                        helperText="Standard delivery fee"
-                      />
+                    <FormInput
+                      {...register('deliveryFee', { valueAsNumber: true })}
+                      label="Delivery Fee"
+                      type="number"
+                      placeholder="0"
+                      error={errors.deliveryFee?.message}
+                      disabled={loading}
+                      helperText="Standard delivery fee"
+                      className={isMobile ? 'w-full' : ''}
+                    />
 
-                      <FormInput
-                        {...register('freeDeliveryThreshold', { valueAsNumber: true })}
-                        label="Free Delivery Threshold"
-                        type="number"
-                        placeholder="0"
-                        error={errors.freeDeliveryThreshold?.message}
-                        disabled={loading}
-                        helperText="Order amount for free delivery"
-                      />
-                    </div>
+                    <FormInput
+                      {...register('freeDeliveryThreshold', { valueAsNumber: true })}
+                      label="Free Delivery Threshold"
+                      type="number"
+                      placeholder="0"
+                      error={errors.freeDeliveryThreshold?.message}
+                      disabled={loading}
+                      helperText="Order amount for free delivery"
+                      className={isMobile ? 'w-full' : ''}
+                    />
                   </CardContent>
                 </Card>
                   </AccordionContent>
@@ -796,7 +800,132 @@ export function SettingsTab() {
 
                   <Card>
                     <CardHeader>
+                      <CardTitle className="text-lg">Social Media Links</CardTitle>
+                      <CardDescription>
+                        Add your social media profiles to connect with customers
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormInput
+                          {...register('socialMedia.instagram')}
+                          label="Instagram"
+                          placeholder="https://instagram.com/yourusername"
+                          error={errors.socialMedia?.instagram?.message}
+                          disabled={loading}
+                          helperText="Your Instagram profile URL"
+                        />
+
+                        <FormInput
+                          {...register('socialMedia.tiktok')}
+                          label="TikTok"
+                          placeholder="https://tiktok.com/@yourusername"
+                          error={errors.socialMedia?.tiktok?.message}
+                          disabled={loading}
+                          helperText="Your TikTok profile URL"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormInput
+                          {...register('socialMedia.twitter')}
+                          label="X (Twitter)"
+                          placeholder="https://x.com/yourusername"
+                          error={errors.socialMedia?.twitter?.message}
+                          disabled={loading}
+                          helperText="Your X (Twitter) profile URL"
+                        />
+
+                        <FormInput
+                          {...register('socialMedia.facebook')}
+                          label="Facebook"
+                          placeholder="https://facebook.com/yourusername"
+                          error={errors.socialMedia?.facebook?.message}
+                          disabled={loading}
+                          helperText="Your Facebook profile URL"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Header Display Settings</CardTitle>
+                      <CardDescription>
+                        Choose which information to display in the restaurant header
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="showOperatingHours-desktop">Operating Hours & Status</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Show restaurant operating hours and open/closed status
+                            </p>
+                          </div>
+                          <Switch
+                            id="showOperatingHours-desktop"
+                            checked={watch('headerDisplaySettings.showOperatingHours') ?? true}
+                            onCheckedChange={(checked) => setValue('headerDisplaySettings.showOperatingHours', checked)}
+                            disabled={loading}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="showAddress-desktop">Restaurant Address</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Show restaurant address with location icon
+                            </p>
+                          </div>
+                          <Switch
+                            id="showAddress-desktop"
+                            checked={watch('headerDisplaySettings.showAddress') ?? true}
+                            onCheckedChange={(checked) => setValue('headerDisplaySettings.showAddress', checked)}
+                            disabled={loading}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="showPhone-desktop">Phone Number</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Show restaurant phone number for contact
+                            </p>
+                          </div>
+                          <Switch
+                            id="showPhone-desktop"
+                            checked={watch('headerDisplaySettings.showPhone') ?? true}
+                            onCheckedChange={(checked) => setValue('headerDisplaySettings.showPhone', checked)}
+                            disabled={loading}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="showSocialMedia-desktop">Social Media Links</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Show social media icons and links
+                            </p>
+                          </div>
+                          <Switch
+                            id="showSocialMedia-desktop"
+                            checked={watch('headerDisplaySettings.showSocialMedia') ?? true}
+                            onCheckedChange={(checked) => setValue('headerDisplaySettings.showSocialMedia', checked)}
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
                       <CardTitle className="text-lg">Order Limits & Fees</CardTitle>
+                      <CardDescription>
+                        Set minimum order values and delivery charges
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

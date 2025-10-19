@@ -729,8 +729,8 @@ Terima kasih dan selamat menikmati!`;
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <CardTitle>Orders</CardTitle>
-                <CardDescription>
-                  Manage and track all customer orders
+                <CardDescription className="text-muted-foreground">
+                  Kelola pesanan dan transaksi
                 </CardDescription>
               </div>
               {!isMobile && (

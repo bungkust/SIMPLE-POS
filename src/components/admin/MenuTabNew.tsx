@@ -266,7 +266,7 @@ export function MenuTab() {
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <CardTitle>Menu Items</CardTitle>
-                <CardDescription>
+                <CardDescription className="text-muted-foreground">
                   Kelola menu, kategori, dan opsi untuk tenant Anda
                 </CardDescription>
               </div>

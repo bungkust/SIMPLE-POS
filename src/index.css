@@ -12,9 +12,6 @@ html, body {
   height: 100dvh; /* Dynamic viewport height for mobile */
   touch-action: manipulation; /* Prevent zoom on double tap */
   -webkit-text-size-adjust: 100%; /* Prevent text scaling on iOS */
-  -webkit-touch-callout: none; /* Disable callout on iOS */
-  -webkit-user-select: none; /* Disable text selection on iOS */
-  user-select: none; /* Disable text selection */
 }
 
 /* Ensure all containers respect viewport width */
@@ -52,12 +49,15 @@ select {
     min-height: 100dvh;
   }
   
-  /* Prevent zoom on Android */
+  /* Prevent zoom on Android and disable text selection on mobile only */
   body {
     -webkit-text-size-adjust: none;
     -moz-text-size-adjust: none;
     -ms-text-size-adjust: none;
     text-size-adjust: none;
+    -webkit-touch-callout: none; /* Disable callout on iOS */
+    -webkit-user-select: none; /* Disable text selection on iOS */
+    user-select: none; /* Disable text selection on mobile */
   }
   
   /* Ensure proper touch handling */
@@ -82,6 +82,24 @@ select {
   .card-content {
     max-width: 100%;
     overflow-x: hidden;
+  }
+}
+
+/* Desktop-specific fixes - enable text selection */
+@media (min-width: 1024px) {
+  body {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+  
+  /* Allow text selection on input fields and text areas */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
   }
 }
 

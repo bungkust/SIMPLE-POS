@@ -345,8 +345,8 @@ export function CashierTab() {
                       <Package className="h-5 w-5" />
                       Daftar Menu
                     </CardTitle>
-                    <CardDescription>
-                      Pilih menu untuk ditambahkan ke keranjang
+                    <CardDescription className="text-muted-foreground">
+                      Kelola kasir dan transaksi
                     </CardDescription>
                   </div>
                 </div>
