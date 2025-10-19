@@ -1,21 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Search, 
-  Filter, 
-  Grid3X3, 
-  List, 
-  Star,
-  Clock,
-  DollarSign,
   Package,
-  AlertCircle,
   Loader2,
   Plus,
   Minus
@@ -23,29 +11,46 @@ import {
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
-import { useConfig } from '../contexts/ConfigContext';
-import { formatCurrency } from '@/lib/form-utils';
-import { getTenantInfo, getTenantId } from '../lib/tenantUtils';
+import { getTenantInfo } from '../lib/tenantUtils';
 import { MenuDetailSheet } from './MenuDetailSheet';
 import { Database } from '../lib/database.types';
+import { ThumbnailImage, MediumImage } from '@/components/ui/lazy-image';
 
-type MenuItem = Database['public']['Tables']['menu_items']['Row'];
+type MenuItem = Database['public']['Tables']['menu_items']['Row'] & {
+  is_available?: boolean;
+};
 type Category = Database['public']['Tables']['categories']['Row'];
 
 export function MenuBrowser() {
   const { addItem, removeItem, getItemQuantity } = useCart();
-  const { config } = useConfig();
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
-  const [showItemDetails, setShowItemDetails] = useState(false);
   const [tenantInfo, setTenantInfo] = useState<any>(null);
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Cache key for localStorage
+  const getCacheKey = useCallback((tenantId: string, dataType: 'categories' | 'menuItems') => {
+    return `menuBrowser_${dataType}_${tenantId}`;
+  }, []);
+
+  // Check if cache is valid (5 minutes TTL)
+  const isCacheValid = useCallback((timestamp: number) => {
+    return Date.now() - timestamp < 5 * 60 * 1000; // 5 minutes
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -67,7 +72,7 @@ export function MenuBrowser() {
         
         setTenantInfo(resolvedTenantInfo);
         console.log('MenuBrowser: Got tenant info:', resolvedTenantInfo);
-        const tenantId = resolvedTenantInfo.tenant_id;
+        const tenantId = (resolvedTenantInfo as any).tenant_id;
         console.log('MenuBrowser: Got tenant ID:', tenantId);
         
         if (!tenantId) {
@@ -77,43 +82,94 @@ export function MenuBrowser() {
           return;
         }
 
-        setResolvedTenantId(tenantId);
 
-        // Load categories
-        console.log('MenuBrowser: Loading categories for tenant ID:', tenantId);
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .order('sort_order', { ascending: true });
-
-        if (categoriesError) {
-          console.error('Error loading categories:', categoriesError);
-          console.error('Categories error details:', categoriesError.message, categoriesError.details);
-          console.error('Categories error code:', categoriesError.code);
-        } else {
-          console.log('MenuBrowser: Loaded categories:', categoriesData);
-          console.log('MenuBrowser: Categories count:', categoriesData?.length || 0);
-          if (categoriesData && categoriesData.length > 0) {
-            console.log('MenuBrowser: Category names:', categoriesData.map(c => c.name));
+        // Check cache for categories
+        const categoriesCacheKey = getCacheKey(tenantId, 'categories');
+        const cachedCategories = localStorage.getItem(categoriesCacheKey);
+        
+        if (cachedCategories) {
+          try {
+            const { data, timestamp } = JSON.parse(cachedCategories);
+            if (isCacheValid(timestamp)) {
+              console.log('MenuBrowser: Using cached categories');
+              setCategories(data);
+            } else {
+              console.log('MenuBrowser: Categories cache expired, fetching fresh data');
+            }
+          } catch (error) {
+            console.warn('MenuBrowser: Failed to parse cached categories:', error);
           }
-          setCategories(categoriesData || []);
         }
 
-        // Load menu items
-        console.log('MenuBrowser: Loading menu items for tenant ID:', tenantId);
-        const { data: menuData, error: menuError } = await supabase
-          .from('menu_items')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .eq('is_active', true)
-          .order('name', { ascending: true });
+        // Load categories if not cached or cache expired
+        if (!cachedCategories || !isCacheValid(JSON.parse(cachedCategories).timestamp)) {
+          console.log('MenuBrowser: Loading categories for tenant ID:', tenantId);
+          const { data: categoriesData, error: categoriesError } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .order('sort_order', { ascending: true });
 
-        if (menuError) {
-          console.error('Error loading menu items:', menuError);
-        } else {
-          console.log('MenuBrowser: Loaded menu items:', menuData);
-          setMenuItems(menuData || []);
+          if (categoriesError) {
+            console.error('Error loading categories:', categoriesError);
+            console.error('Categories error details:', categoriesError.message, categoriesError.details);
+            console.error('Categories error code:', categoriesError.code);
+          } else {
+            console.log('MenuBrowser: Loaded categories:', categoriesData);
+            console.log('MenuBrowser: Categories count:', categoriesData?.length || 0);
+            if (categoriesData && categoriesData.length > 0) {
+              console.log('MenuBrowser: Category names:', categoriesData.map((c: any) => c.name));
+            }
+            setCategories(categoriesData || []);
+            
+            // Cache categories
+            localStorage.setItem(categoriesCacheKey, JSON.stringify({
+              data: categoriesData || [],
+              timestamp: Date.now()
+            }));
+          }
+        }
+
+        // Check cache for menu items
+        const menuItemsCacheKey = getCacheKey(tenantId, 'menuItems');
+        const cachedMenuItems = localStorage.getItem(menuItemsCacheKey);
+        
+        if (cachedMenuItems) {
+          try {
+            const { data, timestamp } = JSON.parse(cachedMenuItems);
+            if (isCacheValid(timestamp)) {
+              console.log('MenuBrowser: Using cached menu items');
+              setMenuItems(data);
+            } else {
+              console.log('MenuBrowser: Menu items cache expired, fetching fresh data');
+            }
+          } catch (error) {
+            console.warn('MenuBrowser: Failed to parse cached menu items:', error);
+          }
+        }
+
+        // Load menu items if not cached or cache expired
+        if (!cachedMenuItems || !isCacheValid(JSON.parse(cachedMenuItems).timestamp)) {
+          console.log('MenuBrowser: Loading menu items for tenant ID:', tenantId);
+          const { data: menuData, error: menuError } = await supabase
+            .from('menu_items')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .eq('is_active', true)
+            .order('name', { ascending: true });
+
+          if (menuError) {
+            console.error('Error loading menu items:', menuError);
+          } else {
+            console.log('MenuBrowser: Loaded menu items:', menuData);
+            setMenuItems(menuData || []);
+            
+            // Cache menu items
+            localStorage.setItem(menuItemsCacheKey, JSON.stringify({
+              data: menuData || [],
+              timestamp: Date.now()
+            }));
+          }
         }
 
       } catch (error) {
@@ -124,16 +180,19 @@ export function MenuBrowser() {
     };
 
     loadData();
-  }, []);
+  }, [getCacheKey, isCacheValid]);
 
-  const filteredItems = menuItems.filter(item => {
-    const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
-    const matchesSearch = !searchQuery || 
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    return matchesCategory && matchesSearch;
-  });
+  // Memoized filtered items with debounced search
+  const filteredItems = useMemo(() => {
+    return menuItems.filter(item => {
+      const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
+      const matchesSearch = !debouncedSearchQuery || 
+        item.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
+      
+      return matchesCategory && matchesSearch;
+    });
+  }, [menuItems, selectedCategory, debouncedSearchQuery]);
 
   // Debug logging
   console.log('MenuBrowser: Categories:', categories);
@@ -147,11 +206,6 @@ export function MenuBrowser() {
     setIsDetailSheetOpen(true);
   };
 
-  const getCategoryName = (categoryId: string | null) => {
-    if (!categoryId) return 'Uncategorized';
-    const category = categories.find(c => c.id === categoryId);
-    return category?.name || 'Unknown';
-  };
 
   if (loading || !tenantInfo) {
     return (
@@ -209,6 +263,11 @@ export function MenuBrowser() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 sm:pl-10 h-8 sm:h-12 text-xs sm:text-base border-border focus:border-primary focus:ring-primary"
             />
+            {searchQuery !== debouncedSearchQuery && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
           </div>
         </div>
 
@@ -254,10 +313,13 @@ export function MenuBrowser() {
                         {/* Food Image */}
                         <div className="flex-shrink-0">
                           {item.photo_url ? (
-                            <img
+                            <ThumbnailImage
                               src={item.photo_url}
                               alt={item.name}
-                              className="w-12 h-12 sm:w-20 sm:h-20 rounded object-cover"
+                              className="w-12 h-12 sm:w-20 sm:h-20 rounded"
+                              fallback="/placeholder-image.png"
+                              showSkeleton={true}
+                              progressive={true}
                             />
                           ) : (
                             <div className="w-12 h-12 sm:w-20 sm:h-20 rounded bg-muted flex items-center justify-center">
@@ -371,10 +433,13 @@ export function MenuBrowser() {
                     {/* Food Image */}
                     <div className="aspect-video w-full overflow-hidden rounded-t-lg">
                       {item.photo_url ? (
-                        <img
+                        <MediumImage
                           src={item.photo_url}
                           alt={item.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full"
+                          fallback="/placeholder-image.png"
+                          showSkeleton={true}
+                          progressive={true}
                         />
                       ) : (
                         <div className="w-full h-full bg-muted flex items-center justify-center">
@@ -473,7 +538,18 @@ export function MenuBrowser() {
 
       {/* Menu Detail Sheet */}
       <MenuDetailSheet
-        item={selectedItem}
+        item={selectedItem ? {
+          id: selectedItem.id,
+          name: selectedItem.name,
+          description: selectedItem.description || undefined,
+          price: selectedItem.price || 0,
+          base_price: selectedItem.base_price || undefined,
+          photo_url: selectedItem.photo_url || undefined,
+          category_id: selectedItem.category_id || undefined,
+          is_available: selectedItem.is_available || true,
+          preparation_time: (selectedItem as any).preparation_time || undefined,
+          tenant_id: selectedItem.tenant_id
+        } : null}
         isOpen={isDetailSheetOpen}
         onClose={() => {
           setIsDetailSheetOpen(false);

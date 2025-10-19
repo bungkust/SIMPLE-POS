@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger';
 interface AppConfig {
   storeName: string;
   storeIcon: string; // Can be either icon name or uploaded icon URL
+  storeLogoUrl?: string; // Add missing field for logo_url
   storeIconType: 'predefined' | 'uploaded'; // Track if it's predefined or uploaded
   storeDescription?: string;
   storeAddress?: string;
@@ -163,42 +164,55 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     try {
       // Try to load from database if user is authenticated
       if (user && currentTenant) {
-        // Load tenant data from database to get settings
-        const { data: tenantData, error: tenantError } = await supabase
-          .from('tenants')
+        // Load tenant info from tenant_info table
+        const { data: tenantInfoData, error: tenantInfoError } = await (supabase as any)
+          .from('tenant_info')
           .select('*')
-          .eq('id', currentTenant.id)
+          .eq('tenant_id', currentTenant.id)
           .single();
 
-        if (tenantData && !tenantError) {
-          const tenantSettings = (tenantData as any).settings || {};
+        if (tenantInfoData && !tenantInfoError) {
+          console.log('🔧 Loading tenant info from database:', { tenantInfoData });
+          
           const dbConfig: AppConfig = {
-            storeName: tenantSettings.storeName || (tenantData as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
-            storeIcon: tenantSettings.logo_url || tenantSettings.storeIcon || getDefaultConfigForTenant(tenantSlug).storeIcon,
-            storeIconType: tenantSettings.logo_url ? 'uploaded' : (tenantSettings.storeIconType || 'predefined'),
-            storeDescription: tenantSettings.description,
-            storeAddress: tenantSettings.address,
-            storePhone: tenantSettings.phone,
-            storeEmail: tenantSettings.email,
-            storeHours: tenantSettings.operating_hours,
-            autoAcceptOrders: tenantSettings.auto_accept_orders,
-            requirePhoneVerification: tenantSettings.require_phone_verification,
-            allowGuestCheckout: tenantSettings.allow_guest_checkout,
-            minimumOrderAmount: tenantSettings.minimum_order_amount,
-            deliveryFee: tenantSettings.delivery_fee,
-            freeDeliveryThreshold: tenantSettings.free_delivery_threshold,
+            storeName: (currentTenant as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
+            storeIcon: tenantInfoData.logo_url || getDefaultConfigForTenant(tenantSlug).storeIcon,
+            storeLogoUrl: tenantInfoData.logo_url,
+            storeIconType: tenantInfoData.logo_url ? 'uploaded' : 'predefined',
+            storeDescription: tenantInfoData.description,
+            storeAddress: tenantInfoData.address,
+            storePhone: tenantInfoData.phone,
+            storeEmail: tenantInfoData.email,
+            storeHours: tenantInfoData.operating_hours,
+            autoAcceptOrders: false, // Default value
+            requirePhoneVerification: false, // Default value
+            allowGuestCheckout: true, // Default value
+            minimumOrderAmount: 0, // Default value
+            deliveryFee: 0, // Default value
+            freeDeliveryThreshold: 0, // Default value
             // Additional restaurant info fields
-            rating: tenantSettings.rating,
-            reviewCount: tenantSettings.reviewCount,
-            estimatedTime: tenantSettings.estimatedTime,
-            distance: tenantSettings.distance,
-            isOpen: tenantSettings.isOpen,
+            rating: undefined,
+            reviewCount: undefined,
+            estimatedTime: undefined,
+            distance: undefined,
+            isOpen: undefined,
             // Social media links
-            socialMedia: tenantSettings.social_media,
+            socialMedia: {
+              instagram: tenantInfoData.instagram_url,
+              tiktok: tenantInfoData.tiktok_url,
+              twitter: tenantInfoData.twitter_url,
+              facebook: tenantInfoData.facebook_url,
+            },
             // Header display settings
-            headerDisplaySettings: tenantSettings.headerDisplaySettings
+            headerDisplaySettings: {
+              showOperatingHours: tenantInfoData.show_operating_hours ?? true,
+              showAddress: tenantInfoData.show_address ?? true,
+              showPhone: tenantInfoData.show_phone ?? true,
+              showSocialMedia: tenantInfoData.show_social_media ?? true,
+            }
           };
           
+          console.log('🔧 Loaded config from tenant_info table:', dbConfig);
           setConfig(dbConfig);
 
           // Also save to localStorage for faster subsequent loads
@@ -219,41 +233,60 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             .single();
 
           if (tenantData && !tenantError) {
-            const tenantSettings = (tenantData as any).settings || {};
-            const dbConfig: AppConfig = {
-              storeName: tenantSettings.storeName || (tenantData as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
-              storeIcon: tenantSettings.logo_url || tenantSettings.storeIcon || getDefaultConfigForTenant(tenantSlug).storeIcon,
-              storeIconType: tenantSettings.logo_url ? 'uploaded' : (tenantSettings.storeIconType || 'predefined'),
-              storeDescription: tenantSettings.storeDescription || tenantSettings.description,
-              storeAddress: tenantSettings.storeAddress || tenantSettings.address,
-              storePhone: tenantSettings.storePhone || tenantSettings.phone,
-              storeEmail: tenantSettings.storeEmail || tenantSettings.email,
-              storeHours: tenantSettings.storeHours || tenantSettings.operating_hours,
-              autoAcceptOrders: tenantSettings.autoAcceptOrders || tenantSettings.auto_accept_orders,
-              requirePhoneVerification: tenantSettings.requirePhoneVerification || tenantSettings.require_phone_verification,
-              allowGuestCheckout: tenantSettings.allowGuestCheckout || tenantSettings.allow_guest_checkout,
-              minimumOrderAmount: tenantSettings.minimumOrderAmount || tenantSettings.minimum_order_amount,
-              deliveryFee: tenantSettings.deliveryFee || tenantSettings.delivery_fee,
-              freeDeliveryThreshold: tenantSettings.freeDeliveryThreshold || tenantSettings.free_delivery_threshold,
-              // Additional restaurant info fields
-              rating: tenantSettings.rating,
-              reviewCount: tenantSettings.reviewCount,
-              estimatedTime: tenantSettings.estimatedTime,
-              distance: tenantSettings.distance,
-              isOpen: tenantSettings.isOpen,
-              // Social media links
-              socialMedia: tenantSettings.social_media,
-              // Header display settings
-              headerDisplaySettings: tenantSettings.headerDisplaySettings
-            };
-            
-            setConfig(dbConfig);
+            // Then get tenant info
+            const { data: tenantInfoData, error: tenantInfoError } = await (supabase as any)
+              .from('tenant_info')
+              .select('*')
+              .eq('tenant_id', (tenantData as any).id)
+              .single();
 
-            // Also save to localStorage for faster subsequent loads
-            const storageKey = `tenant-config-${tenantSlug}`;
-            localStorage.setItem(storageKey, JSON.stringify(dbConfig));
+            if (tenantInfoData && !tenantInfoError) {
+              const dbConfig: AppConfig = {
+                storeName: (tenantData as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
+                storeIcon: tenantInfoData.logo_url || getDefaultConfigForTenant(tenantSlug).storeIcon,
+                storeLogoUrl: tenantInfoData.logo_url,
+                storeIconType: tenantInfoData.logo_url ? 'uploaded' : 'predefined',
+                storeDescription: tenantInfoData.description,
+                storeAddress: tenantInfoData.address,
+                storePhone: tenantInfoData.phone,
+                storeEmail: tenantInfoData.email,
+                storeHours: tenantInfoData.operating_hours,
+                autoAcceptOrders: false, // Default value
+                requirePhoneVerification: false, // Default value
+                allowGuestCheckout: true, // Default value
+                minimumOrderAmount: 0, // Default value
+                deliveryFee: 0, // Default value
+                freeDeliveryThreshold: 0, // Default value
+                // Additional restaurant info fields
+                rating: undefined,
+                reviewCount: undefined,
+                estimatedTime: undefined,
+                distance: undefined,
+                isOpen: undefined,
+                // Social media links
+                socialMedia: {
+                  instagram: tenantInfoData.instagram_url,
+                  tiktok: tenantInfoData.tiktok_url,
+                  twitter: tenantInfoData.twitter_url,
+                  facebook: tenantInfoData.facebook_url,
+                },
+                // Header display settings
+                headerDisplaySettings: {
+                  showOperatingHours: tenantInfoData.show_operating_hours ?? true,
+                  showAddress: tenantInfoData.show_address ?? true,
+                  showPhone: tenantInfoData.show_phone ?? true,
+                  showSocialMedia: tenantInfoData.show_social_media ?? true,
+                }
+              };
+              
+              setConfig(dbConfig);
 
-            return;
+              // Also save to localStorage for faster subsequent loads
+              const storageKey = `tenant-config-${tenantSlug}`;
+              localStorage.setItem(storageKey, JSON.stringify(dbConfig));
+
+              return;
+            }
           }
         } catch (error) {
           logger.error('Error loading tenant data for public page:', error as any);
@@ -286,59 +319,46 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       console.log('🔧 saveConfig called with:', { tenantSlug, newConfig, user: !!user, currentTenant: !!currentTenant });
       // Save to database if user is authenticated
       if (user && currentTenant) {
-        // Get current tenant settings
-        const { data: currentTenantData, error: fetchError } = await supabase
-          .from('tenants')
-          .select('settings')
-          .eq('id', currentTenant.id)
-          .single();
+        // Prepare tenant_info data
+        const tenantInfoData = {
+          tenant_id: currentTenant.id,
+          description: newConfig.storeDescription,
+          address: newConfig.storeAddress,
+          phone: newConfig.storePhone,
+          email: newConfig.storeEmail,
+          operating_hours: newConfig.storeHours,
+          logo_url: newConfig.storeLogoUrl || (newConfig.storeIconType === 'uploaded' ? newConfig.storeIcon : null),
+          website: null, // Not used in form yet
+          category: null, // Not used in form yet
+          currency: 'IDR', // Default
+          language: 'id', // Default
+          instagram_url: newConfig.socialMedia?.instagram,
+          tiktok_url: newConfig.socialMedia?.tiktok,
+          twitter_url: newConfig.socialMedia?.twitter,
+          facebook_url: newConfig.socialMedia?.facebook,
+          show_operating_hours: newConfig.headerDisplaySettings?.showOperatingHours ?? true,
+          show_address: newConfig.headerDisplaySettings?.showAddress ?? true,
+          show_phone: newConfig.headerDisplaySettings?.showPhone ?? true,
+          show_social_media: newConfig.headerDisplaySettings?.showSocialMedia ?? true,
+          updated_at: new Date().toISOString()
+        };
 
-        if (currentTenantData && !fetchError) {
-          const currentSettings = (currentTenantData as any).settings || {};
-          
-          // Update settings with new config
-          const updatedSettings = {
-            ...currentSettings,
-            storeName: newConfig.storeName,
-            storeIcon: newConfig.storeIcon,
-            storeIconType: newConfig.storeIconType,
-            description: newConfig.storeDescription,
-            address: newConfig.storeAddress,
-            phone: newConfig.storePhone,
-            email: newConfig.storeEmail,
-            operating_hours: newConfig.storeHours,
-            auto_accept_orders: newConfig.autoAcceptOrders,
-            require_phone_verification: newConfig.requirePhoneVerification,
-            allow_guest_checkout: newConfig.allowGuestCheckout,
-            minimum_order_amount: newConfig.minimumOrderAmount,
-            delivery_fee: newConfig.deliveryFee,
-            free_delivery_threshold: newConfig.freeDeliveryThreshold,
-            // Additional restaurant info fields
-            rating: newConfig.rating,
-            reviewCount: newConfig.reviewCount,
-            estimatedTime: newConfig.estimatedTime,
-            distance: newConfig.distance,
-            isOpen: newConfig.isOpen,
-            // Social media links
-            social_media: newConfig.socialMedia,
-            // Header display settings
-            headerDisplaySettings: newConfig.headerDisplaySettings,
-            // Also save logo_url for super admin tenant form compatibility
-            logo_url: newConfig.storeIconType === 'uploaded' ? newConfig.storeIcon : currentSettings.logo_url
-          };
+        console.log('🔧 Updating tenant_info table with data:', tenantInfoData);
+        
+        // Use upsert to insert or update tenant_info
+        const { error: updateError } = await (supabase as any)
+          .from('tenant_info')
+          .upsert(tenantInfoData, { 
+            onConflict: 'tenant_id',
+            ignoreDuplicates: false 
+          });
 
-          const { error: updateError } = await (supabase as any)
-            .from('tenants')
-            .update({ 
-              settings: updatedSettings,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', currentTenant.id);
-
-          if (updateError) {
-            logger.error('Error saving config to database:', updateError as any);
-            // Continue with localStorage fallback
-          }
+        if (updateError) {
+          console.error('❌ Error saving config to tenant_info table:', updateError);
+          logger.error('Error saving config to tenant_info table:', updateError);
+          // Continue with localStorage fallback
+        } else {
+          console.log('✅ Successfully saved config to tenant_info table');
         }
       }
 

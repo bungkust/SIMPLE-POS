@@ -69,6 +69,7 @@ export function SettingsTab() {
     defaultValues: {
       storeName: config.storeName || '',
       storeIcon: config.storeIcon || '',
+      storeLogoUrl: config.storeLogoUrl || '',
       storeIconType: config.storeIconType || 'Coffee',
       storeDescription: config.storeDescription || '',
       storeAddress: config.storeAddress || '',
@@ -138,6 +139,7 @@ export function SettingsTab() {
       await updateConfig({
         storeName: data.storeName,
         storeIcon: data.storeIcon,
+        storeLogoUrl: data.storeLogoUrl,
         storeIconType: data.storeIconType,
         storeDescription: data.storeDescription,
         storeAddress: data.storeAddress,
@@ -172,6 +174,7 @@ export function SettingsTab() {
       reset({
         storeName: config.storeName || '',
         storeIcon: config.storeIcon || '',
+        storeLogoUrl: config.storeLogoUrl || '',
         storeIconType: config.storeIconType || 'Coffee',
         storeDescription: config.storeDescription || '',
         storeAddress: config.storeAddress || '',

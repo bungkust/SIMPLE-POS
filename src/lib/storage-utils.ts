@@ -6,18 +6,24 @@ export interface UploadConfig {
   folder: string;
   tenantId?: string;
   tenantSlug?: string;
-  maxSize?: number; // in bytes, default 5MB
+  maxSize?: number; // in bytes, default 1MB
+  maxOriginalSize?: number; // in bytes, for pre-compression validation, default 10MB
   allowedTypes?: string[]; // default ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  compress?: boolean; // whether to compress before upload, default true
+  targetSize?: number; // target size after compression in bytes, default 500KB
 }
 
 export interface UploadResult {
   success: boolean;
   url?: string;
   error?: string;
+  originalSize?: number;
+  compressedSize?: number;
+  compressionRatio?: number;
 }
 
 /**
- * Standardized multi-tenant file upload utility
+ * Standardized multi-tenant file upload utility with compression
  * Creates tenant-specific folder structure: {tenantSlug}/{folder}/{filename}
  */
 export async function uploadFile(
@@ -25,12 +31,14 @@ export async function uploadFile(
   config: UploadConfig
 ): Promise<UploadResult> {
   try {
-    // Validate file size
-    const maxSize = config.maxSize || 5 * 1024 * 1024; // 5MB default
-    if (file.size > maxSize) {
+    const originalSize = file.size;
+    
+    // Validate original file size (before compression)
+    const maxOriginalSize = config.maxOriginalSize || 10 * 1024 * 1024; // 10MB default
+    if (file.size > maxOriginalSize) {
       return {
         success: false,
-        error: `File size must be less than ${Math.round(maxSize / 1024 / 1024)}MB`
+        error: `File terlalu besar, maksimal ${Math.round(maxOriginalSize / 1024 / 1024)}MB`
       };
     }
 
@@ -43,8 +51,49 @@ export async function uploadFile(
       };
     }
 
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop();
+    // Compress image if enabled (default: true)
+    let fileToUpload = file;
+    let compressedSize = originalSize;
+    let compressionRatio = 0;
+
+    if (config.compress !== false) {
+      try {
+        const imageCompression = await import('browser-image-compression');
+        const targetSize = config.targetSize || 500 * 1024; // 500KB default
+        
+        const compressedFile = await imageCompression.default(file, {
+          maxSizeMB: targetSize / (1024 * 1024),
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+          fileType: 'image/webp'
+        });
+
+        fileToUpload = compressedFile;
+        compressedSize = compressedFile.size;
+        compressionRatio = Math.round(((originalSize - compressedSize) / originalSize) * 100);
+
+        logger.log('📦 Image compressed:', {
+          originalSize: `${Math.round(originalSize / 1024)}KB`,
+          compressedSize: `${Math.round(compressedSize / 1024)}KB`,
+          compressionRatio: `${compressionRatio}%`
+        });
+      } catch (compressionError) {
+        logger.warn('Compression failed, using original file:', compressionError as any);
+        // Continue with original file if compression fails
+      }
+    }
+
+    // Final size validation (after compression)
+    const maxSize = config.maxSize || 1024 * 1024; // 1MB default
+    if (fileToUpload.size > maxSize) {
+      return {
+        success: false,
+        error: `File masih terlalu besar setelah kompresi, maksimal ${Math.round(maxSize / 1024)}KB`
+      };
+    }
+
+    // Generate unique filename (use webp extension if compressed)
+    const fileExt = config.compress !== false ? 'webp' : file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
     // Create tenant-specific folder structure
@@ -80,15 +129,17 @@ export async function uploadFile(
       bucket: config.bucket,
       filePath,
       fileName,
-      fileSize: file.size,
-      fileType: file.type,
+      originalSize: `${Math.round(originalSize / 1024)}KB`,
+      compressedSize: `${Math.round(compressedSize / 1024)}KB`,
+      compressionRatio: `${compressionRatio}%`,
+      fileType: fileToUpload.type,
       tenantIdentifier
     });
 
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from(config.bucket)
-      .upload(filePath, file);
+      .upload(filePath, fileToUpload);
 
     if (uploadError) {
       logger.error('Upload error:', uploadError);
@@ -105,12 +156,18 @@ export async function uploadFile(
 
     logger.log('✅ Upload successful:', {
       publicUrl: data.publicUrl,
-      filePath
+      filePath,
+      originalSize: `${Math.round(originalSize / 1024)}KB`,
+      compressedSize: `${Math.round(compressedSize / 1024)}KB`,
+      compressionRatio: `${compressionRatio}%`
     });
 
     return {
       success: true,
-      url: data.publicUrl
+      url: data.publicUrl,
+      originalSize,
+      compressedSize,
+      compressionRatio
     };
 
   } catch (error: any) {
@@ -130,28 +187,44 @@ export const uploadConfigs = {
   tenantLogo: (tenantSlug: string): UploadConfig => ({
     bucket: 'store-icons',
     folder: 'logo',
-    tenantSlug
+    tenantSlug,
+    maxOriginalSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 200 * 1024, // 200KB
+    targetSize: 200 * 1024, // 200KB
+    compress: true
   }),
 
   // Store logo upload (Admin Settings) - Use same structure as super admin
   storeLogo: (tenantSlug: string): UploadConfig => ({
     bucket: 'store-icons',
     folder: 'logo',
-    tenantSlug
+    tenantSlug,
+    maxOriginalSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 200 * 1024, // 200KB
+    targetSize: 200 * 1024, // 200KB
+    compress: true
   }),
 
   // Menu item image upload
   menuItem: (tenantSlug: string): UploadConfig => ({
     bucket: 'menu-images',
     folder: 'menu-items',
-    tenantSlug
+    tenantSlug,
+    maxOriginalSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 500 * 1024, // 500KB
+    targetSize: 500 * 1024, // 500KB
+    compress: true
   }),
 
   // QRIS image upload
   qrisImage: (tenantSlug: string): UploadConfig => ({
     bucket: 'qris-images',
     folder: 'qris',
-    tenantSlug
+    tenantSlug,
+    maxOriginalSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 300 * 1024, // 300KB
+    targetSize: 300 * 1024, // 300KB
+    compress: true
   })
 };
 
