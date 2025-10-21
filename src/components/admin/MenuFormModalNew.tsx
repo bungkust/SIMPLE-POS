@@ -77,17 +77,17 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
         logger.log('✅ Menu item image uploaded successfully:', result.url);
       } else {
         onError({
-          title: 'Upload Failed',
+          title: 'Upload Gagal',
           message: 'Gagal mengupload gambar.',
-          details: result.error || 'Unknown error occurred during upload.'
+          details: result.error || 'Terjadi kesalahan saat mengupload file.'
         });
       }
     } catch (error: any) {
       logger.error('Upload error:', error);
       onError({
-        title: 'Upload Failed',
+        title: 'Upload Gagal',
         message: 'Gagal mengupload gambar.',
-        details: error.message || 'Unknown error occurred during upload.'
+        details: error.message || 'Terjadi kesalahan saat mengupload file.'
       });
     } finally {
       setUploading(false);
@@ -97,9 +97,9 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
   const onSubmit = async (data: MenuFormData) => {
     if (!currentTenant) {
       onError({
-        title: 'No Tenant Context',
+        title: 'Konteks Tenant Tidak Ditemukan',
         message: 'Tenant context tidak ditemukan.',
-        details: 'Please refresh the page and try again.'
+        details: 'Silakan refresh halaman dan coba lagi.'
       });
       return;
     }
@@ -131,7 +131,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
         if (error) throw error;
 
         onSuccess({
-          title: 'Menu Item Updated',
+          title: 'Menu Berhasil Diperbarui',
           message: 'Menu item berhasil diperbarui.',
           type: 'success'
         });
@@ -147,7 +147,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
         if (error) throw error;
 
         onSuccess({
-          title: 'Menu Item Created',
+          title: 'Menu Berhasil Dibuat',
           message: 'Menu item baru berhasil dibuat.',
           type: 'success'
         });
@@ -157,9 +157,9 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
     } catch (error: any) {
       logger.error('Error saving menu item:', error);
       onError({
-        title: 'Save Failed',
+        title: 'Simpan Gagal',
         message: 'Gagal menyimpan menu item.',
-        details: error.message || 'Unknown error occurred.'
+        details: error.message || 'Terjadi kesalahan saat menyimpan data.'
       });
     } finally {
       setLoading(false);

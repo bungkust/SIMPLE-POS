@@ -23,12 +23,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ColumnDef } from '@tanstack/react-table';
 import { Database } from '@/lib/database.types';
 import { MenuFormModal } from './MenuFormModalNew';
+import { useAppToast } from '@/components/ui/toast-provider';
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 
 export function MenuTab() {
   const { currentTenant } = useAuth();
+  const { showError } = useAppToast();
   const isMobile = useIsMobile();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -442,6 +444,10 @@ export function MenuTab() {
           }}
           onError={(error) => {
             console.error('Menu form error:', error);
+            const description = error.details 
+              ? `${error.message || 'Terjadi kesalahan'}\n\n${error.details}`
+              : error.message || 'Terjadi kesalahan';
+            showError(error.title || 'Terjadi Kesalahan', description);
           }}
         />
       )}

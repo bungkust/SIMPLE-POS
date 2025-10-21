@@ -17,6 +17,7 @@ import { superAdminTenantFormSchema, type SuperAdminTenantFormData } from '@/lib
 import { uploadFile, uploadConfigs, createTenantStorageStructure } from '@/lib/storage-utils';
 import { logger } from '@/lib/logger';
 import { createTenantInfo } from '@/lib/tenant-helpers';
+import { useAppToast } from '@/components/ui/toast-provider';
 
 type Tenant = Database['public']['Tables']['tenants']['Row'];
 
@@ -28,6 +29,7 @@ interface TenantFormModalProps {
 }
 
 export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantFormModalProps) {
+  const { showError, showSuccess } = useAppToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -160,12 +162,15 @@ export function TenantFormModal({ tenant, onClose, onSuccess, onError }: TenantF
       if (result.success && result.url) {
         setImagePreview(result.url);
         setValue('logo_url', result.url);
+        showSuccess('Upload Berhasil', 'Logo tenant berhasil diupload.');
         logger.log('✅ Tenant logo uploaded successfully:', result.url);
       } else {
+        showError('Upload Gagal', `Gagal mengupload logo tenant: ${result.error || 'Terjadi kesalahan saat mengupload file.'}`);
         onError(result.error || 'Failed to upload image');
       }
     } catch (error: any) {
       logger.error('Image upload error', { error: error.message, component: 'TenantFormModal' });
+      showError('Upload Gagal', `Gagal mengupload logo tenant: ${error.message || 'Terjadi kesalahan saat mengupload file.'}`);
       onError('Failed to upload image');
     } finally {
       setUploadingImage(false);

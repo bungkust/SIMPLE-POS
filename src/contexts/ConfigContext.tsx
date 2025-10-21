@@ -249,7 +249,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
               console.log('🔧 Loading tenant info for public page:', { tenantInfoData });
               console.log('🔧 Banner URL from database (public):', tenantInfoData.banner_url);
               
-              const dbConfig: AppConfig = {
+            const dbConfig: AppConfig = {
                 storeName: (tenantData as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
                 storeIcon: tenantInfoData.logo_url || getDefaultConfigForTenant(tenantSlug).storeIcon,
                 storeLogoUrl: tenantInfoData.logo_url,
@@ -266,20 +266,20 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
                 minimumOrderAmount: 0, // Default value
                 deliveryFee: 0, // Default value
                 freeDeliveryThreshold: 0, // Default value
-                // Additional restaurant info fields
+              // Additional restaurant info fields
                 rating: undefined,
                 reviewCount: undefined,
                 estimatedTime: undefined,
                 distance: undefined,
                 isOpen: undefined,
-                // Social media links
+              // Social media links
                 socialMedia: {
                   instagram: tenantInfoData.instagram_url,
                   tiktok: tenantInfoData.tiktok_url,
                   twitter: tenantInfoData.twitter_url,
                   facebook: tenantInfoData.facebook_url,
                 },
-                // Header display settings
+              // Header display settings
                 headerDisplaySettings: {
                   showDescription: tenantInfoData.show_description ?? true,
                   showOperatingHours: tenantInfoData.show_operating_hours ?? true,
@@ -287,15 +287,15 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
                   showPhone: tenantInfoData.show_phone ?? true,
                   showSocialMedia: tenantInfoData.show_social_media ?? true,
                 }
-              };
-              
-              setConfig(dbConfig);
+            };
+            
+            setConfig(dbConfig);
 
-              // Also save to localStorage for faster subsequent loads
-              const storageKey = `tenant-config-${tenantSlug}`;
-              localStorage.setItem(storageKey, JSON.stringify(dbConfig));
+            // Also save to localStorage for faster subsequent loads
+            const storageKey = `tenant-config-${tenantSlug}`;
+            localStorage.setItem(storageKey, JSON.stringify(dbConfig));
 
-              return;
+            return;
             }
           }
         } catch (error) {
@@ -331,14 +331,87 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       console.log('🔧 saveConfig called with:', { tenantSlug, newConfig, user: !!user, currentTenant: !!currentTenant });
       // Save to database if user is authenticated
       if (user && currentTenant) {
+        // Update tenants table with storeName
+        console.log('🔧 Checking storeName update:', {
+          newStoreName: newConfig.storeName,
+          currentTenantName: currentTenant.name,
+          shouldUpdate: newConfig.storeName && newConfig.storeName !== currentTenant.name
+        });
+        
+        if (newConfig.storeName && newConfig.storeName !== currentTenant.name) {
+          console.log('🔧 Updating tenants table with storeName:', newConfig.storeName);
+          console.log('🔧 Tenant ID:', currentTenant.id);
+          
+          const { data: updateResult, error: tenantUpdateError } = await (supabase as any)
+            .from('tenants')
+            .update({ 
+              name: newConfig.storeName,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', currentTenant.id)
+            .select();
+
+          console.log('🔧 Update result:', { updateResult, tenantUpdateError });
+
+          if (tenantUpdateError) {
+            console.error('❌ Error saving storeName to tenants table:', tenantUpdateError);
+            logger.error('Error saving storeName to tenants table:', tenantUpdateError);
+          } else {
+            console.log('✅ Successfully saved storeName to tenants table');
+            console.log('✅ Updated tenant data:', updateResult);
+            // Verify the update by fetching the data again
+            try {
+              // Wait a moment for database consistency
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              // Fetch the updated tenant data from database to verify
+              const { data: updatedTenant, error: fetchError } = await (supabase as any)
+          .from('tenants')
+                .select('*')
+          .eq('id', currentTenant.id)
+          .single();
+
+              if (!fetchError && updatedTenant) {
+                console.log('🔧 Verification - Fetched tenant data from DB:', updatedTenant);
+                console.log('🔧 Verification - Expected name:', newConfig.storeName);
+                console.log('🔧 Verification - Actual name in DB:', updatedTenant.name);
+                console.log('🔧 Verification - Names match:', updatedTenant.name === newConfig.storeName);
+                
+                if (updatedTenant.name === newConfig.storeName) {
+                  console.log('✅ VERIFICATION SUCCESS: Store name correctly saved to database');
+                  // Update the currentTenant object in memory
+                  (currentTenant as any).name = updatedTenant.name;
+                  console.log('🔧 Updated currentTenant.name in memory:', currentTenant.name);
+                  
+                  // Trigger a re-render by updating the config state
+                  setConfig(prevConfig => ({
+                    ...prevConfig,
+                    storeName: updatedTenant.name
+                  }));
+                } else {
+                  console.error('❌ VERIFICATION FAILED: Store name not saved correctly to database');
+                }
+              } else {
+                console.error('❌ Could not verify update:', fetchError);
+              }
+            } catch (fetchError) {
+              console.warn('⚠️ Could not verify updated tenant data:', fetchError);
+            }
+          }
+        } else {
+          console.log('🔧 No storeName update needed:', {
+            reason: !newConfig.storeName ? 'no new storeName' : 'storeName unchanged'
+          });
+        }
+
         // Prepare tenant_info data
         const tenantInfoData = {
           tenant_id: currentTenant.id,
-          description: newConfig.storeDescription,
-          address: newConfig.storeAddress,
-          phone: newConfig.storePhone,
-          email: newConfig.storeEmail,
-          operating_hours: newConfig.storeHours,
+            description: newConfig.storeDescription,
+            address: newConfig.storeAddress,
+            phone: newConfig.storePhone,
+            email: newConfig.storeEmail,
+            operating_hours: newConfig.storeHours,
           logo_url: newConfig.storeLogoUrl,
           ...(newConfig.storeBannerUrl && { banner_url: newConfig.storeBannerUrl }), // Only include if column exists
           website: null, // Not used in form yet
@@ -360,17 +433,17 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         console.log('🔧 Updating tenant_info table with data:', tenantInfoData);
         
         // Use upsert to insert or update tenant_info
-        const { error: updateError } = await (supabase as any)
+          const { error: updateError } = await (supabase as any)
           .from('tenant_info')
           .upsert(tenantInfoData, { 
             onConflict: 'tenant_id',
             ignoreDuplicates: false 
           });
 
-        if (updateError) {
+          if (updateError) {
           console.error('❌ Error saving config to tenant_info table:', updateError);
           logger.error('Error saving config to tenant_info table:', updateError);
-          // Continue with localStorage fallback
+            // Continue with localStorage fallback
         } else {
           console.log('✅ Successfully saved config to tenant_info table');
         }
@@ -399,7 +472,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     const updatedConfig = { ...config, ...newConfig };
     console.log('🔧 Updated config:', updatedConfig);
     setConfig(updatedConfig);
-    
+
     // Save to both database and localStorage
     await saveConfig(tenantSlug, updatedConfig as AppConfig);
     console.log('🔧 Config saved successfully');
@@ -407,9 +480,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   // Ensure we always provide a valid context value
   const contextValue = useMemo(() => ({
-    config,
-    updateConfig,
-    loading
+      config,
+      updateConfig,
+      loading
   }), [config, loading]);
 
   return (
