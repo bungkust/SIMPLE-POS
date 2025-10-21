@@ -29,6 +29,7 @@ import { useAppToast } from '@/components/ui/toast-provider';
 import { Database } from '../../lib/database.types';
 
 import { logger } from '@/lib/logger';
+import { colors, typography, components, sizes, spacing, cn } from '@/lib/design-system';
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 type CartItem = {
@@ -295,16 +296,16 @@ export function CashierTab() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={cn(spacing.lg)}>
+        <div className={cn("grid grid-cols-1 lg:grid-cols-3 gap-6")}>
           <div className="lg:col-span-2">
-            <Card>
-              <CardContent className="p-6">
+            <Card className={cn(components.card)}>
+              <CardContent className={cn(sizes.card.lg)}>
                 <div className="animate-pulse">
-                  <div className="h-4 bg-muted rounded w-1/4 mb-4"></div>
-                  <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
+                  <div className={cn("h-4 bg-gray-200 rounded w-1/4 mb-4")}></div>
+                  <div className={cn(`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`)}>
                     {[...Array(6)].map((_, i) => (
-                      <div key={i} className="h-32 bg-muted rounded"></div>
+                      <div key={i} className={cn("h-32 bg-gray-200 rounded")}></div>
                     ))}
                   </div>
                 </div>
@@ -312,13 +313,13 @@ export function CashierTab() {
             </Card>
           </div>
           <div>
-            <Card>
-              <CardContent className="p-6">
+            <Card className={cn(components.card)}>
+              <CardContent className={cn(sizes.card.lg)}>
                 <div className="animate-pulse">
-                  <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
-                  <div className="space-y-2">
+                  <div className={cn("h-4 bg-gray-200 rounded w-1/2 mb-4")}></div>
+                  <div className={cn(spacing.sm)}>
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-16 bg-muted rounded"></div>
+                      <div key={i} className={cn("h-16 bg-gray-200 rounded")}></div>
                     ))}
                   </div>
                 </div>
@@ -331,21 +332,21 @@ export function CashierTab() {
   }
 
   return (
-    <div className="space-y-4 w-full max-w-full overflow-hidden">
-      <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
+    <div className={cn(spacing.md, "w-full max-w-full overflow-hidden")}>
+      <div className={cn(`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`)}>
         {/* Menu Items */}
-        <div className={`space-y-4 ${isMobile ? 'order-1' : 'lg:col-span-2'}`}>
+        <div className={cn(`space-y-4 ${isMobile ? 'order-1' : 'lg:col-span-2'}`)}>
           {/* Category Filter */}
-          <Card className="w-full max-w-full overflow-hidden">
+          <Card className={cn(components.card, "w-full max-w-full overflow-hidden")}>
             <CardHeader>
-              <div className="space-y-3">
+              <div className={cn(spacing.md)}>
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
+                    <CardTitle className={cn(typography.h3, "flex items-center gap-2")}>
+                      <Package className={cn(sizes.icon.md)} />
                       Daftar Menu
                     </CardTitle>
-                    <CardDescription className="text-muted-foreground">
+                    <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                       Kelola kasir dan transaksi
                     </CardDescription>
                   </div>
@@ -353,11 +354,12 @@ export function CashierTab() {
               </div>
             </CardHeader>
             <CardContent className="overflow-hidden w-full max-w-full">
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className={cn("flex flex-wrap gap-2 mb-4")}>
                 <Button
                   variant={selectedCategory === 'all' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedCategory('all')}
+                  className={cn(selectedCategory === 'all' ? components.buttonPrimary : components.buttonOutline)}
                 >
                   Semua Item
                 </Button>
@@ -367,31 +369,32 @@ export function CashierTab() {
                     variant={selectedCategory === category.id ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setSelectedCategory(category.id)}
+                    className={cn(selectedCategory === category.id ? components.buttonPrimary : components.buttonOutline)}
                   >
                     {category.name}
                   </Button>
                 ))}
               </div>
 
-              <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
+              <div className={cn(`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`)}>
                 {filteredMenuItems.map((item) => (
-                  <Card key={item.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-sm">{item.name}</h4>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
+                  <Card key={item.id} className={cn(components.card, "hover:shadow-md transition-shadow cursor-pointer")}>
+                    <CardContent className={cn(sizes.card.md)}>
+                      <div className={cn(spacing.sm)}>
+                        <h4 className={cn(typography.label.medium)}>{item.name}</h4>
+                        <p className={cn(typography.body.small, colors.text.muted, "line-clamp-2")}>
                           {item.description}
                         </p>
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-sm">
+                          <span className={cn(typography.price.small)}>
                             {formatCurrency(item.price || 0)}
                           </span>
                           <Button
                             size="sm"
                             onClick={() => addToCart(item)}
-                            className="h-8 w-8 p-0"
+                            className={cn("h-8 w-8 p-0", components.buttonPrimary)}
                           >
-                            <Plus className="h-4 w-4" />
+                            <Plus className={cn(sizes.icon.sm)} />
                           </Button>
                         </div>
                       </div>
@@ -417,17 +420,17 @@ export function CashierTab() {
         </div>
 
         {/* Cart */}
-        <div className={`space-y-4 ${isMobile ? 'order-2' : ''}`}>
-          <Card className="w-full max-w-full overflow-hidden">
+        <div className={cn(`space-y-4 ${isMobile ? 'order-2' : ''}`)}>
+          <Card className={cn(components.card, "w-full max-w-full overflow-hidden")}>
             <CardHeader>
-              <div className="space-y-3">
+              <div className={cn(spacing.md)}>
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
-                    <CardTitle className="flex items-center gap-2">
-                      <ShoppingCart className="h-5 w-5" />
+                    <CardTitle className={cn(typography.h3, "flex items-center gap-2")}>
+                      <ShoppingCart className={cn(sizes.icon.md)} />
                       Keranjang
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                       Review pesanan sebelum checkout
                     </CardDescription>
                   </div>
@@ -440,20 +443,20 @@ export function CashierTab() {
             <CardContent className="overflow-hidden w-full max-w-full">
               {cart.length === 0 ? (
                 <div className="text-center py-8">
-                  <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Keranjang Kosong</h3>
-                  <p className="text-muted-foreground">
+                  <ShoppingCart className={cn(sizes.icon.lg, colors.text.muted, "mx-auto mb-4")} />
+                  <h3 className={cn(typography.h3, "mb-2")}>Keranjang Kosong</h3>
+                  <p className={cn(typography.body.medium, colors.text.muted)}>
                     Tambahkan item dari menu untuk memulai
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div className={cn(spacing.md)}>
+                  <div className={cn("space-y-2 max-h-64 overflow-y-auto")}>
                     {cart.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-2 border rounded-lg">
+                      <div key={item.id} className={cn("flex items-center justify-between p-2 border rounded-lg")}>
                         <div className="flex-1 min-w-0">
-                          <h5 className="font-medium text-sm truncate">{item.name}</h5>
-                          <p className="text-xs text-muted-foreground">
+                          <h5 className={cn(typography.label.medium, "truncate")}>{item.name}</h5>
+                          <p className={cn(typography.body.small, colors.text.muted)}>
                             {formatCurrency(item.price)} each
                           </p>
                         </div>
@@ -462,28 +465,28 @@ export function CashierTab() {
                             size="sm"
                             variant="outline"
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="h-6 w-6 p-0"
+                            className={cn("h-6 w-6 p-0", components.buttonOutline)}
                           >
-                            <Minus className="h-3 w-3" />
+                            <Minus className={cn(sizes.icon.sm)} />
                           </Button>
-                          <span className="text-sm font-medium w-6 text-center">
+                          <span className={cn(typography.body.small, "font-medium w-6 text-center")}>
                             {item.quantity}
                           </span>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="h-6 w-6 p-0"
+                            className={cn("h-6 w-6 p-0", components.buttonOutline)}
                           >
-                            <Plus className="h-3 w-3" />
+                            <Plus className={cn(sizes.icon.sm)} />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => removeFromCart(item.id)}
-                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                            className={cn("h-6 w-6 p-0 text-destructive hover:text-destructive")}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className={cn(sizes.icon.sm)} />
                           </Button>
                         </div>
                       </div>
@@ -492,36 +495,36 @@ export function CashierTab() {
 
                   <Separator />
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
+                  <div className={cn(spacing.sm)}>
+                    <div className={cn("flex justify-between", typography.body.small)}>
                       <span>Subtotal:</span>
                       <span>{formatCurrency(getTotalAmount())}</span>
                     </div>
-                    <div className="flex justify-between font-semibold">
+                    <div className={cn("flex justify-between", typography.label.medium)}>
                       <span>Total:</span>
                       <span>{formatCurrency(getTotalAmount())}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className={cn(spacing.sm)}>
                     <Button
                       onClick={() => {
                         setShowCustomerForm(true);
                         setValue('payment_method', 'QRIS'); // Ensure QRIS is selected when opening dialog
                       }}
-                      className="w-full"
+                      className={cn("w-full", components.buttonPrimary)}
                       disabled={cart.length === 0}
                     >
-                      <Receipt className="h-4 w-4 mr-2" />
+                      <Receipt className={cn(sizes.icon.sm, "mr-2")} />
                       Proses Pesanan
                     </Button>
                     <Button
                       variant="outline"
                       onClick={clearCart}
-                      className="w-full"
+                      className={cn("w-full", components.buttonOutline)}
                       disabled={cart.length === 0}
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
+                      <Trash2 className={cn(sizes.icon.sm, "mr-2")} />
                       Kosongkan Keranjang
                     </Button>
                   </div>
@@ -536,12 +539,12 @@ export function CashierTab() {
       <Dialog open={showCustomerForm} onOpenChange={setShowCustomerForm}>
         <DialogContent className={`${isMobile ? 'w-full h-full max-w-full max-h-full' : 'max-w-2xl'}`}>
           <DialogHeader>
-            <DialogTitle>Informasi Pesanan</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className={cn(typography.h3)}>Informasi Pesanan</DialogTitle>
+            <DialogDescription className={cn(typography.body.medium, colors.text.secondary)}>
               Masukkan detail pelanggan (opsional) dan pilih metode pembayaran
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className={`space-y-4 ${isMobile ? 'space-y-6' : ''}`}>
+          <form onSubmit={handleSubmit(onSubmit)} className={cn(`space-y-4 ${isMobile ? 'space-y-6' : ''}`)}>
             <FormInput
               {...register('customer_name')}
               label="Nama Pelanggan (Opsional)"
@@ -584,20 +587,20 @@ export function CashierTab() {
               <SelectItem value="TRANSFER">Transfer Bank</SelectItem>
             </FormSelect>
 
-            <div className={`flex space-x-2 ${isMobile ? 'flex-col space-y-2' : 'justify-end'}`}>
+            <div className={cn(`flex space-x-2 ${isMobile ? 'flex-col space-y-2' : 'justify-end'}`)}>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowCustomerForm(false)}
                 disabled={processingOrder}
-                className={isMobile ? 'w-full' : ''}
+                className={cn(isMobile ? 'w-full' : '', components.buttonOutline)}
               >
                 Batal
               </Button>
               <Button
                 type="submit"
                 disabled={processingOrder}
-                className={isMobile ? 'w-full' : ''}
+                className={cn(isMobile ? 'w-full' : '', components.buttonPrimary)}
               >
                 {processingOrder ? (
                   <>
@@ -606,7 +609,7 @@ export function CashierTab() {
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className={cn(sizes.icon.sm, "mr-2")} />
                     Buat Pesanan
                   </>
                 )}

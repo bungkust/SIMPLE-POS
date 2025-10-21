@@ -39,6 +39,7 @@ import { settingsFormSchema, type SettingsFormData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { uploadFile, uploadConfigs } from '@/lib/storage-utils';
 import { logger } from '@/lib/logger';
+import { colors, typography, components, sizes, spacing, cn } from '@/lib/design-system';
 const iconOptions = [
   { value: 'Coffee', label: 'Coffee', icon: Coffee },
   { value: 'Store', label: 'Store', icon: Store },
@@ -286,17 +287,17 @@ export function SettingsTab() {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-hidden mobile-container">
-      <Card className="w-full max-w-full overflow-hidden">
+    <div className={cn(spacing.lg, "w-full max-w-full overflow-hidden mobile-container")}>
+      <Card className={cn(components.card, "w-full max-w-full overflow-hidden")}>
         <CardHeader>
-          <div className="space-y-3">
+          <div className={cn(spacing.md)}>
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
+                <CardTitle className={cn(typography.h3, "flex items-center gap-2")}>
+                  <Settings className={cn(sizes.icon.md)} />
                   Store Settings
                 </CardTitle>
-                <CardDescription className="text-muted-foreground">
+                <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                   Kelola pengaturan toko dan preferensi
                 </CardDescription>
               </div>
@@ -306,22 +307,22 @@ export function SettingsTab() {
         <CardContent className="overflow-hidden">
           {isMobile ? (
             <Accordion type="single" collapsible defaultValue="general" className="w-full">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-full overflow-hidden">
+              <form onSubmit={handleSubmit(onSubmit)} className={cn(spacing.lg, "max-w-full overflow-hidden")}>
                 <AccordionItem value="general">
-                  <AccordionTrigger className="flex items-center gap-2">
-                    <Store className="h-4 w-4" />
+                  <AccordionTrigger className={cn("flex items-center gap-2", typography.label.medium)}>
+                    <Store className={cn(sizes.icon.sm)} />
                     General Settings
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-6">
-                <Card>
+                  <AccordionContent className={cn(spacing.lg)}>
+                <Card className={cn(components.card)}>
                   <CardHeader>
-                    <CardTitle className="text-lg">Store Information</CardTitle>
-                    <CardDescription>
+                    <CardTitle className={cn(typography.h4)}>Store Information</CardTitle>
+                    <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                       Basic information about your store
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+                  <CardContent className={cn(spacing.md)}>
+                    <div className={cn(`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`)}>
                       <FormInput
                         {...register('storeName')}
                         label="Store Name"
@@ -807,21 +808,21 @@ export function SettingsTab() {
                 <Separator />
 
                 {/* Action Buttons */}
-                <div className="flex flex-col space-y-2">
+                <div className={cn("flex flex-col space-y-2")}>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={resetToDefaults}
                     disabled={loading}
-                    className="w-full"
+                    className={cn("w-full", components.buttonOutline)}
                   >
-                    <RotateCcw className="h-4 w-4 mr-2" />
+                    <RotateCcw className={cn(sizes.icon.sm, "mr-2")} />
                     Reset to Defaults
                   </Button>
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full"
+                    className={cn("w-full", components.buttonPrimary)}
                   >
                     {loading ? (
                       <>
@@ -830,7 +831,7 @@ export function SettingsTab() {
                       </>
                     ) : (
                       <>
-                        <Save className="h-4 w-4 mr-2" />
+                        <Save className={cn(sizes.icon.sm, "mr-2")} />
                         Save Settings
                       </>
                     )}
@@ -840,29 +841,29 @@ export function SettingsTab() {
             </Accordion>
           ) : (
             <Tabs defaultValue="general" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="general" className="flex items-center gap-2">
-                  <Store className="h-4 w-4" />
+              <TabsList className={cn("grid w-full grid-cols-2")}>
+                <TabsTrigger value="general" className={cn("flex items-center gap-2", typography.label.medium)}>
+                  <Store className={cn(sizes.icon.sm)} />
                   General
                 </TabsTrigger>
-                <TabsTrigger value="orders" className="flex items-center gap-2">
-                  <ShoppingBag className="h-4 w-4" />
+                <TabsTrigger value="orders" className={cn("flex items-center gap-2", typography.label.medium)}>
+                  <ShoppingBag className={cn(sizes.icon.sm)} />
                   Orders
                 </TabsTrigger>
               </TabsList>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-full overflow-hidden">
+              <form onSubmit={handleSubmit(onSubmit)} className={cn(spacing.lg, "max-w-full overflow-hidden")}>
                 {/* General Settings */}
-                <TabsContent value="general" className="space-y-6">
-                  <Card>
+                <TabsContent value="general" className={cn(spacing.lg)}>
+                  <Card className={cn(components.card)}>
                     <CardHeader>
-                      <CardTitle className="text-lg">Store Information</CardTitle>
-                      <CardDescription>
+                      <CardTitle className={cn(typography.h4)}>Store Information</CardTitle>
+                      <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                         Basic information about your store
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <CardContent className={cn(spacing.md)}>
+                      <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4")}>
                         <FormInput
                           {...register('storeName')}
                           label="Store Name"
@@ -1331,13 +1332,15 @@ export function SettingsTab() {
                     variant="outline"
                     onClick={resetToDefaults}
                     disabled={loading}
+                    className={cn(components.buttonOutline)}
                   >
-                    <RotateCcw className="h-4 w-4 mr-2" />
+                    <RotateCcw className={cn(sizes.icon.sm, "mr-2")} />
                     Reset to Defaults
                   </Button>
                   <Button
                     type="submit"
                     disabled={loading}
+                    className={cn(components.buttonPrimary)}
                   >
                     {loading ? (
                       <>
@@ -1346,7 +1349,7 @@ export function SettingsTab() {
                       </>
                     ) : (
                       <>
-                        <Save className="h-4 w-4 mr-2" />
+                        <Save className={cn(sizes.icon.sm, "mr-2")} />
                         Save Settings
                       </>
                     )}

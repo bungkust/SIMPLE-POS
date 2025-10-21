@@ -599,7 +599,7 @@ Terima kasih dan selamat menikmati!`;
     return (
       <div className={cn(spacing.lg)}>
         {/* Skeleton Stats Cards */}
-        <div className={cn(components.grid.cols4, "gap-4")}>
+        <div className={cn("grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4", "gap-4")}>
           {[...Array(4)].map((_, i) => (
             <Card key={i} className={cn(components.card)}>
               <CardContent className={cn(sizes.card.md)}>
@@ -655,7 +655,7 @@ Terima kasih dan selamat menikmati!`;
   return (
     <div className={cn(spacing.lg, "w-full max-w-full overflow-hidden")}>
       {/* Stats Cards */}
-      <div className={cn(components.grid.cols4, "gap-3 w-full max-w-full")}>
+      <div className={cn("grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4", "gap-3 w-full max-w-full")}>
         <Card className={cn(components.card)}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className={cn(typography.label.medium)}>Total</CardTitle>

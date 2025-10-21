@@ -26,6 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { categoryFormSchema, type CategoryFormData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { ColumnDef } from '@tanstack/react-table';
+import { colors, typography, components, sizes, spacing, cn } from '@/lib/design-system';
 
 type Category = {
   id: string;
@@ -322,14 +323,14 @@ export function CategoriesTab() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
+      <div className={cn(spacing.lg)}>
+        <Card className={cn(components.card)}>
+          <CardContent className={cn(sizes.card.lg)}>
             <div className="animate-pulse">
-              <div className="h-4 bg-muted rounded w-1/4 mb-4"></div>
-              <div className="space-y-2">
+              <div className={cn("h-4 bg-gray-200 rounded w-1/4 mb-4")}></div>
+              <div className={cn(spacing.sm)}>
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-12 bg-muted rounded"></div>
+                  <div key={i} className={cn("h-12 bg-gray-200 rounded")}></div>
                 ))}
               </div>
             </div>
@@ -340,30 +341,30 @@ export function CategoriesTab() {
   }
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-hidden">
-      <Card className="w-full max-w-full overflow-hidden">
+    <div className={cn(spacing.lg, "w-full max-w-full overflow-hidden")}>
+      <Card className={cn(components.card, "w-full max-w-full overflow-hidden")}>
         <CardHeader>
-          <div className="space-y-3">
+          <div className={cn(spacing.md)}>
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
-                <CardTitle className="flex items-center gap-2">
-                  <Tag className="h-5 w-5" />
+                <CardTitle className={cn(typography.h3, "flex items-center gap-2")}>
+                  <Tag className={cn(sizes.icon.md)} />
                   Categories
                 </CardTitle>
-                <CardDescription className="text-muted-foreground">
+                <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                   Kelola kategori menu
                 </CardDescription>
               </div>
               {!isMobile && (
-                <Button onClick={handleAddNew}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button onClick={handleAddNew} className={cn(components.buttonPrimary)}>
+                  <Plus className={cn(sizes.icon.sm, "mr-2")} />
                   Add Category
                 </Button>
               )}
             </div>
             {isMobile && (
-              <Button onClick={handleAddNew} className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
+              <Button onClick={handleAddNew} className={cn("w-full", components.buttonPrimary)}>
+                <Plus className={cn(sizes.icon.sm, "mr-2")} />
                 Add Category
               </Button>
             )}
@@ -372,21 +373,21 @@ export function CategoriesTab() {
         <CardContent className="overflow-hidden w-full max-w-full">
           {categories.length === 0 ? (
             <div className="text-center py-12">
-              <Tag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Categories Found</h3>
-              <p className="text-muted-foreground mb-4">
+              <Tag className={cn(sizes.icon.lg, colors.text.muted, "mx-auto mb-4")} />
+              <h3 className={cn(typography.h3, "mb-2")}>No Categories Found</h3>
+              <p className={cn(typography.body.medium, colors.text.muted, "mb-4")}>
                 Create your first category to organize your menu items.
               </p>
-              <Button onClick={handleAddNew}>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button onClick={handleAddNew} className={cn(components.buttonPrimary)}>
+                <Plus className={cn(sizes.icon.sm, "mr-2")} />
                 Add First Category
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
+            <div className={cn(spacing.md)}>
+              <Alert className={cn(components.alert)}>
+                <AlertCircle className={cn(sizes.icon.sm)} />
+                <AlertDescription className={cn(typography.body.small)}>
                   Use the arrow buttons to reorder categories. Categories with menu items cannot be deleted.
                 </AlertDescription>
               </Alert>
@@ -414,8 +415,6 @@ export function CategoriesTab() {
                   iconConfig: {
                     getIcon: () => <Tag className="h-4 w-4 text-primary" />
                   },
-                  subtitleField: 'created_at',
-                  getSubtitle: (category) => `Created: ${new Date(category.created_at).toLocaleDateString('id-ID')}`,
                   expandable: false,
                   getActions: (category) => {
                     const currentIndex = categories.findIndex(c => c.id === category.id);
@@ -490,17 +489,17 @@ export function CategoriesTab() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent fullScreenOnMobile={true}>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className={cn(typography.h3)}>
               {editingCategory ? 'Edit Category' : 'Add New Category'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className={cn(typography.body.medium, colors.text.secondary)}>
               {editingCategory 
                 ? 'Update the category information'
                 : 'Create a new category for your menu items'
               }
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className={cn(spacing.md)}>
             <FormInput
               {...register('name')}
               label="Category Name"
@@ -519,15 +518,16 @@ export function CategoriesTab() {
               helperText="Lower numbers appear first in the menu"
             />
 
-            <div className="flex justify-end space-x-2">
+            <div className={cn("flex justify-end space-x-2")}>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowForm(false)}
+                className={cn(components.buttonOutline)}
               >
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" className={cn(components.buttonPrimary)}>
                 {editingCategory ? 'Update Category' : 'Create Category'}
               </Button>
             </div>
@@ -539,21 +539,23 @@ export function CategoriesTab() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Category</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className={cn(typography.h3)}>Delete Category</DialogTitle>
+            <DialogDescription className={cn(typography.body.medium, colors.text.secondary)}>
               Are you sure you want to delete "{deletingCategory?.name}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end space-x-2">
+          <div className={cn("flex justify-end space-x-2")}>
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
+              className={cn(components.buttonOutline)}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={() => deletingCategory && handleDelete(deletingCategory)}
+              className={cn(components.buttonDestructive)}
             >
               Delete
             </Button>

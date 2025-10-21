@@ -288,16 +288,27 @@ export function MenuTab() {
             
             {/* Mobile Add Button */}
             {isMobile && (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
                 <Button
                   onClick={() => {
                     setEditingItem(null);
                     setShowForm(true);
                   }}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Tambah Menu
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Navigate to Categories tab
+                    window.dispatchEvent(new CustomEvent('admin-nav', { detail: 'categories' }));
+                  }}
+                  className="flex-1"
+                >
+                  <Tag className="w-4 h-4 mr-2" />
+                  Kelola Kategori
                 </Button>
               </div>
             )}
