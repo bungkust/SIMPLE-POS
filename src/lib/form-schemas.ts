@@ -138,6 +138,7 @@ export const settingsFormSchema = z.object({
   }).optional(),
   // Header display settings
   headerDisplaySettings: z.object({
+    showDescription: z.boolean().default(true),
     showOperatingHours: z.boolean().default(true),
     showAddress: z.boolean().default(true),
     showPhone: z.boolean().default(true),

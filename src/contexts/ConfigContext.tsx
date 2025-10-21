@@ -35,6 +35,7 @@ interface AppConfig {
   };
   // Header display settings
   headerDisplaySettings?: {
+    showDescription?: boolean;
     showOperatingHours?: boolean;
     showAddress?: boolean;
     showPhone?: boolean;
@@ -208,6 +209,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             },
             // Header display settings
             headerDisplaySettings: {
+              showDescription: tenantInfoData.show_description ?? true,
               showOperatingHours: tenantInfoData.show_operating_hours ?? true,
               showAddress: tenantInfoData.show_address ?? true,
               showPhone: tenantInfoData.show_phone ?? true,
@@ -279,6 +281,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
                 },
                 // Header display settings
                 headerDisplaySettings: {
+                  showDescription: tenantInfoData.show_description ?? true,
                   showOperatingHours: tenantInfoData.show_operating_hours ?? true,
                   showAddress: tenantInfoData.show_address ?? true,
                   showPhone: tenantInfoData.show_phone ?? true,
@@ -317,6 +320,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       logger.error('Error loading config:', error as any);
       setConfig(getDefaultConfigForTenant(tenantSlug));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -344,6 +349,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           tiktok_url: newConfig.socialMedia?.tiktok,
           twitter_url: newConfig.socialMedia?.twitter,
           facebook_url: newConfig.socialMedia?.facebook,
+          show_description: newConfig.headerDisplaySettings?.showDescription ?? true,
           show_operating_hours: newConfig.headerDisplaySettings?.showOperatingHours ?? true,
           show_address: newConfig.headerDisplaySettings?.showAddress ?? true,
           show_phone: newConfig.headerDisplaySettings?.showPhone ?? true,
@@ -382,10 +388,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     // Use currentTenant if available (for authenticated users), otherwise use URL
     const tenantSlug = currentTenant?.slug || getTenantSlugFromUrl();
     loadConfig(tenantSlug);
-    setLoading(false);
   }, [currentTenant, user]);
 
-  const updateConfig = async (newConfig: Partial<AppConfig>) => {
+  const updateConfig = useMemo(() => async (newConfig: Partial<AppConfig>) => {
     console.log('🔧 updateConfig called with:', { newConfig, tenantSlug: currentTenant?.slug || getTenantSlugFromUrl(), currentTenant: !!currentTenant });
     
     // Use currentTenant if available (for authenticated users), otherwise use URL
@@ -394,18 +399,21 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     const updatedConfig = { ...config, ...newConfig };
     console.log('🔧 Updated config:', updatedConfig);
     setConfig(updatedConfig);
-
+    
     // Save to both database and localStorage
     await saveConfig(tenantSlug, updatedConfig as AppConfig);
     console.log('🔧 Config saved successfully');
-  };
+  }, [config, currentTenant]);
+
+  // Ensure we always provide a valid context value
+  const contextValue = useMemo(() => ({
+    config,
+    updateConfig,
+    loading
+  }), [config, loading]);
 
   return (
-    <ConfigContext.Provider value={{
-      config,
-      updateConfig,
-      loading
-    }}>
+    <ConfigContext.Provider value={contextValue}>
       {children}
     </ConfigContext.Provider>
   );

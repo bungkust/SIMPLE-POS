@@ -298,6 +298,7 @@ export interface Database {
           tiktok_url: string | null;
           twitter_url: string | null;
           facebook_url: string | null;
+          show_description: boolean | null;
           show_operating_hours: boolean | null;
           show_address: boolean | null;
           show_phone: boolean | null;
@@ -322,6 +323,7 @@ export interface Database {
           tiktok_url?: string | null;
           twitter_url?: string | null;
           facebook_url?: string | null;
+          show_description?: boolean | null;
           show_operating_hours?: boolean | null;
           show_address?: boolean | null;
           show_phone?: boolean | null;
@@ -346,6 +348,7 @@ export interface Database {
           tiktok_url?: string | null;
           twitter_url?: string | null;
           facebook_url?: string | null;
+          show_description?: boolean | null;
           show_operating_hours?: boolean | null;
           show_address?: boolean | null;
           show_phone?: boolean | null;

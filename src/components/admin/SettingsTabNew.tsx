@@ -91,6 +91,7 @@ export function SettingsTab() {
         facebook: config.socialMedia?.facebook || '',
       },
       headerDisplaySettings: {
+        showDescription: config.headerDisplaySettings?.showDescription ?? true,
         showOperatingHours: config.headerDisplaySettings?.showOperatingHours ?? true,
         showAddress: config.headerDisplaySettings?.showAddress ?? true,
         showPhone: config.headerDisplaySettings?.showPhone ?? true,
@@ -237,6 +238,7 @@ export function SettingsTab() {
           facebook: config.socialMedia?.facebook || '',
         },
         headerDisplaySettings: {
+          showDescription: config.headerDisplaySettings?.showDescription ?? true,
           showOperatingHours: config.headerDisplaySettings?.showOperatingHours ?? true,
           showAddress: config.headerDisplaySettings?.showAddress ?? true,
           showPhone: config.headerDisplaySettings?.showPhone ?? true,
@@ -269,6 +271,7 @@ export function SettingsTab() {
         facebook: '',
       },
       headerDisplaySettings: {
+        showDescription: true,
         showOperatingHours: true,
         showAddress: true,
         showPhone: true,
@@ -615,6 +618,21 @@ export function SettingsTab() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="showDescription">Store Description</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Show restaurant description below the banner
+                          </p>
+                        </div>
+                        <Switch
+                          id="showDescription"
+                          checked={watch('headerDisplaySettings.showDescription') ?? true}
+                          onCheckedChange={(checked) => setValue('headerDisplaySettings.showDescription', checked)}
+                          disabled={loading}
+                        />
+                      </div>
+
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label htmlFor="showOperatingHours">Operating Hours & Status</Label>
@@ -1126,6 +1144,21 @@ export function SettingsTab() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="showDescription-desktop">Store Description</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Show restaurant description below the banner
+                            </p>
+                          </div>
+                          <Switch
+                            id="showDescription-desktop"
+                            checked={watch('headerDisplaySettings.showDescription') ?? true}
+                            onCheckedChange={(checked) => setValue('headerDisplaySettings.showDescription', checked)}
+                            disabled={loading}
+                          />
+                        </div>
+
                         <div className="flex items-center justify-between">
                           <div className="space-y-0.5">
                             <Label htmlFor="showOperatingHours-desktop">Operating Hours & Status</Label>

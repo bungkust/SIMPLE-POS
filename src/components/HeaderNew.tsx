@@ -167,37 +167,42 @@ export function Header() {
       {/* Content Below Banner - Back to Container with Padding */}
       <div className="px-4 py-4 space-y-2">
         {/* Store Description Below Banner */}
-        <div className="flex items-center">
-          <p className="text-sm sm:text-base text-gray-600 leading-relaxed font-medium">
-            Kopi premium dengan racikan rahasia yang menggugah selera. Nikmati pengalaman kopi terbaik di setiap tegukan.
-          </p>
-        </div>
+        {/* Second Row: Store Description */}
+        {config.headerDisplaySettings?.showDescription !== false && config.storeDescription && config.storeDescription.trim() && (
+          <div className="flex items-center">
+            <p className="text-sm sm:text-base text-gray-600 leading-relaxed font-medium">
+              {config.storeDescription}
+            </p>
+          </div>
+        )}
         
         {/* Third Row: Store Status and Hours */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${
-                config.isOpen !== false ? 'bg-green-500' : 'bg-red-500'
-              }`} />
-              <span className="text-sm sm:text-base font-semibold text-gray-700">
-                {config.isOpen !== false ? 'Buka' : 'Tutup'}
-              </span>
-            </div>
-            
-            {config.storeHours && (
+        {config.headerDisplaySettings?.showOperatingHours !== false && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-gray-400">•</span>
-                <span className="text-sm sm:text-base text-gray-600 font-medium">
-                  {config.storeHours}
+                <div className={`h-2 w-2 rounded-full ${
+                  config.isOpen !== false ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span className="text-sm sm:text-base font-semibold text-gray-700">
+                  {config.isOpen !== false ? 'Buka' : 'Tutup'}
                 </span>
               </div>
-            )}
+              
+              {config.storeHours && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">•</span>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">
+                    {config.storeHours}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Fourth Row: Store Address */}
-        {config.storeAddress && (
+        {config.headerDisplaySettings?.showAddress !== false && config.storeAddress && (
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 flex items-center justify-center">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-gray-500">
@@ -212,7 +217,7 @@ export function Header() {
         )}
 
         {/* Fifth Row: Store Phone */}
-        {config.storePhone && (
+        {config.headerDisplaySettings?.showPhone !== false && config.storePhone && (
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 flex items-center justify-center">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-gray-500">
@@ -229,7 +234,7 @@ export function Header() {
         )}
 
         {/* Sixth Row: Social Media Links */}
-        {config.socialMedia && (config.socialMedia.instagram || config.socialMedia.tiktok || config.socialMedia.twitter || config.socialMedia.facebook) && (
+        {config.headerDisplaySettings?.showSocialMedia !== false && config.socialMedia && (config.socialMedia.instagram || config.socialMedia.tiktok || config.socialMedia.twitter || config.socialMedia.facebook) && (
           <div className="flex items-center gap-3">
               {config.socialMedia.instagram && (
                 <a 
