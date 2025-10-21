@@ -15,12 +15,14 @@ import {
   Package,
   DollarSign,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  X
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency } from '@/lib/form-utils';
 import { getTenantInfo } from '../lib/tenantUtils';
+import { colors, typography, components, sizes, shadows, cn } from '@/lib/design-system';
 
 export function CartBar() {
   const navigate = useNavigate();
@@ -98,7 +100,10 @@ export function CartBar() {
         <div className="max-w-5xl mx-auto">
           <Button
             onClick={() => setShowCartSheet(true)}
-            className="group relative h-16 w-full px-6 py-4 rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground overflow-hidden"
+            className={cn(
+              "group relative h-16 w-full px-6 py-4 rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300",
+              "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white overflow-hidden"
+            )}
           >
           {/* Background Animation */}
           <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -117,10 +122,10 @@ export function CartBar() {
               
               {/* Cart Details */}
               <div className="text-left">
-                <div className="text-sm font-medium opacity-90">
+                <div className="text-sm font-semibold text-white opacity-90">
                   {totalItems === 0 ? 'Cart Empty' : `${totalItems} ${totalItems === 1 ? 'item' : 'items'}`}
                 </div>
-                <div className="text-lg font-bold">
+                <div className="text-lg font-bold text-white">
                   {totalItems === 0 ? 'Start Shopping' : formatCurrency(totalAmount)}
                 </div>
               </div>
@@ -144,35 +149,47 @@ export function CartBar() {
 
       {/* Cart Sheet */}
       <Sheet open={showCartSheet} onOpenChange={setShowCartSheet}>
-        <SheetContent className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2 text-sm sm:text-base">
-              <ShoppingCart className="h-3 w-3 sm:h-5 sm:w-5" />
-              Your Cart
-            </SheetTitle>
-            <SheetDescription className="text-xs sm:text-sm">
-              {totalItems} {totalItems === 1 ? 'item' : 'items'} in your cart
-            </SheetDescription>
-          </SheetHeader>
+        <SheetContent className="w-full sm:max-w-md p-0 bg-gradient-to-br from-slate-50 to-slate-100">
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <SheetHeader className="p-4 pb-0">
+              <div className="flex items-center justify-between">
+                <SheetTitle className={cn(typography.h3)}>Your Cart</SheetTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCartSheet(false)}
+                  className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <SheetDescription className={cn(typography.body.medium, colors.text.secondary, "mt-2")}>
+                {totalItems} {totalItems === 1 ? 'item' : 'items'} in your cart
+              </SheetDescription>
+            </SheetHeader>
 
-          <div className="space-y-6 mt-6">
+            <div className="flex-1 overflow-y-auto">
+              <div className="space-y-6 p-4">
             {/* Cart Items */}
             {items.length === 0 ? (
-              <div className="text-center py-6 sm:py-8">
-                <Package className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
-                <h3 className="text-sm sm:text-lg font-semibold mb-2">Your cart is empty</h3>
-                <p className="text-muted-foreground text-xs sm:text-base">
+              <div className="text-center py-8 sm:py-12">
+                <div className={cn("w-20 h-20 mx-auto mb-4 rounded-full", colors.background.muted, "flex items-center justify-center")}>
+                  <Package className="h-10 w-10 text-gray-400" />
+                </div>
+                <h3 className={cn(typography.h3, "mb-2")}>Your cart is empty</h3>
+                <p className={cn(typography.body.medium, colors.text.muted, "max-w-sm mx-auto")}>
                   Add some delicious items to get started!
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-80 sm:max-h-96 overflow-y-auto">
+              <div className="space-y-4 max-h-80 sm:max-h-96 overflow-y-auto">
                 {items.map((item) => (
-                  <Card key={item.id}>
-                    <CardContent className="p-3 sm:p-4">
-                      <div className="flex items-start gap-3">
+                  <Card key={item.id} className={cn(components.card, components.cardHover)}>
+                    <CardContent className={sizes.card.md}>
+                      <div className="flex items-start gap-4">
                         {item.photo_url && (
-                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden flex-shrink-0">
+                          <div className={cn("w-16 h-16 rounded-xl overflow-hidden flex-shrink-0", shadows.sm)}>
                             <img
                               src={item.photo_url}
                               alt={item.name}
@@ -182,31 +199,31 @@ export function CartBar() {
                         )}
                         
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm truncate">{item.name}</h4>
-                          <p className="text-xs sm:text-sm text-muted-foreground">
+                          <h4 className={cn(typography.h4, "truncate mb-1")}>{item.name}</h4>
+                          <p className={cn(typography.price.small, colors.text.secondary)}>
                             {formatCurrency(item.price)}
                           </p>
                           
-                          <div className="flex items-center justify-between mt-2">
-                            <div className="flex items-center gap-1 sm:gap-2">
+                          <div className="flex items-center justify-between mt-3">
+                            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
                               <Button
+                                variant="ghost"
                                 size="sm"
-                                variant="outline"
-                                onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                                className="h-7 w-7 sm:h-6 sm:w-6 p-0"
+                                onClick={() => handleQuantityChange(item.id, item.qty - 1)}
+                                className="h-8 w-8 p-0 border-0 rounded-none hover:bg-gray-50"
                               >
-                                <Minus className="h-3 w-3" />
+                                <Minus className="h-4 w-4" />
                               </Button>
-                              <span className="text-sm font-medium w-6 text-center">
-                                {item.quantity}
-                              </span>
+                              <div className="w-8 h-8 flex items-center justify-center border-l border-r border-gray-200 bg-white">
+                                <span className={cn(typography.body.medium, "font-medium")}>{item.qty}</span>
+                              </div>
                               <Button
+                                variant="ghost"
                                 size="sm"
-                                variant="outline"
-                                onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                                className="h-7 w-7 sm:h-6 sm:w-6 p-0"
+                                onClick={() => handleQuantityChange(item.id, item.qty + 1)}
+                                className="h-8 w-8 p-0 border-0 rounded-none hover:bg-gray-50"
                               >
-                                <Plus className="h-3 w-3" />
+                                <Plus className="h-4 w-4" />
                               </Button>
                             </div>
                             
@@ -214,9 +231,9 @@ export function CartBar() {
                               size="sm"
                               variant="ghost"
                               onClick={() => removeItem(item.id)}
-                              className="h-7 w-7 sm:h-6 sm:w-6 p-0 text-destructive hover:text-destructive"
+                              className="h-8 w-8 p-0 rounded-lg hover:bg-red-50 text-red-600 hover:text-red-700"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
@@ -232,46 +249,46 @@ export function CartBar() {
               <>
                 <Separator />
                 
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-4">
+                  <div className={cn("flex justify-between", typography.body.medium, colors.text.secondary)}>
                     <span>Subtotal ({totalItems} items)</span>
-                    <span>{formatCurrency(totalAmount)}</span>
+                    <span className="font-medium">{formatCurrency(totalAmount)}</span>
                   </div>
                   
-                  <div className="flex justify-between text-sm">
+                  <div className={cn("flex justify-between", typography.body.medium, colors.text.secondary)}>
                     <span>Tax</span>
-                    <span>{formatCurrency(0)}</span>
+                    <span className="font-medium">{formatCurrency(0)}</span>
                   </div>
                   
                   <Separator />
                   
-                  <div className="flex justify-between font-semibold text-lg">
+                  <div className={cn("flex justify-between", typography.price.large)}>
                     <span>Total</span>
                     <span>{formatCurrency(totalAmount)}</span>
                   </div>
                 </div>
 
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
+                <Alert className={cn(components.alert, colors.status.success.bg, colors.status.success.border)}>
+                  <CheckCircle className={cn("h-4 w-4", colors.status.success.icon)} />
+                  <AlertDescription className={cn(typography.body.medium, colors.status.success.text)}>
                     Free delivery on orders over {formatCurrency(50000)}
                   </AlertDescription>
                 </Alert>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Button 
                     onClick={handleCheckoutClick}
-                    className="w-full"
+                    className={cn(components.buttonPrimary, "w-full h-12 text-base font-semibold")}
                     size="lg"
                   >
-                    <CreditCard className="h-4 w-4 mr-2" />
+                    <CreditCard className="h-5 w-5 mr-2" />
                     Proceed to Checkout
                   </Button>
                   
                   <Button 
                     variant="outline" 
                     onClick={clearCart}
-                    className="w-full"
+                    className={cn(components.buttonOutline, "w-full h-10", colors.button.destructiveOutline)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Clear Cart
@@ -279,6 +296,8 @@ export function CartBar() {
                 </div>
               </>
             )}
+              </div>
+            </div>
           </div>
         </SheetContent>
       </Sheet>

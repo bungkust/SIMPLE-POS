@@ -52,10 +52,12 @@ export function SettingsTab() {
   const { showSuccess, showError } = useAppToast();
   const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showLogoPreview, setShowLogoPreview] = useState(false);
+  const [showBannerPreview, setShowBannerPreview] = useState(false);
 
   const {
     register,
@@ -69,6 +71,7 @@ export function SettingsTab() {
     defaultValues: {
       storeName: config.storeName || '',
       storeLogoUrl: config.storeLogoUrl || '',
+      storeBannerUrl: config.storeBannerUrl || '',
       storeIconType: config.storeIconType || 'Coffee',
       storeDescription: config.storeDescription || '',
       storeAddress: config.storeAddress || '',
@@ -97,6 +100,7 @@ export function SettingsTab() {
   });
 
   const storeLogoUrl = watch('storeLogoUrl');
+  const storeBannerUrl = watch('storeBannerUrl');
   const storeIconType = watch('storeIconType');
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,6 +131,39 @@ export function SettingsTab() {
     } catch (error: any) {
       logger.error('Upload error:', error);
       showError('Upload Failed', 'Gagal mengupload logo toko.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentTenant) return;
+
+    setUploading(true);
+    try {
+      // Use standardized upload utility with tenant-specific folder structure
+      const result = await uploadFile(file, uploadConfigs.storeBanner(currentTenant.slug));
+
+      if (result.success && result.url) {
+        console.log('🔧 Banner upload successful, updating config with URL:', result.url);
+        setValue('storeBannerUrl', result.url);
+        // Immediately update config to show new banner in header
+        console.log('🔧 Calling updateConfig with storeBannerUrl:', result.url);
+        try {
+          await updateConfig({ storeBannerUrl: result.url });
+          console.log('🔧 updateConfig completed successfully');
+        } catch (error) {
+          console.error('🔧 updateConfig failed:', error);
+        }
+        showSuccess('Upload Success', 'Banner toko berhasil diupload.');
+        logger.log('✅ Store banner uploaded successfully:', result.url);
+      } else {
+        showError('Upload Failed', `Gagal mengupload banner toko: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      logger.error('Banner upload error:', error);
+      showError('Upload Failed', 'Gagal mengupload banner toko.');
     } finally {
       setUploading(false);
     }
@@ -380,6 +417,86 @@ export function SettingsTab() {
                             src={storeLogoUrl}
                             alt="Store logo"
                             className="w-24 h-24 object-cover rounded-lg mx-auto"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Store Banner Image</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Recommended: 1920x640px (3:1 ratio), max 3MB
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          ref={bannerInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBannerUpload}
+                          className="hidden"
+                          disabled={uploading || loading}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => bannerInputRef.current?.click()}
+                          disabled={uploading || loading}
+                        >
+                          {uploading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Upload Banner
+                            </>
+                          )}
+                        </Button>
+                        {storeBannerUrl && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowBannerPreview(!showBannerPreview)}
+                            >
+                              {showBannerPreview ? (
+                                <>
+                                  <EyeOff className="h-4 w-4 mr-1" />
+                                  Hide
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Preview
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setValue('storeBannerUrl', '');
+                                updateConfig({ storeBannerUrl: '' });
+                                setShowBannerPreview(false);
+                                showSuccess('Banner Removed', 'Store banner has been removed.');
+                              }}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                      {storeBannerUrl && showBannerPreview && (
+                        <div className="border rounded-lg p-4 bg-muted/20">
+                          <img
+                            src={storeBannerUrl}
+                            alt="Store banner"
+                            className="w-full h-32 object-cover rounded-lg"
                           />
                         </div>
                       )}
@@ -828,6 +945,86 @@ export function SettingsTab() {
                         )}
                         {errors.storeLogoUrl?.message && (
                           <p className="text-sm font-medium text-destructive">{errors.storeLogoUrl?.message}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Store Banner Image</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Recommended: 1920x640px (3:1 ratio), max 3MB
+                        </p>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            ref={bannerInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleBannerUpload}
+                            className="hidden"
+                            disabled={uploading || loading}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => bannerInputRef.current?.click()}
+                            disabled={uploading || loading}
+                          >
+                            {uploading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Upload Banner
+                              </>
+                            )}
+                          </Button>
+                          {storeBannerUrl && (
+                            <>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowBannerPreview(!showBannerPreview)}
+                              >
+                                {showBannerPreview ? (
+                                  <>
+                                    <EyeOff className="h-4 w-4 mr-1" />
+                                    Hide
+                                  </>
+                                ) : (
+                                  <>
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    Preview
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setValue('storeBannerUrl', '');
+                                  updateConfig({ storeBannerUrl: '' });
+                                  setShowBannerPreview(false);
+                                  showSuccess('Banner Removed', 'Store banner has been removed.');
+                                }}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Remove
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                        {storeBannerUrl && showBannerPreview && (
+                          <div className="mt-2">
+                            <img 
+                              src={storeBannerUrl} 
+                              alt="Store Banner Preview" 
+                              className="w-full h-32 object-cover rounded-lg border"
+                            />
+                          </div>
                         )}
                       </div>
 

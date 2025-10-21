@@ -1,35 +1,26 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AdvancedTable } from '@/components/ui/advanced-table';
 import { ResponsiveTable, createMobileCardConfig } from '@/components/ui/responsive-table';
 import { MobileActionGroup } from '@/components/ui/mobile-action-button';
 import { useIsMobile } from '@/hooks/use-media-query';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormSelect, SelectItem } from '@/components/forms/FormSelect';
 import { Select, SelectContent, SelectItem as SelectItemComponent, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormTextarea } from '@/components/forms/FormTextarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
 import { 
-  Filter, 
   CheckCircle, 
   XCircle, 
-  ExternalLink, 
   Download, 
-  Printer, 
   MessageCircle, 
   ShoppingBag, 
-  TrendingUp, 
   Clock, 
-  AlertCircle,
   Edit,
   Eye,
-  Calendar,
   DollarSign,
   X,
   Copy
@@ -43,6 +34,7 @@ import { Database } from '@/lib/database.types';
 import { ThermalReceiptImage } from '@/components/ThermalReceiptImage';
 import { logger } from '@/lib/logger';
 import { createSafeWhatsAppUrl } from '@/lib/security-utils';
+import { colors, typography, components, sizes, spacing, cn } from '@/lib/design-system';
 
 type Order = Database['public']['Tables']['orders']['Row'];
 type OrderItem = Database['public']['Tables']['order_items']['Row'];
@@ -70,8 +62,6 @@ export function OrdersTab() {
   // Memoize tenant ID to prevent unnecessary re-renders
   const tenantId = useMemo(() => currentTenant?.id, [currentTenant?.id]);
   
-  // Use ref to track if we've already loaded data for this tenant
-  const loadedTenantRef = useRef<string | null>(null);
 
   const {
     register,
@@ -83,7 +73,7 @@ export function OrdersTab() {
   } = useForm<OrderStatusUpdateData>({
     resolver: zodResolver(orderStatusUpdateSchema),
     defaultValues: {
-      status: 'PENDING',
+      status: 'BELUM BAYAR',
       notes: ''
     }
   });
@@ -127,7 +117,7 @@ export function OrdersTab() {
 
       // Load order items
       if (ordersData && ordersData.length > 0) {
-        const orderIds = ordersData.map(order => order.id);
+        const orderIds = ordersData.map((order: any) => order.id);
         const { data: itemsData, error: itemsError } = await supabase
           .from('order_items')
           .select('*')
@@ -141,7 +131,7 @@ export function OrdersTab() {
       }
 
     } catch (error) {
-      logger.error('OrdersTab: Unexpected error:', error);
+      logger.error('OrdersTab: Unexpected error:', error as any);
       setOrders([]);
       setOrderItems([]);
     } finally {
@@ -161,7 +151,7 @@ export function OrdersTab() {
       return;
     }
     
-    logger.log('🔍 Loading menu options for tenant:', currentTenant.id);
+    logger.log('🔍 Loading menu options for tenant:', currentTenant.id as any);
     setLoadingMenuOptions(true);
     
     try {
@@ -176,13 +166,13 @@ export function OrdersTab() {
         .eq('tenant_id', currentTenant.id);
 
       if (error) {
-        logger.error('❌ Error loading menu options:', error);
+        logger.error('❌ Error loading menu options:', error as any);
         return;
       }
 
       // Create a lookup map for option IDs to names
       const optionsMap: Record<string, any> = {};
-      optionsData?.forEach(option => {
+      optionsData?.forEach((option: any) => {
         optionsMap[option.id] = {
           label: option.label,
           items: option.items || []
@@ -190,7 +180,7 @@ export function OrdersTab() {
       });
       setMenuOptions(optionsMap);
     } catch (error) {
-      logger.error('❌ Error loading menu options:', error);
+      logger.error('❌ Error loading menu options:', error as any);
     } finally {
       setLoadingMenuOptions(false);
     }
@@ -199,7 +189,7 @@ export function OrdersTab() {
   // Load data when tenant changes
   useEffect(() => {
     if (tenantId) {
-      logger.log('🔄 Loading data for new tenant:', tenantId);
+      logger.log('🔄 Loading data for new tenant:', tenantId as any);
       loadOrders();
       loadMenuOptions();
       loadTenantInfo();
@@ -218,12 +208,12 @@ export function OrdersTab() {
         .single();
 
       if (error) {
-        logger.error('Error loading tenant info:', error);
+        logger.error('Error loading tenant info:', error as any);
       } else {
         setTenantInfo(tenant);
       }
     } catch (error) {
-      logger.error('Error loading tenant info:', error);
+      logger.error('Error loading tenant info:', error as any);
     }
   };
 
@@ -239,12 +229,12 @@ export function OrdersTab() {
         .order('sort_order');
 
       if (error) {
-        logger.error('Error loading payment methods:', error);
+        logger.error('Error loading payment methods:', error as any);
       } else {
         setPaymentMethods(methods || []);
       }
     } catch (error) {
-      logger.error('Error loading payment methods:', error);
+      logger.error('Error loading payment methods:', error as any);
     }
   };
 
@@ -255,8 +245,8 @@ export function OrdersTab() {
 
   const resolveOptionNames = (optionsJson: string) => {
     try {
-      logger.log('🔍 Resolving options:', optionsJson);
-      logger.log('🔍 Available menu options:', menuOptions);
+      logger.log('🔍 Resolving options:', optionsJson as any);
+      logger.log('🔍 Available menu options:', menuOptions as any);
       
       const options = JSON.parse(optionsJson);
       const resolvedOptions: Record<string, string> = {};
@@ -285,28 +275,25 @@ export function OrdersTab() {
       logger.log('🔍 Final resolved options:', resolvedOptions);
       return resolvedOptions;
     } catch (error) {
-      logger.error('Error resolving option names:', error);
+      logger.error('Error resolving option names:', error as any);
       return {};
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PENDING': return 'warning';
-      case 'PAID': return 'info';
-      case 'SEDANG DISIAPKAN': return 'processing';
-      case 'SIAP DIAMBIL': return 'success';
-      case 'SELESAI': return 'success';
-      case 'CANCELLED': return 'destructive';
-      default: return 'secondary';
+      case 'BELUM BAYAR': return 'warning';
+      case 'SUDAH BAYAR': return 'success';
+      case 'DIBATALKAN': return 'error';
+      default: return 'pending';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'PENDING': return <Clock className="h-4 w-4" />;
-      case 'PAID': return <CheckCircle className="h-4 w-4" />;
-      case 'CANCELLED': return <XCircle className="h-4 w-4" />;
+      case 'BELUM BAYAR': return <Clock className="h-4 w-4" />;
+      case 'SUDAH BAYAR': return <CheckCircle className="h-4 w-4" />;
+      case 'DIBATALKAN': return <XCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -335,14 +322,14 @@ export function OrdersTab() {
 
       logger.log('📝 Update data:', updateData);
 
-      const { data: result, error } = await supabase
+      const { data: result, error } = await (supabase as any)
         .from('orders')
         .update(updateData)
         .eq('id', selectedOrder.id)
         .select();
 
       if (error) {
-        logger.error('❌ Supabase error:', error);
+        logger.error('❌ Supabase error:', error as any);
         throw error;
       }
 
@@ -386,12 +373,12 @@ export function OrdersTab() {
   };
 
   const openStatusUpdate = (order: Order) => {
-    logger.log('🔍 Opening status update for order:', order.order_code, 'Current status:', order.status);
+    logger.log(`🔍 Opening status update for order: ${order.order_code}, Current status: ${order.status}` as any);
     setSelectedOrder(order);
     setValue('status', order.status);
     setValue('notes', order.notes || '');
     setShowStatusUpdate(true);
-    logger.log('🔍 Form initialized with status:', order.status);
+    logger.log('🔍 Form initialized with status:', order.status as any);
   };
 
   const sendReceiptToWhatsApp = (order: Order) => {
@@ -407,13 +394,13 @@ export function OrdersTab() {
     setLoadingActions(prev => new Set(prev).add(actionKey));
 
     try {
-      logger.log('🗑️ Cancelling order:', order.order_code);
+      logger.log('🗑️ Cancelling order:', order.order_code as any);
       
       // Update order status to DIBATALKAN
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('orders')
         .update({ 
-          status: 'CANCELLED',
+          status: 'DIBATALKAN',
           updated_at: new Date().toISOString()
         })
         .eq('id', order.id);
@@ -431,7 +418,7 @@ export function OrdersTab() {
       // Reload orders to reflect changes
       await loadOrders();
     } catch (error: any) {
-      logger.error('❌ Error cancelling order:', error);
+      logger.error('❌ Error cancelling order:', error as any);
       toast({
         title: "Gagal Membatalkan",
         description: "Gagal memperbarui. Coba lagi.",
@@ -470,8 +457,8 @@ Terima kasih dan selamat menikmati!`;
       
       // Open WhatsApp in new tab
       window.open(whatsappUrl, '_blank');
-    } catch (error) {
-      logger.error('Failed to create WhatsApp URL', { error: error.message });
+    } catch (error: any) {
+      logger.error('Failed to create WhatsApp URL', { error: error.message } as any);
       toast({
         title: "Error",
         description: "Invalid phone number format. Please check the customer's phone number.",
@@ -594,31 +581,31 @@ Terima kasih dan selamat menikmati!`;
   ];
 
   const filteredOrders = filterStatus && filterStatus !== 'all'
-    ? orders.filter(order => order.status === filterStatus && order.status !== 'CANCELLED')
-    : orders.filter(order => order.status !== 'CANCELLED');
+    ? orders.filter(order => order.status === filterStatus && order.status !== 'DIBATALKAN')
+    : orders.filter(order => order.status !== 'DIBATALKAN');
 
   const stats = {
-    total: orders.filter(o => o.status !== 'CANCELLED').length,
-    pending: orders.filter(o => o.status === 'PENDING').length,
-    processing: orders.filter(o => o.status === 'PAID').length,
-    completed: orders.filter(o => o.status === 'PAID').length, // Using PAID as completed
-    cancelled: orders.filter(o => o.status === 'CANCELLED').length,
+    total: orders.filter(o => o.status !== 'DIBATALKAN').length,
+    pending: orders.filter(o => o.status === 'BELUM BAYAR').length,
+    processing: orders.filter(o => o.status === 'SUDAH BAYAR').length,
+    completed: orders.filter(o => o.status === 'SUDAH BAYAR').length, // Using SUDAH BAYAR as completed
+    cancelled: orders.filter(o => o.status === 'DIBATALKAN').length,
     totalRevenue: orders
-      .filter(o => o.status === 'PAID')
+      .filter(o => o.status === 'SUDAH BAYAR')
       .reduce((sum, o) => sum + (o.total || 0), 0)
   };
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className={cn(spacing.lg)}>
         {/* Skeleton Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className={cn(components.grid.cols4, "gap-4")}>
           {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
+            <Card key={i} className={cn(components.card)}>
+              <CardContent className={cn(sizes.card.md)}>
                 <div className="animate-pulse">
-                  <div className="h-3 bg-muted rounded w-2/3 mb-2"></div>
-                  <div className="h-6 bg-muted rounded w-1/2"></div>
+                  <div className={cn("h-3 bg-gray-200 rounded w-2/3 mb-2")}></div>
+                  <div className={cn("h-6 bg-gray-200 rounded w-1/2")}></div>
                 </div>
               </CardContent>
             </Card>
@@ -626,33 +613,33 @@ Terima kasih dan selamat menikmati!`;
         </div>
         
         {/* Skeleton Order Cards */}
-        <Card>
+        <Card className={cn(components.card)}>
           <CardHeader>
             <div className="animate-pulse">
-              <div className="h-4 bg-muted rounded w-1/4 mb-2"></div>
-              <div className="h-3 bg-muted rounded w-1/2"></div>
+              <div className={cn("h-4 bg-gray-200 rounded w-1/4 mb-2")}></div>
+              <div className={cn("h-3 bg-gray-200 rounded w-1/2")}></div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 px-4">
+            <div className={cn(spacing.md, "px-4")}>
               {[...Array(3)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
+                <Card key={i} className={cn(components.card, "animate-pulse")}>
                   <CardHeader className="pb-2 px-4 py-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 flex-1 min-w-0">
-                        <div className="w-6 h-6 bg-muted rounded-full flex-shrink-0 mt-0.5"></div>
+                        <div className={cn("w-6 h-6 bg-gray-200 rounded-full flex-shrink-0 mt-0.5")}></div>
                         <div className="flex-1 min-w-0">
-                          <div className="h-4 bg-muted rounded w-3/4 mb-1"></div>
-                          <div className="h-3 bg-muted rounded w-1/2"></div>
+                          <div className={cn("h-4 bg-gray-200 rounded w-3/4 mb-1")}></div>
+                          <div className={cn("h-3 bg-gray-200 rounded w-1/2")}></div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <div className="w-6 h-6 bg-muted rounded-full"></div>
+                        <div className={cn("w-6 h-6 bg-gray-200 rounded-full")}></div>
                         <div className="flex items-center gap-0.5">
                           {[...Array(4)].map((_, j) => (
-                            <div key={j} className="w-9 h-9 bg-muted rounded"></div>
-                          ))}
-                        </div>
+                            <div key={j} className={cn("w-9 h-9 bg-gray-200 rounded")}></div>
+                ))}
+              </div>
                       </div>
                     </div>
                   </CardHeader>
@@ -666,56 +653,56 @@ Terima kasih dan selamat menikmati!`;
   }
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-hidden">
+    <div className={cn(spacing.lg, "w-full max-w-full overflow-hidden")}>
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full max-w-full">
-        <Card>
+      <div className={cn(components.grid.cols4, "gap-3 w-full max-w-full")}>
+        <Card className={cn(components.card)}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className={cn(typography.label.medium)}>Total</CardTitle>
+            <ShoppingBag className={cn(sizes.icon.sm, colors.text.muted)} />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className={cn(typography.price.large)}>{stats.total}</div>
+            <p className={cn(typography.body.small, colors.text.muted)}>
               {stats.pending} pending
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cn(components.card)}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Proses</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className={cn(typography.label.medium)}>Proses</CardTitle>
+            <Clock className={cn(sizes.icon.sm, colors.text.muted)} />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{stats.processing}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className={cn(typography.price.large)}>{stats.processing}</div>
+            <p className={cn(typography.body.small, colors.text.muted)}>
               In progress
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cn(components.card)}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className={cn(typography.label.medium)}>Selesai</CardTitle>
+            <CheckCircle className={cn(sizes.icon.sm, colors.text.muted)} />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{stats.completed}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className={cn(typography.price.large)}>{stats.completed}</div>
+            <p className={cn(typography.body.small, colors.text.muted)}>
               Ready/Delivered
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cn(components.card)}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className={cn(typography.label.medium)}>Revenue</CardTitle>
+            <DollarSign className={cn(sizes.icon.sm, colors.text.muted)} />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className={cn(typography.price.large)}>{formatCurrency(stats.totalRevenue)}</div>
+            <p className={cn(typography.body.small, colors.text.muted)}>
               From completed orders
             </p>
           </CardContent>
@@ -723,20 +710,20 @@ Terima kasih dan selamat menikmati!`;
       </div>
 
       {/* Orders Table */}
-      <Card className="w-full max-w-full overflow-hidden">
+      <Card className={cn(components.card, "w-full max-w-full overflow-hidden")}>
         <CardHeader>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
+          <div className={cn(spacing.md)}>
+          <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
-                <CardTitle>Orders</CardTitle>
-                <CardDescription className="text-muted-foreground">
+                <CardTitle className={cn(typography.h3)}>Orders</CardTitle>
+                <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                   Kelola pesanan dan transaksi
-                </CardDescription>
-              </div>
+              </CardDescription>
+            </div>
               {!isMobile && (
-                <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
+            <div className="flex items-center space-x-2">
+                  <Button variant="outline" size="sm" className={cn(components.buttonOutline)}>
+                    <Download className={cn(sizes.icon.sm, "mr-2")} />
                     Export
                   </Button>
                 </div>
@@ -749,12 +736,11 @@ Terima kasih dan selamat menikmati!`;
                 value={filterStatus}
                 onValueChange={setFilterStatus}
                 placeholder="Filter by status"
-                className="w-full sm:w-auto"
               >
                 <SelectItem value="all">Semua</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="PAID">Paid</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                <SelectItem value="BELUM BAYAR">Belum Bayar</SelectItem>
+                <SelectItem value="SUDAH BAYAR">Sudah Bayar</SelectItem>
+                <SelectItem value="DIBATALKAN">Dibatalkan</SelectItem>
               </FormSelect>
             </div>
           </div>
@@ -773,20 +759,7 @@ Terima kasih dan selamat menikmati!`;
               primaryField: 'customer_name',
               secondaryField: 'order_code',
               statusField: 'status',
-              statusConfig: {
-                getStatus: (order: Order) => {
-                  const statusMap = {
-                    'PENDING': { label: 'Pending', variant: 'destructive' as const, iconOnly: true },
-                    'PAID': { label: 'Paid', variant: 'default' as const, iconOnly: true },
-                    'SEDANG DIPROSES': { label: 'Diproses', variant: 'secondary' as const, iconOnly: true },
-                    'SIAP DIAMBIL': { label: 'Siap diambil', variant: 'default' as const, iconOnly: true },
-                    'SELESAI': { label: 'Selesai', variant: 'default' as const, iconOnly: true },
-                    'CANCELLED': { label: 'Cancelled', variant: 'outline' as const, iconOnly: true },
-                  };
-                  return statusMap[order.status as keyof typeof statusMap] || { label: order.status, variant: 'secondary' as const, iconOnly: true };
-                }
-              },
-              subtitleField: 'total_amount',
+              subtitleField: 'total',
               getSubtitle: (order) => {
                 const date = new Date(order.created_at);
                 const dateStr = date.toLocaleDateString('id-ID', { 
@@ -797,16 +770,7 @@ Terima kasih dan selamat menikmati!`;
                   hour: '2-digit', 
                   minute: '2-digit' 
                 });
-                return `${order.order_code}… • ${formatCurrency(order.total_amount || 0)} • ${dateStr} ${timeStr}`;
-              },
-              getSummary: (order) => {
-                const paymentMethod = order.payment_method || 'COD';
-                const date = new Date(order.created_at);
-                const time = date.toLocaleTimeString('id-ID', { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                });
-                return `${order.status} • ${paymentMethod} • ${time}`;
+                return `${order.order_code}… • ${formatCurrency(order.total || 0)} • ${dateStr} ${timeStr}`;
               },
               expandable: true,
               getExpandedContent: (order) => (
@@ -847,8 +811,10 @@ Terima kasih dan selamat menikmati!`;
                     <span className="text-muted-foreground text-xs">Order Code:</span>
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(order.order_code);
-                        // You could add a toast notification here
+                        if (order.order_code) {
+                          navigator.clipboard.writeText(order.order_code);
+                          // You could add a toast notification here
+                        }
                       }}
                       className="font-medium text-blue-600 hover:text-blue-700 underline text-right flex-1 ml-2 flex items-center justify-end gap-1 break-all"
                     >
@@ -932,29 +898,29 @@ Terima kasih dan selamat menikmati!`;
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
         <DialogContent className="max-w-2xl" fullScreenOnMobile={true}>
           <DialogHeader>
-            <DialogTitle>Order Details</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className={cn(typography.h3)}>Order Details</DialogTitle>
+            <DialogDescription className={cn(typography.body.medium, colors.text.secondary)}>
               Order #{selectedOrder?.order_code}
             </DialogDescription>
           </DialogHeader>
           {selectedOrder && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className={cn(spacing.lg)}>
+              <div className={cn(components.grid.cols2, "gap-4")}>
                 <div>
-                  <h4 className="font-medium">Customer</h4>
-                  <p className="text-sm text-muted-foreground">
+                  <h4 className={cn(typography.h4)}>Customer</h4>
+                  <p className={cn(typography.body.medium, colors.text.secondary)}>
                     {selectedOrder.customer_name}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className={cn(typography.body.medium, colors.text.secondary)}>
                     {selectedOrder.phone}
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-medium">Order Info</h4>
-                  <p className="text-sm text-muted-foreground">
+                  <h4 className={cn(typography.h4)}>Order Info</h4>
+                  <p className={cn(typography.body.medium, colors.text.secondary)}>
                     Total: {formatCurrency(selectedOrder.total || 0)}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className={cn(typography.body.medium, colors.text.secondary)}>
                     Payment: {selectedOrder.payment_method}
                   </p>
                 </div>
@@ -962,8 +928,8 @@ Terima kasih dan selamat menikmati!`;
 
               {/* Payment Method Details */}
               <div>
-                <h4 className="font-medium mb-2">Payment Method Details</h4>
-                <div className="p-3 border rounded-lg bg-muted/20">
+                <h4 className={cn(typography.h4, "mb-2")}>Payment Method Details</h4>
+                <div className={cn("p-3 border rounded-lg bg-gray-50")}>
                   {(() => {
                     const currentPaymentMethod = paymentMethods.find(pm => pm.payment_type === selectedOrder.payment_method);
                     
@@ -1063,21 +1029,21 @@ Terima kasih dan selamat menikmati!`;
                         <div className="mt-2 pt-2 border-t border-border/50">
                           {(() => {
                             const notes = item.notes;
-                            logger.log('🔍 Processing item notes:', notes);
+                            logger.log('🔍 Processing item notes:', notes as any);
                             
                             // Handle structured format from checkout
                             if (notes.startsWith('OPTIONS:')) {
                               const optionsText = notes.replace('OPTIONS:', '');
-                              logger.log('🔍 OPTIONS: prefix detected, optionsText:', optionsText);
+                              logger.log('🔍 OPTIONS: prefix detected, optionsText:', optionsText as any);
                               
                               // Check if it's JSON format
                               if (optionsText.includes('{') && optionsText.includes('}')) {
-                                logger.log('🔍 OPTIONS: contains JSON, attempting resolution');
+                                logger.log('🔍 OPTIONS: contains JSON, attempting resolution' as any);
                                 try {
                                   const jsonMatch = optionsText.match(/\{.*\}/);
                                   if (jsonMatch) {
                                     const resolvedOptions = resolveOptionNames(jsonMatch[0]);
-                                    logger.log('🔍 OPTIONS: resolved options:', resolvedOptions);
+                                    logger.log('🔍 OPTIONS: resolved options:', resolvedOptions as any);
                                     
                                     if (Object.keys(resolvedOptions).length > 0) {
                                       return (
@@ -1096,7 +1062,7 @@ Terima kasih dan selamat menikmati!`;
                                     }
                                   }
                                 } catch (error) {
-                                  logger.error('🔍 OPTIONS: JSON resolution failed:', error);
+                                  logger.error('🔍 OPTIONS: JSON resolution failed:', error as any);
                                 }
                               }
                               
@@ -1131,14 +1097,14 @@ Terima kasih dan selamat menikmati!`;
                             // Handle structured JSON format from MenuDetailSheet
                             if (notes.includes('{') && notes.includes('}')) {
                               try {
-                                logger.log('🔍 Processing JSON notes:', notes);
+                                logger.log('🔍 Processing JSON notes:', notes as any);
                                 // Extract JSON from structured format
                                 const jsonMatch = notes.match(/\{.*\}/);
-                                logger.log('🔍 JSON match:', jsonMatch);
+                                logger.log('🔍 JSON match:', jsonMatch as any);
                                 
                                 if (jsonMatch) {
                                   const resolvedOptions = resolveOptionNames(jsonMatch[0]);
-                                  logger.log('🔍 Resolved options for display:', resolvedOptions);
+                                  logger.log('🔍 Resolved options for display:', resolvedOptions as any);
                                   
                                   // If resolution failed, try manual resolution
                                   if (Object.keys(resolvedOptions).length === 0) {
@@ -1204,7 +1170,7 @@ Terima kasih dan selamat menikmati!`;
                                   );
                                 }
                               } catch (error) {
-                                logger.error('🔍 Error processing JSON notes:', error);
+                                logger.error('🔍 Error processing JSON notes:', error as any);
                                 // Fallback to plain text
                                 return (
                                   <>
@@ -1275,7 +1241,7 @@ Terima kasih dan selamat menikmati!`;
                                   }
                                 }
                               } catch (error) {
-                                logger.error('🔍 Fallback resolution failed:', error);
+                                logger.error('🔍 Fallback resolution failed:', error as any);
                               }
                             }
                             
@@ -1312,24 +1278,24 @@ Terima kasih dan selamat menikmati!`;
       <Dialog open={showStatusUpdate} onOpenChange={setShowStatusUpdate}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Order Status</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className={cn(typography.h3)}>Update Order Status</DialogTitle>
+            <DialogDescription className={cn(typography.body.medium, colors.text.secondary)}>
               Update the status for order #{selectedOrder?.order_code}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit((data) => {
-            logger.log('📋 Form submitted with data:', data);
-            logger.log('📋 Current form status value:', status);
-            logger.log('📋 Selected order status:', selectedOrder?.status);
+            logger.log('📋 Form submitted with data:', data as any);
+            logger.log('📋 Current form status value:', status as any);
+            logger.log('📋 Selected order status:', selectedOrder?.status as any);
             handleStatusUpdate(data);
-          })} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+          })} className={cn(spacing.lg)}>
+            <div className={cn(spacing.sm)}>
+              <label className={cn(typography.label.medium)}>Status</label>
               <Select
                 value={status}
                 onValueChange={(value) => {
-                  logger.log('🔄 Status changed to:', value);
-                  setValue('status', value as 'PENDING' | 'PAID' | 'CANCELLED');
+                  logger.log('🔄 Status changed to:', value as any);
+                  setValue('status', value as 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN');
                 }}
                 disabled={updatingStatus}
               >
@@ -1337,13 +1303,13 @@ Terima kasih dan selamat menikmati!`;
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItemComponent value="PENDING">Pending</SelectItemComponent>
-                  <SelectItemComponent value="PAID">Paid</SelectItemComponent>
-                  <SelectItemComponent value="CANCELLED">Cancelled</SelectItemComponent>
+                  <SelectItemComponent value="BELUM BAYAR">Belum Bayar</SelectItemComponent>
+                  <SelectItemComponent value="SUDAH BAYAR">Sudah Bayar</SelectItemComponent>
+                  <SelectItemComponent value="DIBATALKAN">Dibatalkan</SelectItemComponent>
                 </SelectContent>
               </Select>
               {errors.status && (
-                <p className="text-sm text-red-500">{errors.status.message}</p>
+                <p className={cn(typography.body.small, colors.text.red)}>{errors.status.message}</p>
               )}
             </div>
 
@@ -1362,12 +1328,14 @@ Terima kasih dan selamat menikmati!`;
                 variant="outline"
                 onClick={() => setShowStatusUpdate(false)}
                 disabled={updatingStatus}
+                className={cn(components.buttonOutline)}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={updatingStatus}
+                className={cn(components.buttonPrimary)}
               >
                 {updatingStatus ? (
                   <>
@@ -1388,7 +1356,12 @@ Terima kasih dan selamat menikmati!`;
         <ThermalReceiptImage
           order={{
             ...selectedOrderForReceipt,
-            order_items: getOrderItems(selectedOrderForReceipt.id),
+            order_code: selectedOrderForReceipt.order_code || '',
+            notes: selectedOrderForReceipt.notes || undefined,
+            order_items: getOrderItems(selectedOrderForReceipt.id).map(item => ({
+              ...item,
+              notes: item.notes || undefined
+            })),
             payment_methods: paymentMethods
           }}
           tenant={tenantInfo}

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, FileText, ArrowLeft, ShoppingBag, CreditCard, Smartphone, Banknote, Download, Copy, Printer, Calculator } from 'lucide-react';
+import { CheckCircle, FileText, ShoppingBag, CreditCard, Smartphone, Banknote, Download, Copy, Printer, Calculator } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { ThermalReceipt } from '@/components/ThermalReceipt';
+import { colors, typography, components, sizes, shadows, cn } from '@/lib/design-system';
 
 interface OrderSuccessPageProps {
   orderCode: string;
@@ -203,8 +204,8 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Memuat data pesanan...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+          <p className={cn(typography.body.medium, colors.text.secondary)}>Memuat data pesanan...</p>
         </div>
       </div>
     );
@@ -215,12 +216,12 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Professional Header */}
-      <div className="bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-12 sm:h-16">
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
             <div>
-              <h1 className="text-lg sm:text-2xl font-bold text-foreground">Pesanan Berhasil</h1>
-              <p className="text-muted-foreground text-xs sm:text-sm hidden sm:block">
+              <h1 className={cn(typography.h2)}>Pesanan Berhasil</h1>
+              <p className={cn(typography.body.medium, colors.text.secondary, "hidden sm:block")}>
                 Konfirmasi pesanan Anda
               </p>
             </div>
@@ -228,42 +229,42 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto p-2 sm:p-4 pb-40 sm:pb-8">
-        <Card className="shadow-xl border-0">
-          {/* Simple Mobile Header */}
-          <div className="bg-primary text-primary-foreground p-3 sm:p-8 rounded-t-lg">
+      <div className="max-w-5xl mx-auto p-4 pb-40">
+        <Card className={cn(components.card, shadows.xl, "border-0")}>
+          {/* Success Banner */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
             <div className="text-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary-foreground/20 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <CheckCircle className="w-6 h-6 sm:w-10 sm:h-10 text-primary-foreground" />
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-10 h-10 text-white" />
               </div>
-              <h1 className="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">Pesanan Berhasil Dibuat!</h1>
-              <p className="text-sm sm:text-lg opacity-90">
+              <h1 className={cn(typography.h1, "text-white mb-2")}>Pesanan Berhasil Dibuat!</h1>
+              <p className={cn(typography.body.large, "text-white/90")}>
                 Pesanan Anda telah berhasil dibuat dan akan segera diproses
               </p>
             </div>
           </div>
 
-          <CardHeader className="pb-3 sm:pb-6 pt-3 sm:pt-8">
+          <CardHeader className="pb-3 pt-6">
             <div className="text-center">
-              <h2 className="text-sm sm:text-xl font-semibold mb-1">Konfirmasi Pesanan</h2>
-              <p className="text-muted-foreground text-xs sm:text-base">Detail pesanan Anda</p>
+              <h2 className={cn(typography.h3, "mb-1")}>Konfirmasi Pesanan</h2>
+              <p className={cn(typography.body.medium, colors.text.secondary)}>Detail pesanan Anda</p>
             </div>
           </CardHeader>
         
-          <CardContent className="space-y-3 sm:space-y-8 p-3 sm:p-6">
+          <CardContent className={cn("space-y-6", sizes.card.lg)}>
             {/* Order Code Section */}
-            <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-              <CardHeader className="pb-2 sm:pb-3">
-                <CardTitle className="text-sm sm:text-lg flex items-center justify-center gap-2">
-                  <FileText className="w-3 h-3 sm:w-5 sm:h-5" />
+            <Card className={cn("bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200")}>
+              <CardHeader className="pb-3">
+                <CardTitle className={cn("flex items-center justify-center gap-2", typography.h4)}>
+                  <FileText className="w-5 h-5" />
                   Kode Pesanan
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-center">
-                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-sm sm:text-xl px-3 sm:px-6 py-2 sm:py-3 mb-3 sm:mb-4">
+                <Badge variant="outline" className={cn(components.badge, "bg-blue-50 text-blue-700 border-blue-200 text-lg px-6 py-3 mb-4")}>
                   {orderCode}
                 </Badge>
-                <p className="text-muted-foreground text-xs sm:text-base">
+                <p className={cn(typography.body.medium, colors.text.secondary)}>
                   Simpan kode pesanan ini untuk referensi dan tracking
                 </p>
               </CardContent>
@@ -271,23 +272,23 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
 
             {/* Payment Information Section */}
             {paymentMethodInfo && (
-              <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-                <CardHeader className="pb-2 sm:pb-3">
-                  <CardTitle className="text-sm sm:text-lg flex items-center justify-center gap-2">
-                    {orderData?.payment_method === 'TRANSFER' && <CreditCard className="w-3 h-3 sm:w-5 sm:h-5" />}
-                    {orderData?.payment_method === 'QRIS' && <Smartphone className="w-3 h-3 sm:w-5 sm:h-5" />}
-                    {orderData?.payment_method === 'COD' && <Banknote className="w-3 h-3 sm:w-5 sm:h-5" />}
+              <Card className={cn("bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200")}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={cn("flex items-center justify-center gap-2", typography.h4)}>
+                    {orderData?.payment_method === 'TRANSFER' && <CreditCard className="w-5 h-5" />}
+                    {orderData?.payment_method === 'QRIS' && <Smartphone className="w-5 h-5" />}
+                    {orderData?.payment_method === 'COD' && <Banknote className="w-5 h-5" />}
                     Informasi Pembayaran
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Payment Method Name */}
                   <div className="text-center">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-sm sm:text-base px-3 sm:px-4 py-1 sm:py-2">
+                    <Badge variant="outline" className={cn(components.badge, "bg-blue-50 text-blue-700 border-blue-200 px-4 py-2")}>
                       {paymentMethodInfo.name}
                     </Badge>
                     {paymentMethodInfo.description && (
-                      <p className="text-muted-foreground text-xs sm:text-sm mt-2">
+                      <p className={cn(typography.body.small, colors.text.secondary, "mt-2")}>
                         {paymentMethodInfo.description}
                       </p>
                     )}
@@ -296,15 +297,15 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
                   {/* Bank Transfer Information */}
                   {orderData?.payment_method === 'TRANSFER' && (
                     <div className="space-y-3">
-                      <div className="bg-background/50 rounded-lg p-3 sm:p-4 space-y-2">
+                      <div className="bg-white/50 rounded-lg p-4 space-y-3">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm sm:text-base font-medium">Bank:</span>
-                          <span className="text-sm sm:text-base">{paymentMethodInfo.bank_name || 'N/A'}</span>
+                          <span className={cn(typography.label.medium)}>Bank:</span>
+                          <span className={cn(typography.body.medium)}>{paymentMethodInfo.bank_name || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm sm:text-base font-medium">No. Rekening:</span>
+                          <span className={cn(typography.label.medium)}>No. Rekening:</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm sm:text-base font-mono">{paymentMethodInfo.account_number || 'N/A'}</span>
+                            <span className={cn(typography.body.medium, "font-mono")}>{paymentMethodInfo.account_number || 'N/A'}</span>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -316,12 +317,12 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm sm:text-base font-medium">Atas Nama:</span>
-                          <span className="text-sm sm:text-base">{paymentMethodInfo.account_holder || 'N/A'}</span>
+                          <span className={cn(typography.label.medium)}>Atas Nama:</span>
+                          <span className={cn(typography.body.medium)}>{paymentMethodInfo.account_holder || 'N/A'}</span>
                         </div>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs sm:text-sm text-muted-foreground">
+                        <p className={cn(typography.body.small, colors.text.secondary)}>
                           Silakan transfer sesuai nominal pesanan Anda
                         </p>
                       </div>
@@ -333,11 +334,11 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
                     <div className="space-y-3">
                       {paymentMethodInfo.qris_image_url ? (
                         <>
-                          <div className="bg-background/50 rounded-lg p-3 sm:p-4 text-center">
+                          <div className="bg-white/50 rounded-lg p-4 text-center">
                             <img
                               src={paymentMethodInfo.qris_image_url}
                               alt="QRIS Code"
-                              className="w-32 h-32 sm:w-48 sm:h-48 mx-auto rounded-lg border-2 border-primary/20"
+                              className="w-32 h-32 sm:w-48 sm:h-48 mx-auto rounded-lg border-2 border-blue-200"
                               onLoad={() => {
                                 console.log('✅ QRIS image loaded successfully from:', paymentMethodInfo.qris_image_url);
                               }}
@@ -348,13 +349,13 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
                                 e.currentTarget.nextElementSibling?.classList.remove('hidden');
                               }}
                             />
-                            <div className="hidden w-32 h-32 sm:w-48 sm:h-48 mx-auto rounded-lg border-2 border-primary/20 bg-muted/20 flex items-center justify-center">
+                            <div className="hidden w-32 h-32 sm:w-48 sm:h-48 mx-auto rounded-lg border-2 border-blue-200 bg-gray-100 flex items-center justify-center">
                               <div className="text-center">
-                                <Smartphone className="w-8 h-8 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-2" />
-                                <p className="text-xs text-muted-foreground">QRIS tidak tersedia</p>
+                                <Smartphone className="w-8 h-8 sm:w-12 sm:h-12 text-gray-500 mx-auto mb-2" />
+                                <p className={cn(typography.body.small, colors.text.muted)}>QRIS tidak tersedia</p>
                               </div>
                             </div>
-                            <p className="text-xs sm:text-sm text-muted-foreground mt-2">
+                            <p className={cn(typography.body.small, colors.text.secondary, "mt-2")}>
                               Scan QRIS untuk melakukan pembayaran
                             </p>
                           </div>
@@ -363,22 +364,22 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
                               variant="outline"
                               size="sm"
                               onClick={() => downloadQRIS(paymentMethodInfo.qris_image_url)}
-                              className="text-xs sm:text-sm"
+                              className={cn(components.buttonOutline, "text-sm")}
                             >
-                              <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                              <Download className="w-4 h-4 mr-2" />
                               Download QRIS
                             </Button>
                           </div>
                         </>
                       ) : (
-                        <div className="bg-background/50 rounded-lg p-3 sm:p-4 text-center">
-                          <div className="w-32 h-32 sm:w-48 sm:h-48 mx-auto rounded-lg border-2 border-primary/20 bg-muted/20 flex items-center justify-center">
+                        <div className="bg-white/50 rounded-lg p-4 text-center">
+                          <div className="w-48 h-48 mx-auto rounded-lg border-2 border-blue-200 bg-gray-100 flex items-center justify-center">
                             <div className="text-center">
-                              <Smartphone className="w-8 h-8 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-2" />
-                              <p className="text-xs text-muted-foreground">QRIS tidak tersedia</p>
+                              <Smartphone className="w-12 h-12 text-gray-500 mx-auto mb-2" />
+                              <p className={cn(typography.body.small, colors.text.muted)}>QRIS tidak tersedia</p>
                             </div>
                           </div>
-                          <p className="text-xs sm:text-sm text-muted-foreground mt-2">
+                          <p className={cn(typography.body.small, colors.text.secondary, "mt-2")}>
                             QRIS belum dikonfigurasi untuk metode pembayaran ini
                           </p>
                         </div>
@@ -389,8 +390,8 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
                   {/* COD Information */}
                   {orderData?.payment_method === 'COD' && (
                     <div className="text-center">
-                      <div className="bg-background/50 rounded-lg p-3 sm:p-4">
-                        <p className="text-sm sm:text-base text-muted-foreground">
+                      <div className="bg-white/50 rounded-lg p-4">
+                        <p className={cn(typography.body.medium, colors.text.secondary)}>
                           Pembayaran dilakukan saat pesanan diambil
                         </p>
                       </div>
@@ -398,9 +399,9 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
                   )}
 
                   {/* Total Amount */}
-                  <div className="text-center border-t border-primary/20 pt-3">
-                    <p className="text-xs sm:text-sm text-muted-foreground">Total Pembayaran</p>
-                    <p className="text-lg sm:text-2xl font-bold text-primary">
+                  <div className="text-center border-t border-blue-200 pt-3">
+                    <p className={cn(typography.body.small, colors.text.secondary)}>Total Pembayaran</p>
+                    <p className={cn(typography.price.large, "text-blue-600")}>
                       Rp {orderData?.total?.toLocaleString('id-ID') || '0'}
                     </p>
                   </div>
@@ -409,39 +410,36 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex flex-col gap-4">
               <Button
                 onClick={() => setShowThermalReceipt(true)}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-base"
-                size="sm"
+                className={cn("flex-1 bg-green-600 hover:bg-green-700 text-white", sizes.button.lg)}
               >
-                <Printer className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                <Printer className="w-4 h-4 mr-2" />
                 Print Struk
               </Button>
               
               <Button
                 onClick={onViewInvoice}
-                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-base"
-                size="sm"
+                className={cn(components.buttonPrimary, "flex-1")}
               >
-                <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                <FileText className="w-4 h-4 mr-2" />
                 Lihat Invoice
               </Button>
               
               <Button
                 onClick={onBackToMenu}
                 variant="outline"
-                className="flex-1 text-xs sm:text-base"
-                size="sm"
+                className={cn(components.buttonOutline, "flex-1")}
               >
                 {isFromAdmin ? (
                   <>
-                    <Calculator className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                    <Calculator className="w-4 h-4 mr-2" />
                     Kembali ke Kasir
                   </>
                 ) : (
                   <>
-                    <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                    <ShoppingBag className="w-4 h-4 mr-2" />
                     Kembali ke Menu
                   </>
                 )}
@@ -449,11 +447,11 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
             </div>
 
             {/* Professional Footer */}
-            <Card className="bg-gradient-to-r from-muted/30 to-muted/50 border-0 mt-3 sm:mt-8">
-              <CardContent className="text-center py-3 sm:py-6">
-                <div className="space-y-1 sm:space-y-2">
-                  <h3 className="text-sm sm:text-lg font-semibold text-foreground">Terima Kasih Atas Pesanan Anda!</h3>
-                  <p className="text-muted-foreground text-xs sm:text-base">
+            <Card className={cn("bg-gradient-to-r from-gray-50 to-gray-100 border-0 mt-6")}>
+              <CardContent className="text-center py-6">
+                <div className="space-y-2">
+                  <h3 className={cn(typography.h3)}>Terima Kasih Atas Pesanan Anda!</h3>
+                  <p className={cn(typography.body.medium, colors.text.secondary)}>
                     Pesanan Anda akan segera diproses dan siap untuk diambil sesuai jadwal yang telah ditentukan.
                   </p>
                 </div>
@@ -469,11 +467,12 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
           <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Print Struk Thermal</h3>
+                <h3 className={cn(typography.h3)}>Print Struk Thermal</h3>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowThermalReceipt(false)}
+                  className={cn(components.buttonOutline)}
                 >
                   ✕
                 </Button>

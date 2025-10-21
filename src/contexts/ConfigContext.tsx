@@ -7,6 +7,7 @@ interface AppConfig {
   storeName: string;
   storeIcon: string; // Can be either icon name or uploaded icon URL
   storeLogoUrl?: string; // Add missing field for logo_url
+  storeBannerUrl?: string; // Add banner image field
   storeIconType: 'predefined' | 'uploaded'; // Track if it's predefined or uploaded
   storeDescription?: string;
   storeAddress?: string;
@@ -173,11 +174,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
         if (tenantInfoData && !tenantInfoError) {
           console.log('🔧 Loading tenant info from database:', { tenantInfoData });
+          console.log('🔧 Banner URL from database:', tenantInfoData.banner_url);
           
           const dbConfig: AppConfig = {
             storeName: (currentTenant as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
             storeIcon: tenantInfoData.logo_url || getDefaultConfigForTenant(tenantSlug).storeIcon,
             storeLogoUrl: tenantInfoData.logo_url,
+            storeBannerUrl: (tenantInfoData as any).banner_url || null, // Handle missing column gracefully
             storeIconType: tenantInfoData.logo_url ? 'uploaded' : 'predefined',
             storeDescription: tenantInfoData.description,
             storeAddress: tenantInfoData.address,
@@ -241,10 +244,14 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
               .single();
 
             if (tenantInfoData && !tenantInfoError) {
+              console.log('🔧 Loading tenant info for public page:', { tenantInfoData });
+              console.log('🔧 Banner URL from database (public):', tenantInfoData.banner_url);
+              
               const dbConfig: AppConfig = {
                 storeName: (tenantData as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
                 storeIcon: tenantInfoData.logo_url || getDefaultConfigForTenant(tenantSlug).storeIcon,
                 storeLogoUrl: tenantInfoData.logo_url,
+                storeBannerUrl: (tenantInfoData as any).banner_url || null, // Handle missing column gracefully
                 storeIconType: tenantInfoData.logo_url ? 'uploaded' : 'predefined',
                 storeDescription: tenantInfoData.description,
                 storeAddress: tenantInfoData.address,
@@ -328,6 +335,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           email: newConfig.storeEmail,
           operating_hours: newConfig.storeHours,
           logo_url: newConfig.storeLogoUrl,
+          ...(newConfig.storeBannerUrl && { banner_url: newConfig.storeBannerUrl }), // Only include if column exists
           website: null, // Not used in form yet
           category: null, // Not used in form yet
           currency: 'IDR', // Default

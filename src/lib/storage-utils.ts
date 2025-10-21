@@ -225,6 +225,17 @@ export const uploadConfigs = {
     maxSize: 300 * 1024, // 300KB
     targetSize: 300 * 1024, // 300KB
     compress: true
+  }),
+
+  // Store banner image upload - Use same logic as store logo
+  storeBanner: (tenantSlug: string): UploadConfig => ({
+    bucket: 'banner_store',
+    folder: 'logo',
+    tenantSlug,
+    maxOriginalSize: 5 * 1024 * 1024, // 5MB (same as logo)
+    maxSize: 200 * 1024, // 200KB (same as logo)
+    targetSize: 200 * 1024, // 200KB (same as logo)
+    compress: true
   })
 };
 
@@ -261,6 +272,7 @@ export async function ensureTenantFolders(tenantSlug: string): Promise<boolean> 
 
     const buckets = [
       { bucket: 'store-icons', folder: 'logo' },
+      { bucket: 'banner_store', folder: 'logo' },
       { bucket: 'menu-images', folder: 'menu-items' },
       { bucket: 'qris-images', folder: 'qris' }
     ];
@@ -327,6 +339,7 @@ export async function deleteTenantStorageStructure(tenantSlug: string): Promise<
 
     const buckets = [
       { bucket: 'store-icons', folder: 'logo' },
+      { bucket: 'banner_store', folder: 'logo' },
       { bucket: 'menu-images', folder: 'menu-items' },
       { bucket: 'qris-images', folder: 'qris' }
     ];

@@ -1,21 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { 
   X, 
   Plus, 
   Minus, 
-  Package,
-  Check,
-  Star,
-  Clock,
-  DollarSign
+  Package
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { formatCurrency } from '@/lib/form-utils';
 import { supabase } from '@/lib/supabase';
+import { colors, typography, components, sizes, cn } from '@/lib/design-system';
 
 interface MenuItem {
   id: string;
@@ -59,7 +54,7 @@ interface MenuOption {
 }
 
 export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps) {
-  const { addItem, getItemQuantity, removeItem } = useCart();
+  const { addItem } = useCart();
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
   const [menuOptions, setMenuOptions] = useState<MenuOption[]>([]);
@@ -91,10 +86,10 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
         
         // Initialize selected options with defaults
         const defaults: Record<string, string> = {};
-        options?.forEach(option => {
+        options?.forEach((option: any) => {
           if (option.items && option.items.length > 0) {
             // Find the first available item as default
-            const defaultItem = option.items.find(item => item.is_available);
+            const defaultItem = option.items.find((item: any) => item.is_available);
             if (defaultItem) {
               defaults[option.id] = defaultItem.id;
             }
@@ -114,11 +109,22 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
 
   if (!item) return null;
 
+  // Debug logging
+  console.log('MenuDetailSheet render:', { selectedOptions, menuOptions });
+
   const handleOptionSelect = (groupId: string, optionId: string) => {
-    setSelectedOptions(prev => ({
-      ...prev,
-      [groupId]: optionId
-    }));
+    console.log('🔄 handleOptionSelect called:', { groupId, optionId });
+    console.log('📊 Current selectedOptions before:', selectedOptions);
+    
+    setSelectedOptions(prev => {
+      const newOptions = {
+        ...prev,
+        [groupId]: optionId
+      };
+      console.log('✅ New selected options after:', newOptions);
+      console.log('🎯 Is this option selected?', newOptions[groupId] === optionId);
+      return newOptions;
+    });
   };
 
   const calculateTotalPrice = () => {
@@ -159,15 +165,7 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
     onClose();
   };
 
-  const getItemQuantityInCart = () => {
-    // Check if this exact combination is in cart
-    const cartKey = `${item.id}-${JSON.stringify(selectedOptions)}`;
-    return getItemQuantity(cartKey);
-  };
 
-  const isCompleted = (optionId: string) => {
-    return selectedOptions[optionId] !== undefined;
-  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -176,12 +174,12 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
           {/* Header */}
           <SheetHeader className="p-4 pb-0">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-lg font-semibold">Menu Details</SheetTitle>
+              <SheetTitle className={cn(typography.h3)}>Menu Details</SheetTitle>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -205,94 +203,113 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
                   </div>
                 )}
                 
-                {/* Rating Badge */}
-                <div className="absolute top-4 right-4">
-                  <Badge className="bg-background/90 text-foreground border border-border">
-                    <Star className="h-3 w-3 mr-1 fill-yellow-500 text-yellow-500" />
-                    4.8
-                  </Badge>
-                </div>
               </div>
 
               {/* Product Info */}
-              <div className="p-4 sm:p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h1 className="text-2xl sm:text-3xl font-bold mb-1">
-                      {item.name}
-                    </h1>
-                    <p className="text-muted-foreground text-sm sm:text-base">
-                      {item.description || 'Delicious menu item'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl sm:text-3xl font-bold">
+              <div className={cn(sizes.card.lg)}>
+                <div className="mb-4">
+                  <h1 className={cn(typography.h1, "mb-2")}>
+                    {item.name}
+                  </h1>
+                  <p className={cn(typography.body.medium, colors.text.secondary, "mb-3")}>
+                    {item.description || 'Delicious menu item'}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className={cn(typography.price.large)}>
                       {formatCurrency(item.price)}
                     </p>
-                    <p className="text-xs text-muted-foreground">Base price</p>
+                    <p className={cn(typography.body.small, colors.text.muted)}>Base price</p>
                   </div>
                 </div>
 
-                {/* Restaurant Info */}
-                <div className="flex items-center gap-4 text-sm sm:text-base text-muted-foreground mb-6">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{item.preparation_time || 15} min</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="h-4 w-4" />
-                    <span>Free delivery</span>
-                  </div>
-                </div>
 
                 {/* Customization Options */}
                 <div className="space-y-6">
                   {loadingOptions ? (
                     <div className="text-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                      <p className="text-sm text-muted-foreground mt-2">Loading options...</p>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className={cn(typography.body.small, colors.text.secondary, "mt-2")}>Loading options...</p>
                     </div>
                   ) : (
                     menuOptions.map((option) => (
                       <div key={option.id}>
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-base sm:text-lg">
+                          <h3 className={cn(typography.h4)}>
                             {option.label}
                           </h3>
-                          {isCompleted(option.id) && (
-                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                              <Check className="h-3 w-3 mr-1" />
-                              Completed
-                            </Badge>
-                          )}
                         </div>
                         
                         <div className="space-y-2">
-                          {option.items?.filter(item => item.is_available).map((optionItem) => (
-                            <label
+                          {option.items?.filter(item => item.is_available).map((optionItem) => {
+                            const isSelected = selectedOptions[option.id] === optionItem.id;
+                            console.log(`🔍 Option ${optionItem.name}:`, { 
+                              optionId: option.id, 
+                              optionItemId: optionItem.id, 
+                              isSelected,
+                              isSelectedType: typeof isSelected,
+                              isSelectedStrict: isSelected === true,
+                              selectedOptionsForGroup: selectedOptions[option.id],
+                              shouldShowDot: isSelected ? 'YES' : 'NO'
+                            });
+                            return (
+                            <div
                               key={optionItem.id}
-                              className="flex items-center justify-between p-3 sm:p-4 rounded-lg border border-border hover:border-primary/50 cursor-pointer transition-colors bg-background"
+                              className={cn(
+                                components.card, 
+                                "flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all duration-200",
+                                isSelected 
+                                  ? "border-2 border-blue-500 bg-blue-50 shadow-md" 
+                                  : "border border-gray-200 hover:border-blue-300 bg-white hover:bg-gray-50"
+                              )}
+                              onClick={() => {
+                                console.log('📦 Container clicked:', { optionId: option.id, optionItemId: optionItem.id, isSelected });
+                                handleOptionSelect(option.id, optionItem.id);
+                              }}
                             >
                               <div className="flex items-center gap-3">
-                                <input
-                                  type="radio"
-                                  name={option.id}
-                                  value={optionItem.id}
-                                  checked={selectedOptions[option.id] === optionItem.id}
-                                  onChange={() => handleOptionSelect(option.id, optionItem.id)}
-                                  className="w-4 h-4 text-primary border-border focus:ring-primary"
-                                />
-                                <span className="font-medium text-sm sm:text-base">
+                                {/* Custom Radio Button */}
+                                <div 
+                                  className={cn(
+                                    "w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all duration-200",
+                                    isSelected
+                                      ? "border-blue-600 bg-blue-600"
+                                      : "border-gray-300 bg-white hover:border-blue-400"
+                                  )}
+                                  onClick={(e) => {
+                                    console.log('🎯 Radio button clicked:', { optionId: option.id, optionItemId: optionItem.id, isSelected });
+                                    e.stopPropagation();
+                                    handleOptionSelect(option.id, optionItem.id);
+                                  }}
+                                >
+                                  {isSelected === true && (
+                                    <div className="w-3 h-3 bg-white rounded-full"></div>
+                                  )}
+                                </div>
+                                
+                                <span className={cn(
+                                  typography.body.medium, 
+                                  "font-medium cursor-pointer transition-colors",
+                                  isSelected 
+                                    ? "text-blue-700 font-semibold" 
+                                    : "text-gray-900"
+                                )}>
                                   {optionItem.name}
                                 </span>
                               </div>
                               {optionItem.additional_price > 0 && (
-                                <span className="text-sm sm:text-base font-medium text-muted-foreground">
+                                <span className={cn(
+                                  typography.body.medium, 
+                                  "font-medium cursor-pointer transition-colors",
+                                  isSelected 
+                                    ? "text-blue-600 font-semibold" 
+                                    : "text-gray-600"
+                                )}>
                                   +{formatCurrency(optionItem.additional_price)}
                                 </span>
                               )}
-                            </label>
-                          ))}
+                            </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))
@@ -303,27 +320,27 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
           </div>
 
           {/* Footer - Add to Cart */}
-          <div className="p-4 lg:p-6 border-t border-border bg-background">
+          <div className={cn("p-6 border-t border-gray-200 bg-white")}>
             {/* Quantity Selector */}
             <div className="flex items-center justify-between mb-4">
-              <span className="font-bold text-sm sm:text-base">Quantity</span>
-              <div className="flex items-center border border-border rounded-lg overflow-hidden bg-white">
+              <span className={cn(typography.label.large)}>Quantity</span>
+              <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="h-10 w-10 p-0 border-0 rounded-none hover:bg-muted/50"
+                  className="h-10 w-10 p-0 border-0 rounded-none hover:bg-gray-50"
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
-                <div className="w-12 h-10 flex items-center justify-center border-l border-r border-border bg-white">
-                  <span className="font-medium text-sm sm:text-base">{quantity}</span>
+                <div className="w-12 h-10 flex items-center justify-center border-l border-r border-gray-200 bg-white">
+                  <span className={cn(typography.body.medium, "font-medium")}>{quantity}</span>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setQuantity(quantity + 1)}
-                  className="h-10 w-10 p-0 border-0 rounded-none hover:bg-muted/50"
+                  className="h-10 w-10 p-0 border-0 rounded-none hover:bg-gray-50"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -333,7 +350,7 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
             {/* Add to Cart Button */}
             <Button
               onClick={handleAddToCart}
-              className="w-full h-12 sm:h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm sm:text-base rounded-lg"
+              className={cn(components.buttonPrimary, "w-full h-12 font-semibold text-base rounded-lg")}
             >
               Add to Basket - {formatCurrency(calculateTotalPrice())} (Incl. tax)
             </Button>

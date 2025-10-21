@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -9,13 +8,14 @@ import { FormTextarea } from '@/components/forms/FormTextarea';
 import { FormRadioGroup } from '@/components/forms/FormRadioGroup';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, ShoppingCart, CreditCard, Smartphone, Banknote, Calendar } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { checkoutFormSchema, type CheckoutFormData } from '@/lib/form-schemas';
 import { useCart } from '@/contexts/CartContext';
 import { formatCurrency, normalizePhone, generateOrderCode, getTomorrowDate } from '@/lib/form-utils';
 import { getTenantInfo } from '@/lib/tenantUtils';
+import { colors, typography, components, sizes, shadows, cn } from '@/lib/design-system';
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -23,15 +23,12 @@ interface CheckoutPageProps {
 }
 
 export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
-  const navigate = useNavigate();
   const { items, totalAmount, clearCart } = useCart();
-  const [tenantInfo, setTenantInfo] = useState<any>(null);
   const { showError, showSuccess } = useAppToast();
   const [loading, setLoading] = useState(false);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
 
   const {
     register,
@@ -67,7 +64,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         console.log('🔍 CheckoutPage: Resolved tenant info:', resolvedTenantInfo);
         
         if (resolvedTenantInfo) {
-          setTenantInfo(resolvedTenantInfo);
+          // Tenant info loaded successfully
           setResolvedTenantId(resolvedTenantInfo.tenant_id);
           console.log('🔍 CheckoutPage: Set resolved tenant ID:', resolvedTenantInfo.tenant_id);
           
@@ -116,7 +113,6 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         console.error('❌ Error loading payment methods:', error);
         // No payment methods available on error
         setAvailablePaymentMethods([]);
-        setPaymentMethods([]);
         setValue('paymentMethod', '');
         setLoadingPaymentMethods(false);
         return;
@@ -125,11 +121,10 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       console.log('🔍 Raw payment methods data:', paymentMethods);
 
       if (paymentMethods && paymentMethods.length > 0) {
-        const methods = paymentMethods.map(method => method.payment_type);
+        const methods = paymentMethods.map((method: any) => method.payment_type);
         const uniqueMethods = [...new Set(methods)];
         console.log('🔍 Available payment methods:', uniqueMethods);
         setAvailablePaymentMethods(uniqueMethods);
-        setPaymentMethods(paymentMethods);
         
         // Don't set default payment method - let user choose
         // This ensures validation works properly
@@ -137,14 +132,14 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         console.log('🔍 No payment methods found - no payment methods configured');
         // No payment methods available - customer cannot proceed
         setAvailablePaymentMethods([]);
-        setPaymentMethods([]);
+        // No payment methods available
         // Clear payment method selection
         setValue('paymentMethod', '');
       }
     } catch (error) {
       console.error('❌ Error loading payment methods:', error);
       setAvailablePaymentMethods([]);
-      setPaymentMethods([]);
+      // No payment methods available
       setValue('paymentMethod', undefined as any);
     } finally {
       setLoadingPaymentMethods(false);
@@ -198,8 +193,8 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         phone: normalizedPhone,
         pickup_date: data.pickupDate,
         notes: data.notes || null,
-        payment_method: data.paymentMethod,
-        status: 'PENDING' as const,
+        payment_method: data.paymentMethod as 'TRANSFER' | 'QRIS' | 'COD',
+        status: 'BELUM BAYAR' as 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN',
         subtotal,
         discount,
         service_fee: serviceFee,
@@ -208,7 +203,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert(orderData)
+        .insert(orderData as any)
         .select()
         .single();
 
@@ -248,7 +243,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         
         return {
           tenant_id: resolvedTenantId,
-          order_id: order.id,
+          order_id: (order as any).id,
           menu_id: menuId,
           name_snapshot: item.name,
           price_snapshot: item.price,
@@ -260,14 +255,14 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
 
       const { error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItems);
+        .insert(orderItems as any);
 
       if (itemsError) throw itemsError;
 
       // Clear cart and show success
       clearCart();
-      showSuccess('Order Created!', `Your order ${order.order_code} has been created successfully.`);
-      onSuccess(order.order_code);
+      showSuccess('Order Created!', `Your order ${(order as any).order_code} has been created successfully.`);
+      onSuccess((order as any).order_code);
 
     } catch (error: any) {
       console.error('Checkout error:', error);
@@ -286,56 +281,53 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
-      <div className="bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-12 sm:h-16">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               onClick={onBack}
-              className="text-muted-foreground hover:text-foreground h-8 px-2 sm:px-3"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <ArrowLeft className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Back to Menu</span>
+              <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div>
-              <h1 className="text-lg sm:text-2xl font-bold text-foreground">Checkout</h1>
-              <p className="text-muted-foreground text-xs sm:text-sm hidden sm:block">Complete your order</p>
-            </div>
+            <h1 className={cn(typography.h2)}>Checkout</h1>
+            <div></div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto p-2 sm:p-4 pb-40 sm:pb-8">
+      <div className="max-w-5xl mx-auto p-4">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
           {/* Order Summary */}
           <div className="lg:col-span-1 order-2 lg:order-1">
-            <Card className="shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-2 sm:pb-3">
-                <CardTitle className="flex items-center text-sm sm:text-lg">
-                  <ShoppingCart className="h-3 w-3 sm:h-5 sm:w-5 mr-2" />
+            <Card className={cn(components.card, shadows.lg)}>
+              <CardHeader className={cn("bg-gradient-to-r from-blue-50 to-blue-100", "pb-3")}>
+                <CardTitle className={cn("flex items-center", typography.h3)}>
+                  <ShoppingCart className="h-5 w-5 mr-2" />
                   Ringkasan Pesanan
                 </CardTitle>
-                <CardDescription className="text-xs sm:text-base">
+                <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                   Review pesanan Anda sebelum checkout
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2 sm:space-y-4 p-3 sm:p-6">
-                <div className="space-y-2 sm:space-y-3">
+              <CardContent className={cn(sizes.card.lg, "space-y-4")}>
+                <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-muted/30 rounded">
+                    <div key={item.id} className={cn("flex justify-between items-start gap-3 p-3 bg-gray-50 rounded-lg")}>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-xs sm:text-sm truncate">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className={cn(typography.h4, "truncate")}>{item.name}</p>
+                        <p className={cn(typography.body.small, colors.text.secondary)}>
                           {formatCurrency(item.price)} × {item.qty}
                         </p>
                         {item.notes && (
-                          <p className="text-xs text-muted-foreground italic truncate mt-1">
+                          <p className={cn(typography.body.small, colors.text.muted, "italic truncate mt-1")}>
                             Note: {item.notes}
                           </p>
                         )}
                       </div>
-                      <Badge variant="outline" className="text-xs sm:text-sm flex-shrink-0 bg-primary/10 text-primary border-primary/20">
+                      <Badge variant="outline" className={cn(components.badge, "flex-shrink-0 bg-blue-50 text-blue-700 border-blue-200")}>
                         {formatCurrency(item.price * item.qty)}
                       </Badge>
                     </div>
@@ -344,23 +336,23 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                 
                 <Separator />
                 
-                <div className="space-y-2 sm:space-y-3">
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
+                <div className="space-y-3">
+                  <div className={cn("flex justify-between", typography.body.medium)}>
+                    <span className={colors.text.secondary}>Subtotal</span>
                     <span className="font-semibold">{formatCurrency(totalAmount)}</span>
                   </div>
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="text-muted-foreground">Service Fee</span>
+                  <div className={cn("flex justify-between", typography.body.medium)}>
+                    <span className={colors.text.secondary}>Service Fee</span>
                     <span className="font-semibold">{formatCurrency(0)}</span>
                   </div>
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="text-muted-foreground">Discount</span>
-                    <span className="font-semibold text-green-600">-{formatCurrency(0)}</span>
+                  <div className={cn("flex justify-between", typography.body.medium)}>
+                    <span className={colors.text.secondary}>Discount</span>
+                    <span className={cn("font-semibold", colors.status.success.text)}>-{formatCurrency(0)}</span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between items-center py-1 sm:py-2 bg-primary/5 rounded px-2 sm:px-3">
-                    <span className="font-bold text-sm sm:text-lg">Total</span>
-                    <span className="font-bold text-base sm:text-xl text-primary">{formatCurrency(totalAmount)}</span>
+                  <div className={cn("flex justify-between items-center py-2 bg-blue-50 rounded-lg px-3")}>
+                    <span className={cn(typography.price.medium)}>Total</span>
+                    <span className={cn(typography.price.large, "text-blue-600")}>{formatCurrency(totalAmount)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -369,17 +361,17 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
 
           {/* Checkout Form */}
           <div className="lg:col-span-2 order-1 lg:order-2">
-            <Card className="shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-2 sm:pb-3">
-                <CardTitle className="flex items-center text-sm sm:text-lg">
-                  <CreditCard className="h-3 w-3 sm:h-5 sm:w-5 mr-2" />
+            <Card className={cn(components.card, shadows.lg)}>
+              <CardHeader className={cn("bg-gradient-to-r from-blue-50 to-blue-100", "pb-3")}>
+                <CardTitle className={cn("flex items-center", typography.h3)}>
+                  <CreditCard className="h-5 w-5 mr-2" />
                   Informasi Pelanggan
                 </CardTitle>
-                <CardDescription className="text-xs sm:text-base">
+                <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                   Lengkapi informasi Anda untuk menyelesaikan pesanan
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-3 sm:p-6">
+              <CardContent className={cn(sizes.card.lg)}>
                   <form onSubmit={handleSubmit(
                     (data) => {
                       console.log('✅ Form validation passed, calling onSubmit');
@@ -393,8 +385,8 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                         showError('Validation Error', errorMessage);
                       }
                     }
-                  )} className="space-y-3 sm:space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+                  )} className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormInput
                       {...register('customerName')}
                       label="Full Name"
@@ -422,30 +414,30 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                     disabled={loading}
                   />
 
-                  <div className="bg-muted/30 p-4 rounded-lg">
+                  <div className={cn("bg-gray-50 p-4 rounded-lg")}>
                     {loadingPaymentMethods ? (
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                          Metode Pembayaran <span className="text-destructive">*</span>
+                        <label className={cn(typography.label.large)}>
+                          Metode Pembayaran <span className="text-red-500">*</span>
                         </label>
                         <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                          <span className="text-sm text-muted-foreground">Loading payment methods...</span>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <span className={cn(typography.body.medium, colors.text.secondary)}>Loading payment methods...</span>
                         </div>
                       </div>
                     ) : paymentMethodOptions.length === 0 ? (
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                          Metode Pembayaran <span className="text-destructive">*</span>
+                        <label className={cn(typography.label.large)}>
+                          Metode Pembayaran <span className="text-red-500">*</span>
                         </label>
-                        <div className="text-sm text-destructive">
+                        <div className={cn(typography.body.medium, colors.status.error.text)}>
                           Tidak ada metode pembayaran yang tersedia. Silakan hubungi admin.
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <label className="text-sm font-medium text-foreground">
-                          Metode Pembayaran *
+                        <label className={cn(typography.label.large)}>
+                          Metode Pembayaran <span className="text-red-500">*</span>
                         </label>
                         <Controller
                           name="paymentMethod"
@@ -479,20 +471,20 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                     rows={3}
                   />
 
-                  <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-border">
+                  <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 border-t border-gray-200">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={onBack}
                       disabled={loading}
-                      className="w-full sm:w-auto text-xs sm:text-sm"
+                      className={cn(components.buttonOutline, "w-full sm:w-auto")}
                     >
                       Batal
                     </Button>
                     <Button
                       type="submit"
                       disabled={loading || items.length === 0 || loadingPaymentMethods || paymentMethodOptions.length === 0}
-                      className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm"
+                      className={cn(components.buttonPrimary, "w-full sm:w-auto")}
                     >
                       {loading ? (
                         <>

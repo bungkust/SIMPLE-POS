@@ -64,7 +64,7 @@ export const checkoutFormSchema = z.object({
 });
 
 export const orderStatusUpdateSchema = z.object({
-  status: z.enum(["PENDING", "PAID", "CANCELLED"]),
+  status: z.enum(["BELUM BAYAR", "SUDAH BAYAR", "DIBATALKAN"]),
   notes: z.string().max(500, "Catatan terlalu panjang").optional(),
 });
 
@@ -116,6 +116,7 @@ export const cashierOrderSchema = z.object({
 export const settingsFormSchema = z.object({
   storeName: z.string().min(1, "Nama toko harus diisi").max(100, "Nama toko terlalu panjang"),
   storeLogoUrl: z.string().optional(), // Add missing field for logo_url
+  storeBannerUrl: z.string().optional(), // Add banner image field
   storeIconType: z.string().default("Coffee"),
   storeDescription: z.string().max(500, "Deskripsi terlalu panjang").optional(),
   storeAddress: z.string().max(200, "Alamat terlalu panjang").optional(),

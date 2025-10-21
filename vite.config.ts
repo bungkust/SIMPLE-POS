@@ -24,7 +24,7 @@ export default defineConfig({
         manualChunks: {
           // Vendor chunks
           vendor: ['react', 'react-dom'],
-          ui: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-sheet'],
+          ui: ['lucide-react', '@radix-ui/react-dialog'],
           supabase: ['@supabase/supabase-js'],
           utils: ['browser-image-compression']
         },

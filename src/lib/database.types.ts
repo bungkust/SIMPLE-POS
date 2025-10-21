@@ -146,7 +146,7 @@ export interface Database {
           pickup_date: string;
           notes: string | null;
           payment_method: 'TRANSFER' | 'QRIS' | 'COD';
-          status: 'PENDING' | 'PAID' | 'CANCELLED';
+          status: 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN';
           subtotal: number;
           discount: number;
           service_fee: number;
@@ -163,7 +163,7 @@ export interface Database {
           pickup_date: string;
           notes?: string | null;
           payment_method: 'TRANSFER' | 'QRIS' | 'COD';
-          status?: 'PENDING' | 'PAID' | 'CANCELLED';
+          status?: 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN';
           subtotal: number;
           discount?: number;
           service_fee?: number;
@@ -180,7 +180,7 @@ export interface Database {
           pickup_date?: string;
           notes?: string | null;
           payment_method?: 'TRANSFER' | 'QRIS' | 'COD';
-          status?: 'PENDING' | 'PAID' | 'CANCELLED';
+          status?: 'BELUM BAYAR' | 'SUDAH BAYAR' | 'DIBATALKAN';
           subtotal?: number;
           discount?: number;
           service_fee?: number;
@@ -289,6 +289,7 @@ export interface Database {
           email: string | null;
           operating_hours: string | null;
           logo_url: string | null;
+          banner_url: string | null;
           website: string | null;
           category: string | null;
           currency: string | null;
@@ -312,6 +313,7 @@ export interface Database {
           email?: string | null;
           operating_hours?: string | null;
           logo_url?: string | null;
+          banner_url?: string | null;
           website?: string | null;
           category?: string | null;
           currency?: string | null;
@@ -335,6 +337,7 @@ export interface Database {
           email?: string | null;
           operating_hours?: string | null;
           logo_url?: string | null;
+          banner_url?: string | null;
           website?: string | null;
           category?: string | null;
           currency?: string | null;

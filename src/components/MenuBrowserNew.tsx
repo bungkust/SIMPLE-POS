@@ -14,6 +14,7 @@ import { useCart } from '../contexts/CartContext';
 import { getTenantInfo } from '../lib/tenantUtils';
 import { MenuDetailSheet } from './MenuDetailSheet';
 import { Database } from '../lib/database.types';
+import { colors, typography, components, sizes, shadows, cn } from '@/lib/design-system';
 // import { ThumbnailImage, MediumImage } from '@/components/ui/lazy-image';
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row'] & {
@@ -103,21 +104,21 @@ export function MenuBrowser() {
 
         // Load categories if not cached or cache expired
         if (!cachedCategories || !isCacheValid(JSON.parse(cachedCategories).timestamp)) {
-          console.log('MenuBrowser: Loading categories for tenant ID:', tenantId);
-          const { data: categoriesData, error: categoriesError } = await supabase
-            .from('categories')
-            .select('*')
-            .eq('tenant_id', tenantId)
-            .order('sort_order', { ascending: true });
+        console.log('MenuBrowser: Loading categories for tenant ID:', tenantId);
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('sort_order', { ascending: true });
 
-          if (categoriesError) {
-            console.error('Error loading categories:', categoriesError);
-            console.error('Categories error details:', categoriesError.message, categoriesError.details);
-            console.error('Categories error code:', categoriesError.code);
-          } else {
-            console.log('MenuBrowser: Loaded categories:', categoriesData);
-            console.log('MenuBrowser: Categories count:', categoriesData?.length || 0);
-            if (categoriesData && categoriesData.length > 0) {
+        if (categoriesError) {
+          console.error('Error loading categories:', categoriesError);
+          console.error('Categories error details:', categoriesError.message, categoriesError.details);
+          console.error('Categories error code:', categoriesError.code);
+        } else {
+          console.log('MenuBrowser: Loaded categories:', categoriesData);
+          console.log('MenuBrowser: Categories count:', categoriesData?.length || 0);
+          if (categoriesData && categoriesData.length > 0) {
               console.log('MenuBrowser: Category names:', categoriesData.map((c: any) => c.name));
             }
             setCategories(categoriesData || []);
@@ -150,19 +151,19 @@ export function MenuBrowser() {
 
         // Load menu items if not cached or cache expired
         if (!cachedMenuItems || !isCacheValid(JSON.parse(cachedMenuItems).timestamp)) {
-          console.log('MenuBrowser: Loading menu items for tenant ID:', tenantId);
-          const { data: menuData, error: menuError } = await supabase
-            .from('menu_items')
-            .select('*')
-            .eq('tenant_id', tenantId)
-            .eq('is_active', true)
-            .order('name', { ascending: true });
+        console.log('MenuBrowser: Loading menu items for tenant ID:', tenantId);
+        const { data: menuData, error: menuError } = await supabase
+          .from('menu_items')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('name', { ascending: true });
 
-          if (menuError) {
-            console.error('Error loading menu items:', menuError);
-          } else {
-            console.log('MenuBrowser: Loaded menu items:', menuData);
-            setMenuItems(menuData || []);
+        if (menuError) {
+          console.error('Error loading menu items:', menuError);
+        } else {
+          console.log('MenuBrowser: Loaded menu items:', menuData);
+          setMenuItems(menuData || []);
             
             // Cache menu items
             localStorage.setItem(menuItemsCacheKey, JSON.stringify({
@@ -185,13 +186,13 @@ export function MenuBrowser() {
   // Memoized filtered items with debounced search
   const filteredItems = useMemo(() => {
     return menuItems.filter(item => {
-      const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
+    const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
       const matchesSearch = !debouncedSearchQuery || 
         item.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         (item.description && item.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
-      
-      return matchesCategory && matchesSearch;
-    });
+    
+    return matchesCategory && matchesSearch;
+  });
   }, [menuItems, selectedCategory, debouncedSearchQuery]);
 
   // Debug logging
@@ -211,8 +212,8 @@ export function MenuBrowser() {
       <div className="space-y-6">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Loading menu...</p>
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className={cn(typography.body.medium, colors.text.secondary)}>Loading menu...</p>
           </div>
         </div>
       </div>
@@ -221,15 +222,15 @@ export function MenuBrowser() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="max-w-5xl mx-auto p-2 sm:p-4 pb-40 sm:pb-8">
+      <div className="max-w-5xl mx-auto p-4 pb-40">
         {/* Navigation Tabs - Dynamic from Database */}
-        <div className="mb-3 sm:mb-6 relative">
-          <div className="flex space-x-2 sm:space-x-8 border-b border-border overflow-x-auto scrollbar-hide pb-2 sm:pb-3">
+        <div className="mb-6 relative">
+          <div className="flex space-x-2 border-b border-gray-200 overflow-x-auto scrollbar-hide pb-3 px-4 scroll-smooth">
             <button 
-              className={`font-medium border-b-2 whitespace-nowrap text-sm sm:text-base ${
+              className={`font-medium border-b-2 whitespace-nowrap text-sm sm:text-base px-3 py-2 transition-all duration-200 ${
                 selectedCategory === '' 
-                  ? 'text-primary border-primary font-semibold' 
-                  : 'text-muted-foreground hover:text-foreground border-transparent font-medium'
+                  ? 'text-blue-600 border-blue-600 font-semibold' 
+                  : 'text-gray-600 hover:text-gray-900 border-transparent font-medium hover:border-gray-300'
               }`}
               onClick={() => setSelectedCategory('')}
             >
@@ -238,10 +239,10 @@ export function MenuBrowser() {
             {categories.map((category) => (
               <button 
                 key={category.id}
-                className={`font-medium border-b-2 whitespace-nowrap text-sm sm:text-base ${
+                className={`font-medium border-b-2 whitespace-nowrap text-sm sm:text-base px-3 py-2 transition-all duration-200 ${
                   selectedCategory === category.id 
-                    ? 'text-primary border-primary font-semibold' 
-                    : 'text-muted-foreground hover:text-foreground border-transparent font-medium'
+                    ? 'text-blue-600 border-blue-600 font-semibold' 
+                    : 'text-gray-600 hover:text-gray-900 border-transparent font-medium hover:border-gray-300'
                 }`}
                 onClick={() => setSelectedCategory(category.id)}
               >
@@ -256,18 +257,18 @@ export function MenuBrowser() {
 
 
         {/* Search Bar */}
-        <div className="mb-3 sm:mb-6">
+        <div className="mb-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-3 w-3 sm:h-5 sm:w-5" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <Input
               placeholder="Cari menu favoritmu..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 sm:pl-10 h-8 sm:h-12 text-xs sm:text-base border-border focus:border-primary focus:ring-primary"
+              className="pl-12 h-12 text-base border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-xl shadow-sm bg-white"
             />
             {searchQuery !== debouncedSearchQuery && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin text-muted-foreground" />
+              <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
               </div>
             )}
           </div>
@@ -276,10 +277,12 @@ export function MenuBrowser() {
 
         {/* Menu Items - Food Delivery Style */}
         {filteredItems.length === 0 ? (
-          <div className="text-center py-8 sm:py-12">
-            <Package className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
-            <h3 className="text-sm sm:text-lg font-semibold mb-2">Tidak ada menu ditemukan</h3>
-            <p className="text-muted-foreground text-xs sm:text-base">
+          <div className="text-center py-16">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+              <Package className="h-10 w-10 text-gray-400" />
+            </div>
+            <h3 className={cn(typography.h3, "mb-2")}>Tidak ada menu ditemukan</h3>
+            <p className={cn(typography.body.small, colors.text.muted, "max-w-sm mx-auto")}>
               {searchQuery 
                 ? `Tidak ada menu yang cocok dengan "${searchQuery}"`
                 : 'Belum ada menu tersedia'
@@ -287,17 +290,17 @@ export function MenuBrowser() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3 sm:space-y-6">
+          <div className="space-y-6">
             {/* Section Title */}
-            <h2 className="text-sm sm:text-2xl font-bold">
+            <h2 className={cn(typography.h2, "mb-2")}>
               {selectedCategory === '' 
                 ? 'Semua Menu' 
                 : categories.find(c => c.id === selectedCategory)?.name || 'Menu'
               }
             </h2>
             
-            {/* Menu Items - Responsive Layout */}
-            <div className="space-y-1 md:hidden">
+            {/* Menu Items - Mobile Layout */}
+            <div className="space-y-2">
               {/* Mobile: List Layout */}
               {filteredItems.map((item) => {
                 const discount = item.base_price && item.base_price > item.price 
@@ -307,46 +310,61 @@ export function MenuBrowser() {
                 return (
                   <div 
                     key={item.id} 
-                    className="bg-background border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                    className={cn(components.card, components.cardHover, "cursor-pointer")}
                     onClick={() => handleItemClick(item)}
                   >
-                    <div className="px-3 py-2">
-                      <div className="flex items-center gap-2 sm:gap-4">
+                    <div className={cn(sizes.card.md)}>
+                      <div className="flex items-start gap-5">
                         {/* Food Image */}
                         <div className="flex-shrink-0">
                           {item.photo_url ? (
                             <img
                               src={item.photo_url}
                               alt={item.name}
-                              className="w-16 h-16 rounded-lg object-cover"
+                              className={cn("w-24 h-24 rounded-xl object-cover", shadows.sm)}
                               loading="lazy"
                               onError={(e) => {
                                 e.currentTarget.src = '/placeholder-image.png';
                               }}
                             />
                           ) : (
-                            <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center">
-                              <Package className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+                            <div className={cn("w-24 h-24 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center", shadows.sm)}>
+                              <Package className="h-6 w-6 text-gray-400" />
                             </div>
                           )}
                         </div>
 
                         {/* Food Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-xs sm:text-lg mb-1">
+                            <h3 className={cn(typography.h4, "mb-3 leading-tight")}>
                                 {item.name}
                               </h3>
+                            
+                            {/* Description - Fixed 3 lines */}
+                            <div className="h-12 mb-3 flex items-start">
+                              {item.description ? (
+                                <p className={cn(typography.body.small, colors.text.secondary, "line-clamp-3 leading-relaxed")}>
+                                  {item.description}
+                                </p>
+                              ) : (
+                                <p className={cn(typography.body.small, colors.text.muted, "line-clamp-3 leading-relaxed")}>
+                                  No description available
+                                </p>
+                              )}
+                            </div>
+                            
+                            {/* Empty row for spacing */}
+                            <div className="h-4"></div>
                               
                               {/* Discount Badge */}
                               {discount > 0 && (
-                                <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-                                  <span className="bg-primary/10 text-primary text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className={cn(components.badge, "bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-full")}>
                                     Diskon Rp{discount.toLocaleString('id-ID')}
                                   </span>
                                   {item.base_price && (
-                                    <span className="text-muted-foreground text-xs line-through">
+                                  <span className={cn(typography.body.small, colors.text.muted, "line-through")}>
                                       Rp{item.base_price.toLocaleString('id-ID')}
                                     </span>
                                   )}
@@ -354,17 +372,18 @@ export function MenuBrowser() {
                               )}
                               
                               {/* Current Price */}
-                              <p className="text-xs sm:text-xl font-bold">
-                                Rp{(item.price || 0).toLocaleString('id-ID')}
-                              </p>
-                            </div>
+                            <p className={cn(typography.price.large, "mb-4")}>
+                              Rp{(item.price || 0).toLocaleString('id-ID')}
+                            </p>
 
+                            {/* Add Button Row */}
+                            <div className="flex justify-end">
                             {/* Quantity Selector */}
                             <div className="flex-shrink-0">
                             {getItemQuantity(item.id) > 0 ? (
-                              <div className="flex items-center border border-border rounded-lg overflow-hidden bg-white h-10">
+                              <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white h-9 shadow-sm">
                                 <button 
-                                  className="w-10 h-10 p-0 border-0 rounded-none hover:bg-muted/50 flex items-center justify-center text-muted-foreground"
+                                  className="w-9 h-9 p-0 border-0 rounded-none hover:bg-gray-50 active:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors duration-150"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     removeItem(item.id);
@@ -372,11 +391,11 @@ export function MenuBrowser() {
                                 >
                                   <Minus className="h-4 w-4" />
                                 </button>
-                                <div className="w-10 h-10 flex items-center justify-center border-l border-r border-border bg-white">
-                                  <span className="text-sm font-medium">{getItemQuantity(item.id)}</span>
+                                <div className="w-9 h-9 flex items-center justify-center border-l border-r border-gray-200 bg-white">
+                                  <span className="text-sm font-semibold text-gray-900">{getItemQuantity(item.id)}</span>
                                 </div>
                                 <button 
-                                  className="w-10 h-10 p-0 border-0 rounded-none hover:bg-muted/50 flex items-center justify-center text-primary"
+                                  className="w-9 h-9 p-0 border-0 rounded-none hover:bg-gray-50 active:bg-gray-100 flex items-center justify-center text-blue-600 transition-colors duration-150"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     addItem({
@@ -394,7 +413,7 @@ export function MenuBrowser() {
                               </div>
                             ) : (
                               <button 
-                                className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground"
+                                className="w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 flex items-center justify-center text-white shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   addItem({
@@ -407,9 +426,10 @@ export function MenuBrowser() {
                                   });
                                 }}
                               >
-                                <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <Plus className="h-5 w-5" />
                               </button>
                             )}
+                              </div>
                             </div>
                           </div>
                         </div>

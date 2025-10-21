@@ -114,7 +114,7 @@ export function Header() {
               {getStoreIcon()}
             </div>
             <div className="text-left min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-semibold truncate">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
                 {config.storeName || ('tenant_name' in tenantInfo ? tenantInfo.tenant_name : tenantInfo.name)}
               </h1>
             </div>
@@ -147,14 +147,32 @@ export function Header() {
             </DropdownMenu>
           )}
         </div>
+      </div>
 
-        {/* Second Row: Store Description */}
+      {/* Banner Image - Full Width Section */}
+      {config.storeBannerUrl && (
+        <div className="w-full h-32 sm:h-40 overflow-hidden mt-4">
+          <img 
+            src={config.storeBannerUrl} 
+            alt="Store Banner" 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              console.log('🔧 Store banner failed to load:', config.storeBannerUrl);
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
+
+      {/* Content Below Banner - Back to Container with Padding */}
+      <div className="px-4 py-4 space-y-2">
+        {/* Store Description Below Banner */}
         <div className="flex items-center">
-          <p className="text-sm sm:text-base text-muted-foreground line-clamp-2">
-            {config.storeDescription || 'Restaurant & Cafe'}
+          <p className="text-sm sm:text-base text-gray-600 leading-relaxed font-medium">
+            Kopi premium dengan racikan rahasia yang menggugah selera. Nikmati pengalaman kopi terbaik di setiap tegukan.
           </p>
         </div>
-
+        
         {/* Third Row: Store Status and Hours */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -162,15 +180,15 @@ export function Header() {
               <div className={`h-2 w-2 rounded-full ${
                 config.isOpen !== false ? 'bg-green-500' : 'bg-red-500'
               }`} />
-              <span className="text-sm sm:text-base font-medium text-muted-foreground">
+              <span className="text-sm sm:text-base font-semibold text-gray-700">
                 {config.isOpen !== false ? 'Buka' : 'Tutup'}
               </span>
             </div>
             
             {config.storeHours && (
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">•</span>
-                <span className="text-sm sm:text-base text-muted-foreground">
+                <span className="text-gray-400">•</span>
+                <span className="text-sm sm:text-base text-gray-600 font-medium">
                   {config.storeHours}
                 </span>
               </div>
@@ -180,28 +198,39 @@ export function Header() {
 
         {/* Fourth Row: Store Address */}
         {config.storeAddress && (
-          <div className="flex items-center">
-            <span className="text-sm sm:text-base text-muted-foreground">
-              📍 {config.storeAddress}
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-gray-500">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <span className="text-sm sm:text-base text-gray-600 font-medium">
+              {config.storeAddress}
             </span>
           </div>
         )}
 
         {/* Fifth Row: Store Phone */}
         {config.storePhone && (
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-gray-500">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </div>
             <a 
               href={`tel:${config.storePhone}`}
-              className="text-sm sm:text-base text-muted-foreground hover:text-primary transition-colors"
+              className="text-sm sm:text-base text-blue-600 hover:text-blue-700 font-medium transition-colors"
             >
-              📞 {config.storePhone}
+              {config.storePhone}
             </a>
           </div>
         )}
 
         {/* Sixth Row: Social Media Links */}
         {config.socialMedia && (config.socialMedia.instagram || config.socialMedia.tiktok || config.socialMedia.twitter || config.socialMedia.facebook) && (
-          <div className="flex items-center gap-4 -mt-1">
+          <div className="flex items-center gap-3">
               {config.socialMedia.instagram && (
                 <a 
                   href={config.socialMedia.instagram} 
