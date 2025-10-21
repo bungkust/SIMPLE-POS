@@ -33,6 +33,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { currentTenant } = useAuth();
 
@@ -62,7 +63,11 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    console.log('🔍 handleFileUpload called:', { file: file?.name, size: file?.size, type: file?.type });
+    if (!file) {
+      console.log('🔍 No file selected');
+      return;
+    }
 
     setUploading(true);
     try {
@@ -74,7 +79,14 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
 
       if (result.success && result.url) {
         setValue('image_url', result.url);
+        setHasUnsavedChanges(true);
         logger.log('✅ Menu item image uploaded successfully:', result.url);
+        // Show success message to user
+        onSuccess({
+          title: 'Upload Berhasil',
+          message: 'Gambar berhasil diupload. Jangan lupa klik "Save" untuk menyimpan perubahan.',
+          type: 'success'
+        });
       } else {
         onError({
           title: 'Upload Gagal',
@@ -270,26 +282,43 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
                   onChange={handleFileUpload}
                   className="hidden"
                   disabled={uploading || loading}
+                  style={{ display: 'none' }}
+                  id="menu-image-upload"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading || loading}
-                  className="w-full"
-                >
-                  {uploading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Choose Image
-                    </>
-                  )}
-                </Button>
+                <label htmlFor="menu-image-upload" className="w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      console.log('🔍 Upload button clicked, fileInputRef:', fileInputRef.current);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.click();
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      console.log('🔍 Upload button touch end, fileInputRef:', fileInputRef.current);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.click();
+                      }
+                    }}
+                    disabled={uploading || loading}
+                    className="w-full cursor-pointer"
+                  >
+                    {uploading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Choose Image
+                      </>
+                    )}
+                  </Button>
+                </label>
                 <p className="text-xs text-muted-foreground">
                   Maximum file size: 5MB. Supported formats: JPG, PNG, GIF
                 </p>
