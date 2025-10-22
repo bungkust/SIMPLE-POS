@@ -18,6 +18,8 @@ import { getTenantInfo } from '@/lib/tenantUtils';
 import { colors, typography, components, sizes, shadows, cn } from '@/lib/design-system';
 import { useConfig } from '@/contexts/ConfigContext';
 import { calculateOrderTotals, validateOrderRequirements, getDeliveryFeeText, getFreeDeliveryProgressText } from '@/lib/order-utils';
+import { sendOrderNotification } from '@/lib/telegram-utils';
+import { getActiveSubscribers } from '@/lib/telegram-webhook';
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -31,6 +33,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   const [loading, setLoading] = useState(false);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
+  const [resolvedTenantInfo, setResolvedTenantInfo] = useState<any>(null);
   
   // Calculate order totals with delivery fees
   const orderCalculation = calculateOrderTotals(totalAmount, config);
@@ -72,6 +75,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         if (resolvedTenantInfo) {
           // Tenant info loaded successfully
           setResolvedTenantId(resolvedTenantInfo.tenant_id);
+          setResolvedTenantInfo(resolvedTenantInfo);
           console.log('🔍 CheckoutPage: Set resolved tenant ID:', resolvedTenantInfo.tenant_id);
           
           // Load payment methods after tenant ID is resolved
@@ -181,8 +185,39 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       return;
     }
 
-    // Validate minimum order amount
-    const orderValidation = validateOrderRequirements(totalAmount, config);
+    // Validate minimum order amount (ensure freshest values from DB)
+    let effectiveConfig = { ...config } as any;
+    try {
+      if (resolvedTenantInfo?.tenant_id) {
+        const { data: info } = await supabase
+          .from('tenant_info')
+          .select('minimum_order_amount, delivery_fee, free_delivery_threshold')
+          .eq('tenant_id', resolvedTenantInfo.tenant_id)
+          .single();
+        if (info) {
+          const ti: any = info as any;
+          effectiveConfig.minimumOrderAmount = Number(ti.minimum_order_amount) || 0;
+          effectiveConfig.deliveryFee = Number(ti.delivery_fee) || 0;
+          effectiveConfig.freeDeliveryThreshold = Number(ti.free_delivery_threshold) || 0;
+        }
+      }
+      console.log('🔧 Order limits (effective):', {
+        fromConfig: {
+          minimumOrderAmount: config.minimumOrderAmount,
+          deliveryFee: config.deliveryFee,
+          freeDeliveryThreshold: config.freeDeliveryThreshold,
+        },
+        fromDB: {
+          minimumOrderAmount: effectiveConfig.minimumOrderAmount,
+          deliveryFee: effectiveConfig.deliveryFee,
+          freeDeliveryThreshold: effectiveConfig.freeDeliveryThreshold,
+        }
+      });
+    } catch (e) {
+      console.warn('⚠️ Failed to refresh order limits from DB, using config values.');
+    }
+
+    const orderValidation = validateOrderRequirements(totalAmount, effectiveConfig);
     if (!orderValidation.isValid) {
       console.log('❌ Minimum order validation failed:', orderValidation.errorMessage);
       showError('Minimum Order Error', orderValidation.errorMessage || 'Order amount too low');
@@ -195,10 +230,12 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
     setLoading(true);
     try {
       const normalizedPhone = normalizePhone(data.phone);
-      const subtotal = orderCalculation.subtotal;
+      // Recalculate totals with effectiveConfig to ensure consistency in UI and stored totals
+      const recalculated = calculateOrderTotals(totalAmount, effectiveConfig);
+      const subtotal = recalculated.subtotal;
       const discount = 0;
-      const serviceFee = orderCalculation.deliveryFee; // Use delivery fee as service fee
-      const total = orderCalculation.total;
+      const serviceFee = recalculated.deliveryFee; // Use delivery fee as service fee
+      const total = recalculated.total;
 
       const orderData = {
         tenant_id: resolvedTenantId,
@@ -272,6 +309,86 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         .insert(orderItems as any);
 
       if (itemsError) throw itemsError;
+
+      // Send Telegram notification if enabled
+      console.log('🔧 Telegram notification check:', {
+        botToken: config.telegramBotToken ? 'SET' : 'NOT SET',
+        notifyCheckout: config.telegramNotifyCheckout,
+        tenantId: resolvedTenantInfo?.tenant_id,
+        config: config,
+        resolvedTenantInfo: resolvedTenantInfo
+      });
+      
+      console.log('🔧 Telegram notification logic starting...');
+      console.log('🔧 config.telegramBotToken:', config.telegramBotToken);
+      console.log('🔧 config.telegramNotifyCheckout:', config.telegramNotifyCheckout);
+      console.log('🔧 resolvedTenantInfo:', resolvedTenantInfo);
+      
+      console.log('🔧 About to check if condition...');
+      console.log('🔧 config.telegramBotToken exists:', !!config.telegramBotToken);
+      console.log('🔧 config.telegramNotifyCheckout is true:', config.telegramNotifyCheckout === true);
+      
+      // Try to resolve bot token: prefer config, fallback to DB by tenant_id
+      let effectiveBotToken = config.telegramBotToken;
+      if (!effectiveBotToken && config.telegramNotifyCheckout) {
+        try {
+          console.log('🔧 Resolving telegram bot token from DB fallback...');
+          const { data: ti } = await supabase
+            .from('tenant_info')
+            .select('telegram_bot_token')
+            .eq('tenant_id', resolvedTenantInfo.tenant_id)
+            .single();
+          effectiveBotToken = (ti as any)?.telegram_bot_token || null;
+          console.log('🔧 DB fallback bot token present:', !!effectiveBotToken);
+        } catch (e) {
+          console.warn('⚠️ Failed to resolve telegram bot token from DB:', e);
+        }
+      }
+
+      if (effectiveBotToken && config.telegramNotifyCheckout) {
+        try {
+          console.log('🔧 Getting active subscribers...');
+          let chatIds = await getActiveSubscribers(resolvedTenantInfo.tenant_id);
+          console.log('🔧 Active subscribers:', chatIds);
+
+          // Dev fallback: allow sending to test chat id if no subscribers yet
+          if ((!chatIds || chatIds.length === 0) && typeof window !== 'undefined') {
+            const testChatId = window.localStorage?.getItem('telegramTestChatId');
+            if (testChatId) {
+              console.log('🧪 Using dev fallback chatId from localStorage:', testChatId);
+              chatIds = [testChatId];
+            }
+          }
+          
+          if (chatIds.length > 0) {
+            console.log('🔧 Sending Telegram notification...');
+            await sendOrderNotification(
+              { 
+                botToken: effectiveBotToken,
+                chatIds: chatIds
+              },
+              order as any,
+              {
+                name: resolvedTenantInfo.name,
+                slug: resolvedTenantInfo.slug,
+                phone: resolvedTenantInfo.phone,
+                address: resolvedTenantInfo.address,
+              },
+              'checkout'
+            );
+            console.log('✅ Telegram notification sent for checkout order');
+          } else {
+            console.log('📱 No active subscribers found for tenant');
+          }
+        } catch (error) {
+          // Log error but don't block order creation
+          console.error('❌ Telegram notification failed:', error);
+        }
+      } else {
+        console.log('🔧 Telegram notification skipped:', {
+          reason: !effectiveBotToken ? 'No bot token' : 'Notifications disabled'
+        });
+      }
 
       // Clear cart and show success
       clearCart();

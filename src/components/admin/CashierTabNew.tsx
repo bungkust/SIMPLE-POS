@@ -21,12 +21,15 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfig } from '../../contexts/ConfigContext';
 import { useIsMobile } from '@/hooks/use-media-query';
 import { formatCurrency, normalizePhone } from '@/lib/form-utils';
 import { generateOrderCode } from '@/lib/orderUtils';
 import { cashierOrderSchema, type CashierOrderData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { Database } from '../../lib/database.types';
+import { sendOrderNotification } from '@/lib/telegram-utils';
+import { getActiveSubscribers } from '@/lib/telegram-webhook';
 
 import { logger } from '@/lib/logger';
 import { colors, typography, components, sizes, spacing, cn } from '@/lib/design-system';
@@ -43,6 +46,7 @@ type CartItem = {
 
 export function CashierTab() {
   const { currentTenant } = useAuth();
+  const { config } = useConfig();
   const { showSuccess, showError } = useAppToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -263,6 +267,34 @@ export function CashierTab() {
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
+
+      // Send Telegram notification if enabled
+      if (config.telegramBotToken && config.telegramNotifyCashier) {
+        try {
+          const chatIds = await getActiveSubscribers(currentTenant.id);
+          
+          if (chatIds.length > 0) {
+            await sendOrderNotification(
+              { 
+                botToken: config.telegramBotToken,
+                chatIds: chatIds
+              },
+              orderData as any,
+              {
+                name: currentTenant.name,
+                slug: currentTenant.slug,
+                phone: undefined, // Not available in currentTenant
+                address: undefined, // Not available in currentTenant
+              },
+              'cashier'
+            );
+            console.log('✅ Telegram notification sent for cashier order');
+          }
+        } catch (error) {
+          // Log error but don't block order creation
+          console.error('❌ Telegram notification failed:', error);
+        }
+      }
 
       // Clear cart and reset form
       clearCart();

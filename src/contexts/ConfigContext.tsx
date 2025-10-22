@@ -20,6 +20,10 @@ interface AppConfig {
   minimumOrderAmount?: number;
   deliveryFee?: number;
   freeDeliveryThreshold?: number;
+  // Telegram notification settings
+  telegramBotToken?: string;
+  telegramNotifyCheckout?: boolean;
+  telegramNotifyCashier?: boolean;
   // Additional restaurant info fields
   rating?: string;
   reviewCount?: string;
@@ -197,6 +201,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             minimumOrderAmount: tenantInfoData.minimum_order_amount || 0,
             deliveryFee: tenantInfoData.delivery_fee || 0,
             freeDeliveryThreshold: tenantInfoData.free_delivery_threshold || 0,
+            // Telegram notification settings
+            telegramBotToken: tenantInfoData.telegram_bot_token,
+            telegramNotifyCheckout: tenantInfoData.telegram_notify_checkout ?? true,
+            telegramNotifyCashier: tenantInfoData.telegram_notify_cashier ?? true,
             // Additional restaurant info fields
             rating: undefined,
             reviewCount: undefined,
@@ -271,6 +279,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
                 minimumOrderAmount: tenantInfoData.minimum_order_amount || 0,
                 deliveryFee: tenantInfoData.delivery_fee || 0,
                 freeDeliveryThreshold: tenantInfoData.free_delivery_threshold || 0,
+                // Telegram notification settings
+                telegramBotToken: tenantInfoData.telegram_bot_token,
+                telegramNotifyCheckout: tenantInfoData.telegram_notify_checkout ?? true,
+                telegramNotifyCashier: tenantInfoData.telegram_notify_cashier ?? true,
               // Additional restaurant info fields
                 rating: undefined,
                 reviewCount: undefined,
@@ -436,6 +448,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           minimum_order_amount: newConfig.minimumOrderAmount || 0,
           delivery_fee: newConfig.deliveryFee || 0,
           free_delivery_threshold: newConfig.freeDeliveryThreshold || 0,
+          telegram_bot_token: newConfig.telegramBotToken,
+          telegram_notify_checkout: newConfig.telegramNotifyCheckout ?? true,
+          telegram_notify_cashier: newConfig.telegramNotifyCashier ?? true,
           updated_at: new Date().toISOString()
         };
 

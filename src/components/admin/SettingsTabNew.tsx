@@ -10,6 +10,7 @@ import { FormTextarea } from '@/components/forms/FormTextarea';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { 
   Save, 
   RotateCcw, 
@@ -19,7 +20,9 @@ import {
   Eye,
   EyeOff,
   Store,
-  ShoppingBag
+  ShoppingBag,
+  MessageSquare,
+  Plus
 } from 'lucide-react';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,7 +31,9 @@ import { settingsFormSchema, type SettingsFormData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { uploadFile, uploadConfigs } from '@/lib/storage-utils';
 import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase';
 import { colors, typography, components, sizes, spacing, cn } from '@/lib/design-system';
+import { SubscribersList } from './SubscribersList';
 
 export function SettingsTab() {
   const { config, updateConfig } = useConfig();
@@ -42,6 +47,7 @@ export function SettingsTab() {
   const [uploading, setUploading] = useState(false);
   const [showLogoPreview, setShowLogoPreview] = useState(false);
   const [showBannerPreview, setShowBannerPreview] = useState(false);
+  const [manualChatId, setManualChatId] = useState('');
 
   const {
     register,
@@ -67,6 +73,9 @@ export function SettingsTab() {
       minimumOrderAmount: config.minimumOrderAmount || 0,
       deliveryFee: config.deliveryFee || 0,
       freeDeliveryThreshold: config.freeDeliveryThreshold || 0,
+      telegramBotToken: config.telegramBotToken || '',
+      telegramNotifyCheckout: config.telegramNotifyCheckout ?? true,
+      telegramNotifyCashier: config.telegramNotifyCashier ?? true,
       socialMedia: {
         instagram: config.socialMedia?.instagram || '',
         tiktok: config.socialMedia?.tiktok || '',
@@ -178,6 +187,9 @@ export function SettingsTab() {
         minimumOrderAmount: data.minimumOrderAmount,
         deliveryFee: data.deliveryFee,
         freeDeliveryThreshold: data.freeDeliveryThreshold,
+        telegramBotToken: data.telegramBotToken,
+        telegramNotifyCheckout: data.telegramNotifyCheckout,
+        telegramNotifyCashier: data.telegramNotifyCashier,
         socialMedia: data.socialMedia,
         headerDisplaySettings: data.headerDisplaySettings,
       });
@@ -211,6 +223,9 @@ export function SettingsTab() {
         minimumOrderAmount: config.minimumOrderAmount || 0,
         deliveryFee: config.deliveryFee || 0,
         freeDeliveryThreshold: config.freeDeliveryThreshold || 0,
+        telegramBotToken: config.telegramBotToken || '',
+        telegramNotifyCheckout: config.telegramNotifyCheckout ?? true,
+        telegramNotifyCashier: config.telegramNotifyCashier ?? true,
         socialMedia: {
           instagram: config.socialMedia?.instagram || '',
           tiktok: config.socialMedia?.tiktok || '',
@@ -243,6 +258,9 @@ export function SettingsTab() {
       minimumOrderAmount: 0,
       deliveryFee: 0,
       freeDeliveryThreshold: 0,
+      telegramBotToken: '',
+      telegramNotifyCheckout: true,
+      telegramNotifyCashier: true,
       socialMedia: {
         instagram: '',
         tiktok: '',
@@ -259,6 +277,42 @@ export function SettingsTab() {
     });
   };
 
+  const addManualChatId = async () => {
+    if (!manualChatId.trim() || !currentTenant?.id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Insert the chat ID into telegram_subscribers table
+      const { error } = await supabase
+        .from('telegram_subscribers')
+        .insert({
+          tenant_id: currentTenant.id,
+          chat_id: manualChatId.trim(),
+          username: 'Manual Entry',
+          first_name: 'Manual Entry',
+          is_active: true
+        } as any);
+
+      if (error) {
+        console.error('Error adding manual chat ID:', error);
+        showError('Error', 'Gagal menambahkan Chat ID');
+        return;
+      }
+
+      showSuccess('Success', 'Chat ID berhasil ditambahkan');
+      setManualChatId(''); // Clear the input
+      
+      // Refresh the subscribers list by triggering a re-render
+      // The SubscribersList component will automatically refresh
+      
+    } catch (error) {
+      console.error('Error adding manual chat ID:', error);
+      showError('Error', 'Gagal menambahkan Chat ID');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className={cn(spacing.lg, "w-full max-w-full overflow-hidden")}>
@@ -726,23 +780,27 @@ export function SettingsTab() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <FormInput
-                      {...register('minimumOrderAmount', { valueAsNumber: true })}
+                      {...register('minimumOrderAmount', {
+                        setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                      })}
                       label="Minimum Order Amount"
                       type="number"
                       placeholder="0"
                       error={errors.minimumOrderAmount?.message}
-                      disabled={loading}
+                        disabled={loading}
                       helperText="Minimum amount required for an order"
                       className={isMobile ? 'w-full' : ''}
                     />
 
                     <FormInput
-                      {...register('deliveryFee', { valueAsNumber: true })}
+                      {...register('deliveryFee', {
+                        setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                      })}
                       label="Delivery Fee"
                       type="number"
                       placeholder="0"
                       error={errors.deliveryFee?.message}
-                      disabled={loading}
+                        disabled={loading}
                       helperText="Standard delivery fee"
                       className={isMobile ? 'w-full' : ''}
                     />
@@ -759,6 +817,81 @@ export function SettingsTab() {
                     />
                   </CardContent>
                 </Card>
+
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="telegram">
+                  <AccordionTrigger className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Telegram Notifications
+                  </AccordionTrigger>
+                  <AccordionContent className={cn(spacing.md)}>
+                    <Card className={cn(components.card)}>
+                      <CardHeader>
+                        <CardTitle className={cn(typography.h4)}>Telegram Bot Setup</CardTitle>
+                        <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
+                          Setup bot untuk notifikasi order otomatis ke Telegram
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className={cn(spacing.sm)}>
+                        <div className={cn(spacing.sm)}>
+                          <FormInput
+                            {...register('telegramBotToken')}
+                            label="Bot Token"
+                            placeholder="8063411599:AAFrBRICG2OZve1vTibeY1B8n5yuUd0yvOI"
+                            error={errors.telegramBotToken?.message}
+                            disabled={loading}
+                            helperText="Paste bot token dari @BotFather"
+                            className={isMobile ? 'w-full' : ''}
+                          />
+                          
+                          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className={cn(typography.body.small, "text-blue-700")}>
+                              <strong>Cara setup:</strong><br />
+                              1. Paste bot token di atas<br />
+                              2. Klik "Save Settings"<br />
+                              3. Buka Telegram dan chat dengan bot: <a href="https://t.me/simplepos_bot" target="_blank" rel="noopener noreferrer" className="underline">t.me/simplepos_bot</a><br />
+                              4. Kirim perintah /start<br />
+                              5. Bot akan otomatis mendaftarkan Anda untuk menerima notifikasi
+                            </p>
+                          </div>
+                          
+                          <div className="space-y-4 mt-4">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label>Notifikasi dari Checkout</Label>
+                                <p className="text-sm text-muted-foreground">
+                                  Kirim notifikasi saat customer order dari menu browser
+                                </p>
+                              </div>
+                              <Switch
+                                checked={watch('telegramNotifyCheckout') ?? true}
+                                onCheckedChange={(checked) => setValue('telegramNotifyCheckout', checked)}
+                                disabled={loading}
+                              />
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label>Notifikasi dari Kasir</Label>
+                                <p className="text-sm text-muted-foreground">
+                                  Kirim notifikasi saat staff membuat order di kasir
+                                </p>
+                              </div>
+                              <Switch
+                                checked={watch('telegramNotifyCashier') ?? true}
+                                onCheckedChange={(checked) => setValue('telegramNotifyCashier', checked)}
+                                disabled={loading}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Show registered subscribers */}
+                    <SubscribersList tenantId={currentTenant?.id} />
                   </AccordionContent>
                 </AccordionItem>
 
@@ -798,7 +931,7 @@ export function SettingsTab() {
             </Accordion>
           ) : (
             <Tabs defaultValue="general" className="w-full">
-              <TabsList className={cn("grid w-full grid-cols-2")}>
+              <TabsList className={cn("grid w-full grid-cols-3")}>
                 <TabsTrigger value="general" className={cn("flex items-center gap-2", typography.label.medium)}>
                   <Store className={cn(sizes.icon.sm)} />
                   General
@@ -806,6 +939,10 @@ export function SettingsTab() {
                 <TabsTrigger value="orders" className={cn("flex items-center gap-2", typography.label.medium)}>
                   <ShoppingBag className={cn(sizes.icon.sm)} />
                   Orders
+                </TabsTrigger>
+                <TabsTrigger value="telegram" className={cn("flex items-center gap-2", typography.label.medium)}>
+                  <MessageSquare className={cn(sizes.icon.sm)} />
+                  Telegram
                 </TabsTrigger>
               </TabsList>
 
@@ -826,7 +963,7 @@ export function SettingsTab() {
                           label="Store Name"
                           placeholder="Enter store name"
                           error={errors.storeName?.message}
-                          required
+                        required
                           disabled={true}
                         />
                       </div>
@@ -1022,25 +1159,25 @@ export function SettingsTab() {
                           error={errors.storeHours?.message}
                           disabled={loading}
                         />
-                      </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                  <Card>
-                    <CardHeader>
+                <Card>
+                  <CardHeader>
                       <CardTitle className="text-lg">Social Media Links</CardTitle>
-                      <CardDescription>
+                    <CardDescription>
                         Add your social media profiles to connect with customers
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormInput
                           {...register('socialMedia.instagram')}
                           label="Instagram"
                           placeholder="https://instagram.com/yourusername"
                           error={errors.socialMedia?.instagram?.message}
-                          disabled={loading}
+                      disabled={loading}
                           helperText="Your Instagram profile URL"
                         />
 
@@ -1073,62 +1210,62 @@ export function SettingsTab() {
                           helperText="Your Facebook profile URL"
                         />
                       </div>
-                    </CardContent>
-                  </Card>
+                  </CardContent>
+                </Card>
 
-                  <Card>
-                    <CardHeader>
+                <Card>
+                  <CardHeader>
                       <CardTitle className="text-lg">Header Display Settings</CardTitle>
-                      <CardDescription>
+                    <CardDescription>
                         Choose which information to display in the restaurant header
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
                             <Label htmlFor="showDescription-desktop">Store Description</Label>
-                            <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                               Show restaurant description below the banner
-                            </p>
-                          </div>
-                          <Switch
+                          </p>
+                        </div>
+                        <Switch
                             id="showDescription-desktop"
                             checked={watch('headerDisplaySettings.showDescription') ?? true}
                             onCheckedChange={(checked) => setValue('headerDisplaySettings.showDescription', checked)}
-                            disabled={loading}
-                          />
-                        </div>
+                          disabled={loading}
+                        />
+                      </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
                             <Label htmlFor="showOperatingHours-desktop">Operating Hours & Status</Label>
-                            <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                               Show restaurant operating hours and open/closed status
-                            </p>
-                          </div>
-                          <Switch
+                          </p>
+                        </div>
+                        <Switch
                             id="showOperatingHours-desktop"
                             checked={watch('headerDisplaySettings.showOperatingHours') ?? true}
                             onCheckedChange={(checked) => setValue('headerDisplaySettings.showOperatingHours', checked)}
-                            disabled={loading}
-                          />
-                        </div>
+                          disabled={loading}
+                        />
+                      </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
                             <Label htmlFor="showAddress-desktop">Restaurant Address</Label>
-                            <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                               Show restaurant address with location icon
-                            </p>
-                          </div>
-                          <Switch
+                          </p>
+                        </div>
+                        <Switch
                             id="showAddress-desktop"
                             checked={watch('headerDisplaySettings.showAddress') ?? true}
                             onCheckedChange={(checked) => setValue('headerDisplaySettings.showAddress', checked)}
-                            disabled={loading}
-                          />
-                        </div>
+                          disabled={loading}
+                        />
+                      </div>
 
                         <div className="flex items-center justify-between">
                           <div className="space-y-0.5">
@@ -1173,7 +1310,9 @@ export function SettingsTab() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormInput
-                          {...register('minimumOrderAmount', { valueAsNumber: true })}
+                          {...register('minimumOrderAmount', {
+                            setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                          })}
                         label="Minimum Order Amount"
                         type="number"
                         placeholder="0"
@@ -1183,7 +1322,9 @@ export function SettingsTab() {
                       />
 
                       <FormInput
-                        {...register('deliveryFee', { valueAsNumber: true })}
+                        {...register('deliveryFee', {
+                          setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                        })}
                         label="Delivery Fee"
                         type="number"
                         placeholder="0"
@@ -1193,7 +1334,9 @@ export function SettingsTab() {
                       />
 
                       <FormInput
-                        {...register('freeDeliveryThreshold', { valueAsNumber: true })}
+                        {...register('freeDeliveryThreshold', {
+                          setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                        })}
                         label="Free Delivery Threshold"
                         type="number"
                         placeholder="0"
@@ -1206,61 +1349,159 @@ export function SettingsTab() {
                 </Card>
               </TabsContent>
 
-                {/* Order Settings */}
-                <TabsContent value="orders" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Order Management</CardTitle>
-                      <CardDescription>
-                        Configure order processing and customer requirements
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <Label>Auto Accept Orders</Label>
-                            <p className="text-sm text-muted-foreground">
-                              Automatically accept new orders without manual approval
-                            </p>
-                          </div>
-                          <Switch
-                            checked={watch('autoAcceptOrders')}
-                            onCheckedChange={(checked) => setValue('autoAcceptOrders', checked)}
-                            disabled={loading}
-                          />
+              {/* Order Settings */}
+              <TabsContent value="orders" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Order Management</CardTitle>
+                    <CardDescription>
+                      Configure order processing and customer requirements
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Auto Accept Orders</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Automatically accept new orders without manual approval
+                          </p>
                         </div>
+                        <Switch
+                          checked={watch('autoAcceptOrders')}
+                          onCheckedChange={(checked) => setValue('autoAcceptOrders', checked)}
+                          disabled={loading}
+                        />
+                      </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
                             <Label>Require Phone Verification</Label>
-                            <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                               Require phone number verification for all orders
-                            </p>
-                          </div>
-                          <Switch
+                          </p>
+                        </div>
+                        <Switch
                             checked={watch('requirePhoneVerification')}
                             onCheckedChange={(checked) => setValue('requirePhoneVerification', checked)}
-                            disabled={loading}
-                          />
-                        </div>
+                          disabled={loading}
+                        />
+                      </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <Label>Allow Guest Checkout</Label>
-                            <p className="text-sm text-muted-foreground">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Allow Guest Checkout</Label>
+                          <p className="text-sm text-muted-foreground">
                               Allow customers to place orders without creating an account
-                            </p>
-                          </div>
-                          <Switch
-                            checked={watch('allowGuestCheckout')}
-                            onCheckedChange={(checked) => setValue('allowGuestCheckout', checked)}
-                            disabled={loading}
-                          />
+                          </p>
                         </div>
+                        <Switch
+                          checked={watch('allowGuestCheckout')}
+                          onCheckedChange={(checked) => setValue('allowGuestCheckout', checked)}
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Telegram Settings */}
+              <TabsContent value="telegram" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Telegram Bot Setup</CardTitle>
+                    <CardDescription>
+                      Setup bot untuk notifikasi order otomatis ke Telegram
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <FormInput
+                      {...register('telegramBotToken')}
+                      label="Bot Token"
+                      placeholder="8063411599:AAFrBRICG2OZve1vTibeY1B8n5yuUd0yvOI"
+                      error={errors.telegramBotToken?.message}
+                        disabled={loading}
+                      helperText="Paste bot token dari @BotFather"
+                    />
+
+                    <div className="space-y-2">
+                      <Label>Manual Chat ID</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="802133779"
+                          value={manualChatId}
+                          onChange={(e) => setManualChatId(e.target.value)}
+                        disabled={loading}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={addManualChatId}
+                          disabled={loading || !manualChatId.trim()}
+                          className="shrink-0"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Masukkan Chat ID secara manual (tanpa perlu chat dengan bot)
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-700">
+                        <strong>Cara setup:</strong><br />
+                        <strong>Opsi 1 - Manual (Lebih Mudah):</strong><br />
+                        1. Paste bot token di atas<br />
+                        2. Masukkan Chat ID secara manual di field "Manual Chat ID"<br />
+                        3. Klik "Add" untuk menambahkan Chat ID<br />
+                        4. Klik "Save Settings"<br /><br />
+                        <strong>Opsi 2 - Otomatis:</strong><br />
+                        1. Paste bot token di atas<br />
+                        2. Klik "Save Settings"<br />
+                        3. Buka Telegram dan chat dengan bot: <a href="https://t.me/simplepos_bot" target="_blank" rel="noopener noreferrer" className="underline">t.me/simplepos_bot</a><br />
+                        4. Kirim perintah /start<br />
+                        5. Bot akan otomatis mendaftarkan Anda untuk menerima notifikasi
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Notifikasi dari Checkout</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Kirim notifikasi saat customer order dari menu browser
+                          </p>
+                        </div>
+                        <Switch
+                          checked={watch('telegramNotifyCheckout') ?? true}
+                          onCheckedChange={(checked) => setValue('telegramNotifyCheckout', checked)}
+                        disabled={loading}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Notifikasi dari Kasir</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Kirim notifikasi saat staff membuat order di kasir
+                          </p>
+                        </div>
+                        <Switch
+                          checked={watch('telegramNotifyCashier') ?? true}
+                          onCheckedChange={(checked) => setValue('telegramNotifyCashier', checked)}
+                        disabled={loading}
+                      />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Show registered subscribers */}
+                <SubscribersList tenantId={currentTenant?.id} />
               </TabsContent>
 
               <Separator />

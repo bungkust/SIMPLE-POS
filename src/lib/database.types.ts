@@ -306,6 +306,9 @@ export interface Database {
           minimum_order_amount: number | null;
           delivery_fee: number | null;
           free_delivery_threshold: number | null;
+          telegram_bot_token: string | null;
+          telegram_notify_checkout: boolean | null;
+          telegram_notify_cashier: boolean | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -362,8 +365,40 @@ export interface Database {
           minimum_order_amount?: number | null;
           delivery_fee?: number | null;
           free_delivery_threshold?: number | null;
+          telegram_bot_token?: string | null;
+          telegram_notify_checkout?: boolean | null;
+          telegram_notify_cashier?: boolean | null;
           created_at?: string | null;
           updated_at?: string | null;
+        };
+      };
+      telegram_subscribers: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          chat_id: string;
+          username: string | null;
+          first_name: string | null;
+          registered_at: string | null;
+          is_active: boolean | null;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          chat_id: string;
+          username?: string | null;
+          first_name?: string | null;
+          registered_at?: string | null;
+          is_active?: boolean | null;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          chat_id?: string;
+          username?: string | null;
+          first_name?: string | null;
+          registered_at?: string | null;
+          is_active?: boolean | null;
         };
       };
     };

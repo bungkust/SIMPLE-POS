@@ -125,9 +125,35 @@ export const settingsFormSchema = z.object({
   autoAcceptOrders: z.boolean().default(false),
   requirePhoneVerification: z.boolean().default(false),
   allowGuestCheckout: z.boolean().default(true),
-  minimumOrderAmount: z.number().min(0, "Minimum order tidak boleh negatif").default(0),
-  deliveryFee: z.number().min(0, "Biaya pengiriman tidak boleh negatif").default(0),
-  freeDeliveryThreshold: z.number().min(0, "Threshold gratis ongkir tidak boleh negatif").default(0),
+  // Allow empty string or undefined -> 0, and coerce numeric strings
+  minimumOrderAmount: z.preprocess((val) => {
+    if (val === '' || val === null || typeof val === 'undefined') return 0;
+    if (typeof val === 'string') {
+      const n = Number(val);
+      return Number.isNaN(n) ? val : n;
+    }
+    return val;
+  }, z.number().min(0, "Minimum order tidak boleh negatif").default(0)),
+  deliveryFee: z.preprocess((val) => {
+    if (val === '' || val === null || typeof val === 'undefined') return 0;
+    if (typeof val === 'string') {
+      const n = Number(val);
+      return Number.isNaN(n) ? val : n;
+    }
+    return val;
+  }, z.number().min(0, "Biaya pengiriman tidak boleh negatif").default(0)),
+  freeDeliveryThreshold: z.preprocess((val) => {
+    if (val === '' || val === null || typeof val === 'undefined') return 0;
+    if (typeof val === 'string') {
+      const n = Number(val);
+      return Number.isNaN(n) ? val : n;
+    }
+    return val;
+  }, z.number().min(0, "Threshold gratis ongkir tidak boleh negatif").default(0)),
+  // Telegram notification settings
+  telegramBotToken: z.string().optional(),
+  telegramNotifyCheckout: z.boolean().default(true),
+  telegramNotifyCashier: z.boolean().default(true),
   // Social media links
   socialMedia: z.object({
     instagram: z.string().url("Instagram URL tidak valid").optional().or(z.literal("")),
