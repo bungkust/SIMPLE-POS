@@ -15,6 +15,12 @@ import { getTenantInfo } from '../lib/tenantUtils';
 import { MenuDetailSheet } from './MenuDetailSheet';
 import { Database } from '../lib/database.types';
 import { colors, typography, components, sizes, shadows, cn } from '@/lib/design-system';
+import { 
+  sanitizeSearchQuery, 
+  validateCacheData, 
+  createSecureCacheKey,
+  RateLimiter 
+} from '../lib/security-utils';
 // import { ThumbnailImage, MediumImage } from '@/components/ui/lazy-image';
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row'] & {
@@ -33,6 +39,9 @@ export function MenuBrowser() {
   const [loading, setLoading] = useState(true);
   const [tenantInfo, setTenantInfo] = useState<any>(null);
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+  
+  // Rate limiter for API calls
+  const rateLimiter = useMemo(() => new RateLimiter(10, 60000), []);
 
   // Debounce search query
   useEffect(() => {
@@ -43,15 +52,16 @@ export function MenuBrowser() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Cache key for localStorage
+  // Cache key for localStorage with validation
   const getCacheKey = useCallback((tenantId: string, dataType: 'categories' | 'menuItems') => {
-    return `menuBrowser_${dataType}_${tenantId}`;
+    return createSecureCacheKey(tenantId, `menuBrowser_${dataType}`);
   }, []);
 
   // Check if cache is valid (5 minutes TTL)
   const isCacheValid = useCallback((timestamp: number) => {
     return Date.now() - timestamp < 5 * 60 * 1000; // 5 minutes
   }, []);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -71,6 +81,15 @@ export function MenuBrowser() {
           resolvedTenantInfo = await getTenantInfo();
         }
         
+        if (!resolvedTenantInfo) {
+          console.error('No tenant info available - redirecting to landing page');
+          // Redirect to landing page if no tenant info
+          if (typeof window !== 'undefined') {
+            window.location.href = '/';
+          }
+          return;
+        }
+        
         setTenantInfo(resolvedTenantInfo);
         console.log('MenuBrowser: Got tenant info:', resolvedTenantInfo);
         const tenantId = (resolvedTenantInfo as any).tenant_id;
@@ -78,7 +97,17 @@ export function MenuBrowser() {
         
         if (!tenantId) {
           console.error('No tenant ID found for tenant:', resolvedTenantInfo);
-          console.log('This might be normal for public access - will show empty menu');
+          console.log('Invalid tenant or tenant not found - will show empty menu');
+          setCategories([]);
+          setMenuItems([]);
+          setLoading(false);
+          return;
+        }
+
+        // Validate tenant access with rate limiting
+        const rateLimitKey = `tenant_${tenantId}`;
+        if (!rateLimiter.isAllowed(rateLimitKey)) {
+          console.warn('Rate limit exceeded for tenant:', tenantId);
           setLoading(false);
           return;
         }
@@ -91,11 +120,11 @@ export function MenuBrowser() {
         if (cachedCategories) {
           try {
             const { data, timestamp } = JSON.parse(cachedCategories);
-            if (isCacheValid(timestamp)) {
-              console.log('MenuBrowser: Using cached categories');
+            if (isCacheValid(timestamp) && validateCacheData(data, 'categories')) {
+              console.log('MenuBrowser: Using validated cached categories');
               setCategories(data);
             } else {
-              console.log('MenuBrowser: Categories cache expired, fetching fresh data');
+              console.log('MenuBrowser: Categories cache expired or invalid, fetching fresh data');
             }
           } catch (error) {
             console.warn('MenuBrowser: Failed to parse cached categories:', error);
@@ -103,7 +132,7 @@ export function MenuBrowser() {
         }
 
         // Load categories if not cached or cache expired
-        if (!cachedCategories || !isCacheValid(JSON.parse(cachedCategories).timestamp)) {
+        if (!cachedCategories || !isCacheValid(JSON.parse(cachedCategories).timestamp) || !validateCacheData(JSON.parse(cachedCategories).data, 'categories')) {
         console.log('MenuBrowser: Loading categories for tenant ID:', tenantId);
         const { data: categoriesData, error: categoriesError } = await supabase
           .from('categories')
@@ -138,11 +167,11 @@ export function MenuBrowser() {
         if (cachedMenuItems) {
           try {
             const { data, timestamp } = JSON.parse(cachedMenuItems);
-            if (isCacheValid(timestamp)) {
-              console.log('MenuBrowser: Using cached menu items');
+            if (isCacheValid(timestamp) && validateCacheData(data, 'menuItems')) {
+              console.log('MenuBrowser: Using validated cached menu items');
               setMenuItems(data);
             } else {
-              console.log('MenuBrowser: Menu items cache expired, fetching fresh data');
+              console.log('MenuBrowser: Menu items cache expired or invalid, fetching fresh data');
             }
           } catch (error) {
             console.warn('MenuBrowser: Failed to parse cached menu items:', error);
@@ -150,7 +179,7 @@ export function MenuBrowser() {
         }
 
         // Load menu items if not cached or cache expired
-        if (!cachedMenuItems || !isCacheValid(JSON.parse(cachedMenuItems).timestamp)) {
+        if (!cachedMenuItems || !isCacheValid(JSON.parse(cachedMenuItems).timestamp) || !validateCacheData(JSON.parse(cachedMenuItems).data, 'menuItems')) {
         console.log('MenuBrowser: Loading menu items for tenant ID:', tenantId);
         const { data: menuData, error: menuError } = await supabase
           .from('menu_items')
@@ -183,17 +212,20 @@ export function MenuBrowser() {
     loadData();
   }, [getCacheKey, isCacheValid]);
 
+
   // Memoized filtered items with debounced search
   const filteredItems = useMemo(() => {
-    return menuItems.filter(item => {
-    const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
-      const matchesSearch = !debouncedSearchQuery || 
-        item.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        (item.description && item.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
+    const sanitizedQuery = sanitizeSearchQuery(debouncedSearchQuery);
     
-    return matchesCategory && matchesSearch;
-  });
-  }, [menuItems, selectedCategory, debouncedSearchQuery]);
+    return menuItems.filter(item => {
+      const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
+      const matchesSearch = !sanitizedQuery || 
+        item.name.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(sanitizedQuery.toLowerCase()));
+      
+      return matchesCategory && matchesSearch;
+    });
+  }, [menuItems, selectedCategory, debouncedSearchQuery, sanitizeSearchQuery]);
 
   // Debug logging
   console.log('MenuBrowser: Categories:', categories);

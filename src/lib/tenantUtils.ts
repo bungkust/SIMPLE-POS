@@ -32,25 +32,51 @@ const getCachedOrFetch = async <T>(
 };
 
 /**
+ * Sanitize tenant slug to prevent injection attacks
+ */
+function sanitizeTenantSlug(slug: string): string {
+  // Only allow alphanumeric characters, hyphens, and underscores
+  // Convert to lowercase and remove any invalid characters
+  return slug.toLowerCase().replace(/[^a-z0-9-_]/g, '').substring(0, 50);
+}
+
+/**
+ * Validate tenant slug format
+ */
+function isValidTenantSlug(slug: string): boolean {
+  // Must be 2-50 characters, alphanumeric with hyphens/underscores
+  const regex = /^[a-z0-9][a-z0-9-_]{1,49}$/;
+  return regex.test(slug);
+}
+
+/**
  * Get tenant information from URL slug
  * This function handles both authenticated and public access
  */
 export async function getTenantFromSlug(tenantSlug: string) {
-  const cacheKey = `tenant-${tenantSlug}`;
+  // Sanitize and validate input
+  const sanitizedSlug = sanitizeTenantSlug(tenantSlug);
+  
+  if (!isValidTenantSlug(sanitizedSlug)) {
+    console.warn('❌ getTenantFromSlug: Invalid tenant slug format:', tenantSlug);
+    return null;
+  }
+  
+  const cacheKey = `tenant-${sanitizedSlug}`;
   
   return getCachedOrFetch(cacheKey, async () => {
     try {
-      console.log('🔍 getTenantFromSlug: Fetching tenant from database:', tenantSlug);
+      console.log('🔍 getTenantFromSlug: Fetching tenant from database:', sanitizedSlug);
       
       // Try to get tenant info from database
       const { data: tenant, error } = await supabase
         .from('tenants')
         .select('id, name, slug')
-        .eq('slug', tenantSlug)
+        .eq('slug', sanitizedSlug)
         .single() as { data: Tenant | null; error: any };
 
       if (error || !tenant) {
-        console.warn(`❌ getTenantFromSlug: Could not find tenant with slug: ${tenantSlug}`, error);
+        console.warn(`❌ getTenantFromSlug: Could not find tenant with slug: ${sanitizedSlug}`, error);
         return null;
       }
 
@@ -105,11 +131,19 @@ export async function getTenantInfo(tenantSlug?: string) {
         pathParts[0] !== 'auth' &&
         pathParts[0] !== 'undefined' &&
         pathParts[0] !== 'null') {
-      tenantSlug = pathParts[0];
-      console.log('✅ getTenantInfo: Extracted tenant slug from URL:', tenantSlug);
+      
+      // Sanitize the extracted slug
+      const extractedSlug = sanitizeTenantSlug(pathParts[0]);
+      if (isValidTenantSlug(extractedSlug)) {
+        tenantSlug = extractedSlug;
+        console.log('✅ getTenantInfo: Extracted and validated tenant slug from URL:', tenantSlug);
+      } else {
+        console.warn('❌ getTenantInfo: Invalid tenant slug from URL, rejecting:', pathParts[0]);
+        return null; // Reject invalid slugs instead of using fallback
+      }
     } else {
-      tenantSlug = 'kopipendekar'; // Default fallback
-      console.log('⚠️ getTenantInfo: Using default fallback tenant:', tenantSlug);
+      console.warn('❌ getTenantInfo: No valid tenant slug found in URL');
+      return null; // Reject instead of using fallback
     }
   }
 
@@ -124,16 +158,16 @@ export async function getTenantInfo(tenantSlug?: string) {
       return tenantInfo;
     }
 
-    // Fallback: return basic info without tenant_id
-    const fallbackInfo = {
-      tenant_slug: tenantSlug,
-      tenant_id: null,
-      tenant_name: tenantSlug.charAt(0).toUpperCase() + tenantSlug.slice(1).replace('-', ' '),
-      role: 'public' as const
-    };
+    // No fallback - return null if tenant not found
+    console.warn('❌ getTenantInfo: Tenant not found in database:', tenantSlug);
     
-    console.log('⚠️ getTenantInfo: Using fallback tenant info:', fallbackInfo);
-    return fallbackInfo;
+    // Redirect to landing page if tenant doesn't exist
+    if (typeof window !== 'undefined') {
+      console.log('🔄 Redirecting to landing page - tenant not found');
+      window.location.href = '/';
+    }
+    
+    return null;
   });
 }
 
