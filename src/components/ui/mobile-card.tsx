@@ -83,7 +83,7 @@ export function MobileCard({
       onClick={onClick}
       {...handlers}
     >
-      <CardHeader className="pb-1 px-2 py-2">
+      <CardHeader className="pb-1 px-3 py-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2 flex-1 min-w-0">
             {icon && (
@@ -147,7 +147,7 @@ export function MobileCard({
       
       {/* Expanded content */}
       {expandable && expanded && expandedContent && (
-        <CardContent className="pt-0 px-2 pb-3 w-full">
+        <CardContent className="pt-0 px-3 pb-3 w-full">
           <div className="border-t border-border/50 pt-3 w-full">
             {expandedContent}
           </div>

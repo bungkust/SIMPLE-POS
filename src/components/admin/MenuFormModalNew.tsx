@@ -165,6 +165,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
         });
       }
 
+      setHasUnsavedChanges(false);
       onClose();
     } catch (error: any) {
       logger.error('Error saving menu item:', error);
@@ -327,8 +328,8 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
               {imageUrl && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-xs">
-                      Image uploaded
+                    <Badge variant={hasUnsavedChanges ? "default" : "outline"} className="text-xs">
+                      {hasUnsavedChanges ? "💾 Image uploaded (unsaved)" : "Image uploaded"}
                     </Badge>
                     <Button
                       type="button"
@@ -394,6 +395,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
             <Button
               type="submit"
               disabled={loading || uploading}
+              className={hasUnsavedChanges ? 'bg-orange-500 hover:bg-orange-600' : ''}
             >
               {loading ? (
                 <>
@@ -403,7 +405,8 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
               ) : (
                 <>
                   <Tag className="h-4 w-4 mr-2" />
-                  {item ? 'Update Item' : 'Create Item'}
+                  {hasUnsavedChanges ? '💾 ' : ''}{item ? 'Update Item' : 'Create Item'}
+                  {hasUnsavedChanges ? ' (Unsaved Changes)' : ''}
                 </>
               )}
             </Button>

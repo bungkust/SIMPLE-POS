@@ -258,7 +258,7 @@ export function MenuTab() {
   }
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-hidden">
+    <div className="space-y-6 w-full max-w-full overflow-hidden px-2 sm:px-0">
 
 
       {/* Menu Table */}
@@ -352,7 +352,7 @@ export function MenuTab() {
                 subtitleField: 'price',
                 getSubtitle: (item) => `${formatRupiah(item.price)} • ${getCategoryName(item.category_id)}`,
                 getActions: (item) => (
-                  <div className="flex items-center gap-0.5">
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -360,7 +360,7 @@ export function MenuTab() {
                         setEditingItem(item);
                         setShowForm(true);
                       }}
-                      className="h-8 w-8 p-0"
+                      className="h-7 w-7 p-0"
                       title="Edit Menu"
                     >
                       <Edit className="h-3 w-3" />
@@ -372,7 +372,7 @@ export function MenuTab() {
                         setSelectedMenuItem(item);
                         setShowOptionsManager(true);
                       }}
-                      className="h-8 w-8 p-0"
+                      className="h-7 w-7 p-0"
                       title="Manage Options"
                     >
                       <Settings className="h-3 w-3" />
@@ -381,7 +381,7 @@ export function MenuTab() {
                       variant="ghost"
                       size="sm"
                       onClick={() => toggleActive(item.id, item.is_active)}
-                      className="h-8 w-8 p-0"
+                      className="h-7 w-7 p-0"
                       title={item.is_active ? "Hide Menu" : "Show Menu"}
                     >
                       {item.is_active ? (
@@ -397,7 +397,7 @@ export function MenuTab() {
                         setDeleteItem({ id: item.id, name: item.name });
                         setShowDeleteConfirm(true);
                       }}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                       title="Delete Menu"
                     >
                       <Trash2 className="h-3 w-3" />

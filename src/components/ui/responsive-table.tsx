@@ -178,7 +178,7 @@ export function ResponsiveTable<TData, TValue>({
         </div>
       )}
 
-      <div className="space-y-2 px-1 sm:px-2 w-full max-w-full overflow-hidden">
+      <div className="space-y-2 w-full max-w-full overflow-hidden">
         {filteredData.map((item, index) => {
           const itemId = `item-${index}`;
           const isExpanded = expandedItems.has(itemId);
