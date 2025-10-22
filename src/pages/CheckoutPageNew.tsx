@@ -369,8 +369,8 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
               },
               order as any,
               {
-                name: resolvedTenantInfo.name,
-                slug: resolvedTenantInfo.slug,
+                name: resolvedTenantInfo.tenant_name,
+                slug: resolvedTenantInfo.tenant_slug,
                 phone: resolvedTenantInfo.phone,
                 address: resolvedTenantInfo.address,
               },
