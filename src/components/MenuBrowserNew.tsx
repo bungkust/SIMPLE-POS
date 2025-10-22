@@ -300,7 +300,7 @@ export function MenuBrowser() {
             </h2>
             
             {/* Menu Items - Mobile Layout */}
-            <div className="space-y-2">
+            <div className="space-y-2 md:hidden">
               {/* Mobile: List Layout */}
               {filteredItems.map((item) => {
                 const discount = item.base_price && item.base_price > item.price 
