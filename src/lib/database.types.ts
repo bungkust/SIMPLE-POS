@@ -303,6 +303,9 @@ export interface Database {
           show_address: boolean | null;
           show_phone: boolean | null;
           show_social_media: boolean | null;
+          minimum_order_amount: number | null;
+          delivery_fee: number | null;
+          free_delivery_threshold: number | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -328,6 +331,9 @@ export interface Database {
           show_address?: boolean | null;
           show_phone?: boolean | null;
           show_social_media?: boolean | null;
+          minimum_order_amount?: number | null;
+          delivery_fee?: number | null;
+          free_delivery_threshold?: number | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
@@ -353,6 +359,9 @@ export interface Database {
           show_address?: boolean | null;
           show_phone?: boolean | null;
           show_social_media?: boolean | null;
+          minimum_order_amount?: number | null;
+          delivery_fee?: number | null;
+          free_delivery_threshold?: number | null;
           created_at?: string | null;
           updated_at?: string | null;
         };

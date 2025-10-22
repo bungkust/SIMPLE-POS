@@ -261,7 +261,7 @@ export function SettingsTab() {
 
 
   return (
-    <div className={cn(spacing.lg, "w-full max-w-full overflow-hidden mobile-container")}>
+    <div className={cn(spacing.lg, "w-full max-w-full overflow-hidden")}>
       <Card className={cn(components.card, "w-full max-w-full overflow-hidden")}>
         <CardHeader>
           <div className={cn(spacing.md)}>
@@ -281,13 +281,13 @@ export function SettingsTab() {
         <CardContent className="overflow-hidden">
           {isMobile ? (
             <Accordion type="single" collapsible defaultValue="general" className="w-full">
-              <form onSubmit={handleSubmit(onSubmit as any)} className={cn(spacing.lg, "max-w-full overflow-hidden")}>
+              <form onSubmit={handleSubmit(onSubmit as any)} className={cn(spacing.md, "max-w-full overflow-hidden")}>
                 <AccordionItem value="general">
                   <AccordionTrigger className={cn("flex items-center gap-2", typography.label.medium)}>
                     <Store className={cn(sizes.icon.sm)} />
                     General Settings
                   </AccordionTrigger>
-                  <AccordionContent className={cn(spacing.lg)}>
+                  <AccordionContent className={cn(spacing.md)}>
                 <Card className={cn(components.card)}>
                   <CardHeader>
                     <CardTitle className={cn(typography.h4)}>Store Information</CardTitle>
@@ -295,7 +295,7 @@ export function SettingsTab() {
                       Basic information about your store
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className={cn(spacing.md)}>
+                  <CardContent className={cn(spacing.sm)}>
                     <div className={cn(`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`)}>
                       <FormInput
                         {...register('storeName')}
@@ -465,12 +465,12 @@ export function SettingsTab() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className={cn(components.card)}>
                   <CardHeader>
-                    <CardTitle className="text-lg">Contact Information</CardTitle>
+                    <CardTitle className={cn(typography.h4)}>Contact Information</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+                  <CardContent className={cn(spacing.sm)}>
+                    <div className={cn(`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`)}>
                       <FormInput
                         {...register('storeAddress')}
                         label="Store Address"
@@ -513,15 +513,15 @@ export function SettingsTab() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className={cn(components.card)}>
                   <CardHeader>
-                    <CardTitle className="text-lg">Social Media Links</CardTitle>
-                    <CardDescription>
+                    <CardTitle className={cn(typography.h4)}>Social Media Links</CardTitle>
+                    <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                       Add your social media profiles to connect with customers
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+                  <CardContent className={cn(spacing.sm)}>
+                    <div className={cn(`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`)}>
                       <FormInput
                         {...register('socialMedia.instagram')}
                         label="Instagram"
@@ -567,14 +567,14 @@ export function SettingsTab() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className={cn(components.card)}>
                   <CardHeader>
-                    <CardTitle className="text-lg">Header Display Settings</CardTitle>
-                    <CardDescription>
+                    <CardTitle className={cn(typography.h4)}>Header Display Settings</CardTitle>
+                    <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                       Choose which information to display in the restaurant header
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className={cn(spacing.sm)}>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
@@ -662,16 +662,16 @@ export function SettingsTab() {
                     <ShoppingBag className="h-4 w-4" />
                     Order Settings
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-6">
-                <Card>
+                  <AccordionContent className={cn(spacing.md)}>
+                <Card className={cn(components.card)}>
                   <CardHeader>
-                    <CardTitle className="text-lg">Order Management</CardTitle>
-                    <CardDescription>
+                    <CardTitle className={cn(typography.h4)}>Order Management</CardTitle>
+                    <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                       Configure order processing and customer requirements
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-4">
+                  <CardContent className={cn(spacing.sm)}>
+                    <div className={cn(spacing.sm)}>
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>Auto Accept Orders</Label>
@@ -765,7 +765,7 @@ export function SettingsTab() {
                 <Separator />
 
                 {/* Action Buttons */}
-                <div className={cn("flex flex-col space-y-2")}>
+                <div className={cn("flex flex-col gap-3", spacing.sm)}>
                   <Button
                     type="button"
                     variant="outline"
@@ -829,11 +829,10 @@ export function SettingsTab() {
                           required
                           disabled={true}
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Store name cannot be changed after creation. Contact support if you need to update it.
-                        </p>
-
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        Store name cannot be changed after creation. Contact support if you need to update it.
+                      </p>
 
                       <FormTextarea
                         {...register('storeDescription')}

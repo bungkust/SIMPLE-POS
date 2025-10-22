@@ -194,9 +194,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             autoAcceptOrders: false, // Default value
             requirePhoneVerification: false, // Default value
             allowGuestCheckout: true, // Default value
-            minimumOrderAmount: 0, // Default value
-            deliveryFee: 0, // Default value
-            freeDeliveryThreshold: 0, // Default value
+            minimumOrderAmount: tenantInfoData.minimum_order_amount || 0,
+            deliveryFee: tenantInfoData.delivery_fee || 0,
+            freeDeliveryThreshold: tenantInfoData.free_delivery_threshold || 0,
             // Additional restaurant info fields
             rating: undefined,
             reviewCount: undefined,
@@ -268,9 +268,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
                 autoAcceptOrders: false, // Default value
                 requirePhoneVerification: false, // Default value
                 allowGuestCheckout: true, // Default value
-                minimumOrderAmount: 0, // Default value
-                deliveryFee: 0, // Default value
-                freeDeliveryThreshold: 0, // Default value
+                minimumOrderAmount: tenantInfoData.minimum_order_amount || 0,
+                deliveryFee: tenantInfoData.delivery_fee || 0,
+                freeDeliveryThreshold: tenantInfoData.free_delivery_threshold || 0,
               // Additional restaurant info fields
                 rating: undefined,
                 reviewCount: undefined,
@@ -433,6 +433,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           show_address: newConfig.headerDisplaySettings?.showAddress ?? true,
           show_phone: newConfig.headerDisplaySettings?.showPhone ?? true,
           show_social_media: newConfig.headerDisplaySettings?.showSocialMedia ?? true,
+          minimum_order_amount: newConfig.minimumOrderAmount || 0,
+          delivery_fee: newConfig.deliveryFee || 0,
+          free_delivery_threshold: newConfig.freeDeliveryThreshold || 0,
           updated_at: new Date().toISOString()
         };
 

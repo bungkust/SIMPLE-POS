@@ -16,6 +16,8 @@ import { useCart } from '@/contexts/CartContext';
 import { formatCurrency, normalizePhone, generateOrderCode, getTomorrowDate } from '@/lib/form-utils';
 import { getTenantInfo } from '@/lib/tenantUtils';
 import { colors, typography, components, sizes, shadows, cn } from '@/lib/design-system';
+import { useConfig } from '@/contexts/ConfigContext';
+import { calculateOrderTotals, validateOrderRequirements, getDeliveryFeeText, getFreeDeliveryProgressText } from '@/lib/order-utils';
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -25,9 +27,13 @@ interface CheckoutPageProps {
 export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
   const { items, totalAmount, clearCart } = useCart();
   const { showError, showSuccess } = useAppToast();
+  const { config } = useConfig();
   const [loading, setLoading] = useState(false);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
+  
+  // Calculate order totals with delivery fees
+  const orderCalculation = calculateOrderTotals(totalAmount, config);
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<string[]>([]);
 
   const {
@@ -175,16 +181,24 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
       return;
     }
 
+    // Validate minimum order amount
+    const orderValidation = validateOrderRequirements(totalAmount, config);
+    if (!orderValidation.isValid) {
+      console.log('❌ Minimum order validation failed:', orderValidation.errorMessage);
+      showError('Minimum Order Error', orderValidation.errorMessage || 'Order amount too low');
+      return;
+    }
+
     console.log('✅ Payment method validation passed:', data.paymentMethod);
     console.log('🔍 Submitting order with payment method:', data.paymentMethod);
 
     setLoading(true);
     try {
       const normalizedPhone = normalizePhone(data.phone);
-      const subtotal = totalAmount;
+      const subtotal = orderCalculation.subtotal;
       const discount = 0;
-      const serviceFee = 0;
-      const total = subtotal - discount + serviceFee;
+      const serviceFee = orderCalculation.deliveryFee; // Use delivery fee as service fee
+      const total = orderCalculation.total;
 
       const orderData = {
         tenant_id: resolvedTenantId,
@@ -339,12 +353,28 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                 <div className="space-y-3">
                   <div className={cn("flex justify-between", typography.body.medium)}>
                     <span className={colors.text.secondary}>Subtotal</span>
-                    <span className="font-semibold">{formatCurrency(totalAmount)}</span>
+                    <span className="font-semibold">{formatCurrency(orderCalculation.subtotal)}</span>
                   </div>
+                  
+                  {/* Delivery Fee */}
                   <div className={cn("flex justify-between", typography.body.medium)}>
-                    <span className={colors.text.secondary}>Service Fee</span>
-                    <span className="font-semibold">{formatCurrency(0)}</span>
+                    <span className={colors.text.secondary}>
+                      {getDeliveryFeeText(orderCalculation.subtotal, config)}
+                    </span>
+                    <span className={cn("font-semibold", orderCalculation.isFreeDelivery ? colors.status.success.text : "")}>
+                      {orderCalculation.isFreeDelivery ? "Gratis" : formatCurrency(orderCalculation.deliveryFee)}
+                    </span>
                   </div>
+                  
+                  {/* Free Delivery Progress */}
+                  {getFreeDeliveryProgressText(orderCalculation.subtotal, config) && (
+                    <div className={cn("p-2 bg-green-50 rounded-lg border border-green-200")}>
+                      <p className={cn(typography.body.small, "text-green-700 text-center")}>
+                        {getFreeDeliveryProgressText(orderCalculation.subtotal, config)}
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className={cn("flex justify-between", typography.body.medium)}>
                     <span className={colors.text.secondary}>Discount</span>
                     <span className={cn("font-semibold", colors.status.success.text)}>-{formatCurrency(0)}</span>
@@ -352,7 +382,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                   <Separator />
                   <div className={cn("flex justify-between items-center py-2 bg-blue-50 rounded-lg px-3")}>
                     <span className={cn(typography.price.medium)}>Total</span>
-                    <span className={cn(typography.price.large, "text-blue-600")}>{formatCurrency(totalAmount)}</span>
+                    <span className={cn(typography.price.large, "text-blue-600")}>{formatCurrency(orderCalculation.total)}</span>
                   </div>
                 </div>
               </CardContent>
