@@ -7,45 +7,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { FormInput } from '@/components/forms/FormInput';
 import { FormTextarea } from '@/components/forms/FormTextarea';
-import { FormSelect, SelectItem } from '@/components/forms/FormSelect';
-import { FormCheckbox } from '@/components/forms/FormCheckbox';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { 
-  Coffee, 
-  Store, 
   Save, 
   RotateCcw, 
   Upload, 
   X,
   Settings,
-  Image,
-  Clock,
-  Phone,
-  Mail,
   Eye,
   EyeOff,
-  ShoppingBag,
-  Utensils
+  Store,
+  ShoppingBag
 } from 'lucide-react';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-media-query';
-import { supabase } from '@/lib/supabase';
 import { settingsFormSchema, type SettingsFormData } from '@/lib/form-schemas';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { uploadFile, uploadConfigs } from '@/lib/storage-utils';
 import { logger } from '@/lib/logger';
 import { colors, typography, components, sizes, spacing, cn } from '@/lib/design-system';
-const iconOptions = [
-  { value: 'Coffee', label: 'Coffee', icon: Coffee },
-  { value: 'Store', label: 'Store', icon: Store },
-  { value: 'ShoppingBag', label: 'Shopping Bag', icon: ShoppingBag },
-  { value: 'Utensils', label: 'Utensils', icon: Utensils },
-];
 
 export function SettingsTab() {
   const { config, updateConfig } = useConfig();
@@ -68,12 +51,11 @@ export function SettingsTab() {
     watch,
     reset
   } = useForm<SettingsFormData>({
-    resolver: zodResolver(settingsFormSchema),
+    resolver: zodResolver(settingsFormSchema) as any,
     defaultValues: {
       storeName: config.storeName || '',
       storeLogoUrl: config.storeLogoUrl || '',
       storeBannerUrl: config.storeBannerUrl || '',
-      storeIconType: config.storeIconType || 'Coffee',
       storeDescription: config.storeDescription || '',
       storeAddress: config.storeAddress || '',
       storePhone: config.storePhone || '',
@@ -103,7 +85,6 @@ export function SettingsTab() {
 
   const storeLogoUrl = watch('storeLogoUrl');
   const storeBannerUrl = watch('storeBannerUrl');
-  const storeIconType = watch('storeIconType');
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -126,7 +107,7 @@ export function SettingsTab() {
           console.error('🔧 updateConfig failed:', error);
         }
         showSuccess('Upload Success', 'Logo toko berhasil diupload.');
-        logger.log('✅ Store logo uploaded successfully:', result.url);
+        logger.log('✅ Store logo uploaded successfully:', { url: result.url });
       } else {
         showError('Upload Failed', `Gagal mengupload logo toko: ${result.error || 'Unknown error'}`);
       }
@@ -159,7 +140,7 @@ export function SettingsTab() {
           console.error('🔧 updateConfig failed:', error);
         }
         showSuccess('Upload Success', 'Banner toko berhasil diupload.');
-        logger.log('✅ Store banner uploaded successfully:', result.url);
+        logger.log('✅ Store banner uploaded successfully:', { url: result.url });
       } else {
         showError('Upload Failed', `Gagal mengupload banner toko: ${result.error || 'Unknown error'}`);
       }
@@ -186,7 +167,6 @@ export function SettingsTab() {
       await updateConfig({
         storeName: data.storeName,
         storeLogoUrl: data.storeLogoUrl,
-        storeIconType: data.storeIconType,
         storeDescription: data.storeDescription,
         storeAddress: data.storeAddress,
         storePhone: data.storePhone,
@@ -220,7 +200,6 @@ export function SettingsTab() {
       reset({
         storeName: config.storeName || '',
         storeLogoUrl: config.storeLogoUrl || '',
-        storeIconType: config.storeIconType || 'Coffee',
         storeDescription: config.storeDescription || '',
         storeAddress: config.storeAddress || '',
         storePhone: config.storePhone || '',
@@ -253,7 +232,6 @@ export function SettingsTab() {
   const resetToDefaults = () => {
     reset({
       storeName: '',
-      storeIconType: 'Coffee',
       storeDescription: '',
       storeAddress: '',
       storePhone: '',
@@ -281,10 +259,6 @@ export function SettingsTab() {
     });
   };
 
-  const getIconComponent = (iconType: string) => {
-    const option = iconOptions.find(opt => opt.value === iconType);
-    return option ? option.icon : Coffee;
-  };
 
   return (
     <div className={cn(spacing.lg, "w-full max-w-full overflow-hidden mobile-container")}>
@@ -295,11 +269,11 @@ export function SettingsTab() {
               <div className="min-w-0 flex-1">
                 <CardTitle className={cn(typography.h3, "flex items-center gap-2")}>
                   <Settings className={cn(sizes.icon.md)} />
-                  Store Settings
-                </CardTitle>
+            Store Settings
+          </CardTitle>
                 <CardDescription className={cn(typography.body.medium, colors.text.secondary)}>
                   Kelola pengaturan toko dan preferensi
-                </CardDescription>
+          </CardDescription>
               </div>
             </div>
           </div>
@@ -307,7 +281,7 @@ export function SettingsTab() {
         <CardContent className="overflow-hidden">
           {isMobile ? (
             <Accordion type="single" collapsible defaultValue="general" className="w-full">
-              <form onSubmit={handleSubmit(onSubmit)} className={cn(spacing.lg, "max-w-full overflow-hidden")}>
+              <form onSubmit={handleSubmit(onSubmit as any)} className={cn(spacing.lg, "max-w-full overflow-hidden")}>
                 <AccordionItem value="general">
                   <AccordionTrigger className={cn("flex items-center gap-2", typography.label.medium)}>
                     <Store className={cn(sizes.icon.sm)} />
@@ -329,30 +303,13 @@ export function SettingsTab() {
                         placeholder="Enter store name"
                         error={errors.storeName?.message}
                         required
-                        disabled={loading}
+                        disabled={true}
                         className={isMobile ? 'w-full' : ''}
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Store name cannot be changed after creation. Contact support if you need to update it.
+                      </p>
 
-                      <FormSelect
-                        {...register('storeIconType')}
-                        label="Store Icon"
-                        error={errors.storeIconType?.message}
-                        required
-                        disabled={loading}
-                        className={isMobile ? 'w-full' : ''}
-                      >
-                        {iconOptions.map((option) => {
-                          const IconComponent = option.icon;
-                          return (
-                            <SelectItem key={option.value} value={option.value}>
-                              <div className="flex items-center gap-2">
-                                <IconComponent className="h-4 w-4" />
-                                {option.label}
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </FormSelect>
                     </div>
 
                     <FormTextarea
@@ -630,7 +587,7 @@ export function SettingsTab() {
                           id="showDescription"
                           checked={watch('headerDisplaySettings.showDescription') ?? true}
                           onCheckedChange={(checked) => setValue('headerDisplaySettings.showDescription', checked)}
-                          disabled={loading}
+                      disabled={loading}
                         />
                       </div>
 
@@ -852,7 +809,7 @@ export function SettingsTab() {
                 </TabsTrigger>
               </TabsList>
 
-              <form onSubmit={handleSubmit(onSubmit)} className={cn(spacing.lg, "max-w-full overflow-hidden")}>
+              <form onSubmit={handleSubmit(onSubmit as any)} className={cn(spacing.lg, "max-w-full overflow-hidden")}>
                 {/* General Settings */}
                 <TabsContent value="general" className={cn(spacing.lg)}>
                   <Card className={cn(components.card)}>
@@ -870,28 +827,12 @@ export function SettingsTab() {
                           placeholder="Enter store name"
                           error={errors.storeName?.message}
                           required
-                          disabled={loading}
+                          disabled={true}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          Store name cannot be changed after creation. Contact support if you need to update it.
+                        </p>
 
-                        <FormSelect
-                          {...register('storeIconType')}
-                          label="Store Icon"
-                          error={errors.storeIconType?.message}
-                          required
-                          disabled={loading}
-                        >
-                          {iconOptions.map((option) => {
-                            const IconComponent = option.icon;
-                            return (
-                              <SelectItem key={option.value} value={option.value}>
-                                <div className="flex items-center gap-2">
-                                  <IconComponent className="h-4 w-4" />
-                                  {option.label}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </FormSelect>
                       </div>
 
                       <FormTextarea
@@ -1229,42 +1170,42 @@ export function SettingsTab() {
                       <CardDescription>
                         Set minimum order values and delivery charges
                       </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormInput
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormInput
                           {...register('minimumOrderAmount', { valueAsNumber: true })}
-                          label="Minimum Order Amount"
-                          type="number"
-                          placeholder="0"
+                        label="Minimum Order Amount"
+                        type="number"
+                        placeholder="0"
                           error={errors.minimumOrderAmount?.message}
-                          disabled={loading}
-                          helperText="Minimum amount for order placement"
-                        />
+                        disabled={loading}
+                        helperText="Minimum amount for order placement"
+                      />
 
-                        <FormInput
-                          {...register('deliveryFee', { valueAsNumber: true })}
-                          label="Delivery Fee"
-                          type="number"
-                          placeholder="0"
-                          error={errors.deliveryFee?.message}
-                          disabled={loading}
-                          helperText="Standard delivery fee"
-                        />
+                      <FormInput
+                        {...register('deliveryFee', { valueAsNumber: true })}
+                        label="Delivery Fee"
+                        type="number"
+                        placeholder="0"
+                        error={errors.deliveryFee?.message}
+                        disabled={loading}
+                        helperText="Standard delivery fee"
+                      />
 
-                        <FormInput
-                          {...register('freeDeliveryThreshold', { valueAsNumber: true })}
-                          label="Free Delivery Threshold"
-                          type="number"
-                          placeholder="0"
-                          error={errors.freeDeliveryThreshold?.message}
-                          disabled={loading}
-                          helperText="Order amount for free delivery"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                      <FormInput
+                        {...register('freeDeliveryThreshold', { valueAsNumber: true })}
+                        label="Free Delivery Threshold"
+                        type="number"
+                        placeholder="0"
+                        error={errors.freeDeliveryThreshold?.message}
+                        disabled={loading}
+                        helperText="Order amount for free delivery"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
                 {/* Order Settings */}
                 <TabsContent value="orders" className="space-y-6">
@@ -1318,45 +1259,45 @@ export function SettingsTab() {
                             disabled={loading}
                           />
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                <Separator />
+              <Separator />
 
-                {/* Action Buttons */}
-                <div className="flex justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={resetToDefaults}
-                    disabled={loading}
+              {/* Action Buttons */}
+              <div className="flex justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetToDefaults}
+                  disabled={loading}
                     className={cn(components.buttonOutline)}
-                  >
+                >
                     <RotateCcw className={cn(sizes.icon.sm, "mr-2")} />
-                    Reset to Defaults
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading}
+                  Reset to Defaults
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
                     className={cn(components.buttonPrimary)}
-                  >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Saving...
-                      </>
-                    ) : (
-                      <>
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
                         <Save className={cn(sizes.icon.sm, "mr-2")} />
-                        Save Settings
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Tabs>
+                      Save Settings
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Tabs>
           )}
         </CardContent>
       </Card>

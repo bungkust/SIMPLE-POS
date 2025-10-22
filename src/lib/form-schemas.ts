@@ -117,7 +117,6 @@ export const settingsFormSchema = z.object({
   storeName: z.string().min(1, "Nama toko harus diisi").max(100, "Nama toko terlalu panjang"),
   storeLogoUrl: z.string().optional(), // Add missing field for logo_url
   storeBannerUrl: z.string().optional(), // Add banner image field
-  storeIconType: z.string().default("Coffee"),
   storeDescription: z.string().max(500, "Deskripsi terlalu panjang").optional(),
   storeAddress: z.string().max(200, "Alamat terlalu panjang").optional(),
   storePhone: z.string().max(20, "Nomor telepon terlalu panjang").optional(),

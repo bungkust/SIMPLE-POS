@@ -176,6 +176,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         if (tenantInfoData && !tenantInfoError) {
           console.log('🔧 Loading tenant info from database:', { tenantInfoData });
           console.log('🔧 Banner URL from database:', tenantInfoData.banner_url);
+          console.log('🔧 Logo URL from database:', tenantInfoData.logo_url);
+          
+          console.log('🔧 Setting storeLogoUrl in dbConfig:', tenantInfoData.logo_url);
           
           const dbConfig: AppConfig = {
             storeName: (currentTenant as any).name || getDefaultConfigForTenant(tenantSlug).storeName,
@@ -218,7 +221,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           };
           
           console.log('🔧 Loaded config from tenant_info table:', dbConfig);
+          console.log('🔧 About to set config with storeLogoUrl:', dbConfig.storeLogoUrl);
           setConfig(dbConfig);
+          setLoading(false);
 
           // Also save to localStorage for faster subsequent loads
           const storageKey = `tenant-config-${tenantSlug}`;
@@ -290,6 +295,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             };
             
             setConfig(dbConfig);
+            setLoading(false);
 
             // Also save to localStorage for faster subsequent loads
             const storageKey = `tenant-config-${tenantSlug}`;

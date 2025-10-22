@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfig } from '../contexts/ConfigContext';
 import { OrdersTab } from '../components/admin/OrdersTabNew';
 import { MenuTab } from '../components/admin/MenuTabNew';
 import { PaymentTab } from '../components/admin/PaymentTabNew';
@@ -54,6 +55,8 @@ export function AdminDashboard({}: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('orders');
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const { signOut, user, currentTenant, isTenantOwner, loading, tenantLoading } = useAuth();
+  const { config } = useConfig();
+  const storeLogoUrl = config.storeLogoUrl;
   const isMobile = useIsMobile();
   const { navItems } = useAdminBottomNav(activeTab);
 
@@ -230,9 +233,17 @@ export function AdminDashboard({}: AdminDashboardProps) {
       {/* Logo & Tenant Info */}
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Building2 className="w-6 h-6 text-primary" />
-          </div>
+          {storeLogoUrl ? (
+            <img 
+              src={storeLogoUrl} 
+              alt={currentTenant?.name || 'Store'} 
+              className="w-10 h-10 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Building2 className="w-6 h-6 text-primary" />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-slate-900 truncate">
               {currentTenant?.name || 'Admin Dashboard'}
@@ -341,9 +352,17 @@ export function AdminDashboard({}: AdminDashboardProps) {
               <div className="flex items-center gap-2 sm:gap-4">
                 {/* Store Name/Logo */}
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-4 h-4 text-primary" />
-                  </div>
+                  {storeLogoUrl ? (
+                    <img 
+                      src={storeLogoUrl} 
+                      alt={currentTenant?.name || 'Store'} 
+                      className="w-6 h-6 rounded object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-4 h-4 text-primary" />
+                    </div>
+                  )}
                   <h2 className={`font-semibold text-slate-900 truncate ${isMobile ? 'text-base' : 'text-lg'}`}>
                     {currentTenant?.name || 'Store'}
                   </h2>
