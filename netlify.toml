@@ -32,6 +32,7 @@
   for = "https://fheaayyooebdsppcymce.supabase.co/storage/v1/object/public/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+    Vary = "Accept-Encoding"
 
 [[headers]]
   for = "*.js"

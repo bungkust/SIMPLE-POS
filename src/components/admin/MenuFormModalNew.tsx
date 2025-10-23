@@ -45,18 +45,17 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
     formState: { errors },
     watch,
     setValue,
-    reset,
     control
   } = useForm<MenuFormData>({
-    resolver: zodResolver(menuFormSchema),
+    resolver: zodResolver(menuFormSchema) as any,
     defaultValues: {
       name: item?.name || '',
       description: item?.description || '',
       price: item?.price || 0,
       category_id: item?.category_id || '',
       image_url: item?.photo_url || '',
+      is_available: item?.is_active ?? true,
       // preparation_time field removed as it doesn't exist in database schema
-      // is_available removed - status is managed via toggle button in menu list
     }
   });
 
@@ -87,7 +86,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
         setValue('image_url', result.url);
         setHasUnsavedChanges(true);
         setUploadSuccess(true);
-        logger.log('✅ Menu item image uploaded successfully:', result.url);
+        logger.log('✅ Menu item image uploaded successfully', { url: result.url });
         
         // Clear success message after 3 seconds
         setTimeout(() => setUploadSuccess(false), 3000);
@@ -139,7 +138,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
 
       if (item) {
         // Update existing item
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('menu_items')
           .update(menuData)
           .eq('id', item.id);
@@ -158,7 +157,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
           .insert({
             ...menuData,
             created_at: new Date().toISOString(),
-          });
+          } as any);
 
         if (error) throw error;
 
@@ -199,7 +198,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className={cn(spacing.lg, "mt-6")}>
+        <form onSubmit={handleSubmit(onSubmit as any)} className={cn(spacing.lg, "mt-6")}>
           {/* Basic Information */}
           <Card className={components.card}>
             <CardHeader className={components.sheetHeader}>

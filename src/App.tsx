@@ -16,7 +16,7 @@ import { MenuBrowser } from './components/MenuBrowserNew';
 import { CartBar } from './components/CartBarNew';
 import AuthCallback from './pages/AuthCallback';
 
-// Temporarily disable lazy loading to fix React error #306
+// Import components directly to avoid React error #306
 import { CheckoutPage } from './pages/CheckoutPageNew';
 import { InvoicePage } from './pages/InvoicePageNew';
 import { OrderHistoryPage } from './pages/OrderHistoryPageNew';

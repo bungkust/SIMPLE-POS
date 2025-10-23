@@ -76,8 +76,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return item ? item.qty : 0;
   };
 
-  const totalItems = items.reduce((sum, item) => sum + item.qty, 0);
-  const totalAmount = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const totalItems = items.reduce((sum, item) => {
+    const qty = Number(item.qty) || 0;
+    return sum + qty;
+  }, 0);
+  
+  const totalAmount = items.reduce((sum, item) => {
+    const price = Number(item.price) || 0;
+    const qty = Number(item.qty) || 0;
+    return sum + (price * qty);
+  }, 0);
 
   return (
     <CartContext.Provider
@@ -91,18 +99,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 export function useCart() {
   const context = useContext(CartContext);
   if (context === undefined) {
-    // Return a safe default instead of throwing error
-    console.warn('useCart called outside CartProvider, returning default values');
-    return {
-      items: [],
-      totalItems: 0,
-      totalAmount: 0,
-      addItem: () => {},
-      removeItem: () => {},
-      updateQuantity: () => {},
-      clearCart: () => {},
-      getItemQuantity: () => 0,
-    };
+    throw new Error('useCart must be used within a CartProvider');
   }
   return context;
 }

@@ -50,13 +50,16 @@ export function formatPhone(phone: string): string {
 }
 
 // Currency formatting
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number | undefined | null): string {
+  // Handle NaN, undefined, null, or invalid numbers
+  const safeAmount = Number(amount) || 0;
+  
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(safeAmount);
 }
 
 // Date formatting

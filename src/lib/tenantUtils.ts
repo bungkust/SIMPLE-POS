@@ -5,7 +5,7 @@ type Tenant = Database['public']['Tables']['tenants']['Row'];
 
 // Cache for tenant data to prevent repeated database calls
 const tenantCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes for optimal performance
 
 // Helper function to get cached data or fetch new data
 const getCachedOrFetch = async <T>(

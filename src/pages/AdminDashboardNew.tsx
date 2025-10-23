@@ -54,25 +54,8 @@ export function AdminDashboard({}: AdminDashboardProps) {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>('orders');
   const [loadingTimeout, setLoadingTimeout] = useState(false);
-  // Get auth context safely
-  let authContext = { signOut: async () => {}, user: null, currentTenant: null, isTenantOwner: false, loading: false, tenantLoading: false };
-  try {
-    authContext = useAuth();
-  } catch (error) {
-    console.warn('Auth context not available:', error);
-  }
-  
-  const { signOut, user, currentTenant, isTenantOwner, loading, tenantLoading } = authContext;
-  
-  // Get config context safely
-  let configContext = { config: { storeLogoUrl: '', storeName: 'Store' } };
-  try {
-    configContext = useConfig();
-  } catch (error) {
-    console.warn('Config context not available:', error);
-  }
-  
-  const { config } = configContext;
+  const { signOut, user, currentTenant, isTenantOwner, loading, tenantLoading } = useAuth();
+  const { config } = useConfig();
   const storeLogoUrl = config.storeLogoUrl;
   const isMobile = useIsMobile();
   const { navItems } = useAdminBottomNav(activeTab);

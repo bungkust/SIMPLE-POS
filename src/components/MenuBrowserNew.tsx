@@ -252,6 +252,23 @@ const MenuItemCard = memo(function MenuItemCard({
 export const MenuBrowser = memo(function MenuBrowser() {
   const { addItem, removeItem, getItemQuantity } = useCart();
   
+  // Wrapper function to convert MenuItem to CartItem
+  const handleAddToCart = useCallback((item: MenuItem) => {
+    addItem({
+      id: item.id,
+      name: item.name,
+      price: item.price || 0,
+      qty: 1,
+      photo_url: item.photo_url,
+      notes: '' // Default empty notes
+    });
+  }, [addItem]);
+  
+  // Wrapper function to remove item by ID
+  const handleRemoveFromCart = useCallback((item: MenuItem) => {
+    removeItem(item.id);
+  }, [removeItem]);
+  
   // Get auth context safely
   let currentTenant = null;
   try {
@@ -261,14 +278,7 @@ export const MenuBrowser = memo(function MenuBrowser() {
     // AuthContext not available, will use URL fallback
     console.log('AuthContext not available, using URL fallback');
   }
-  // Get image preloader safely
-  let preloadCriticalImages = () => {};
-  try {
-    const imagePreloader = useImagePreloader();
-    preloadCriticalImages = imagePreloader?.preloadCriticalImages || (() => {});
-  } catch (error) {
-    console.log('Image preloader not available');
-  }
+  const { preloadCriticalImages } = useImagePreloader();
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -331,16 +341,15 @@ export const MenuBrowser = memo(function MenuBrowser() {
 
       // Add category filter if selected
       if (selectedCategory) {
-        const category = categories.find(c => c.name === selectedCategory);
-        if (category) {
-          query = query.eq('category_id', category.id);
-        }
+        query = query.eq('category_id', selectedCategory);
       }
 
       // Add search filter if query exists
       if (debouncedSearchQuery.trim()) {
         const sanitizedQuery = sanitizeSearchQuery(debouncedSearchQuery);
-        query = query.textSearch('search_text', sanitizedQuery);
+        console.log('🔍 MenuBrowser: Searching for:', sanitizedQuery);
+        // Use or() to search in both name and description fields
+        query = query.or(`name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%`);
       }
 
       // Add pagination and ordering
@@ -354,6 +363,13 @@ export const MenuBrowser = memo(function MenuBrowser() {
         console.error('Error loading menu items:', menuError);
         return;
       }
+
+      console.log('🔍 MenuBrowser: Query results:', { 
+        count, 
+        itemsFound: menuData?.length || 0, 
+        searchQuery: debouncedSearchQuery,
+        selectedCategory 
+      });
 
       console.log(`MenuBrowser: Loaded ${menuData?.length || 0} menu items (page ${page})`);
       console.log(`MenuBrowser: Total items: ${count}`);
@@ -516,11 +532,11 @@ export const MenuBrowser = memo(function MenuBrowser() {
 
   // Reload menu items when filters change
   useEffect(() => {
-    if (tenantInfo?.tenant_id && (selectedCategory || debouncedSearchQuery)) {
-      console.log('MenuBrowser: Filters changed, reloading menu items');
+    if (tenantInfo?.tenant_id) {
+      console.log('MenuBrowser: Filters changed, reloading menu items', { selectedCategory, debouncedSearchQuery });
       loadMenuItems(tenantInfo.tenant_id, 1, true);
     }
-  }, [selectedCategory, debouncedSearchQuery, tenantInfo?.tenant_id]); // Removed loadMenuItems from deps
+  }, [selectedCategory, debouncedSearchQuery, tenantInfo?.tenant_id, loadMenuItems]);
 
   // Preload critical images when menu items are loaded
   useEffect(() => {
@@ -698,12 +714,12 @@ export const MenuBrowser = memo(function MenuBrowser() {
               {/* Mobile: List Layout */}
               {filteredItems.map((item, index) => (
                 <MenuItemCard
-                  key={item.id}
+                    key={item.id} 
                   item={item}
                   index={index}
                   onItemClick={handleItemClick}
-                  onAddToCart={addItem}
-                  onRemoveFromCart={removeItem}
+                  onAddToCart={handleAddToCart}
+                  onRemoveFromCart={handleRemoveFromCart}
                   getItemQuantity={getItemQuantity}
                   isMobile={true}
                 />
@@ -714,24 +730,24 @@ export const MenuBrowser = memo(function MenuBrowser() {
             <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
               {filteredItems.map((item, index) => (
                 <MenuItemCard
-                  key={item.id}
+                    key={item.id} 
                   item={item}
                   index={index}
                   onItemClick={handleItemClick}
-                  onAddToCart={addItem}
-                  onRemoveFromCart={removeItem}
+                  onAddToCart={handleAddToCart}
+                  onRemoveFromCart={handleRemoveFromCart}
                   getItemQuantity={getItemQuantity}
                   isMobile={false}
                 />
               ))}
-            </div>
-          </div>
-        )}
-
+                    </div>
+                            </div>
+                          )}
+                          
         {/* Load More Button */}
         {hasMore && (
           <div className="flex justify-center mt-8">
-            <button
+                            <button 
               id="load-more-trigger"
               onClick={loadMoreItems}
               disabled={loadingMore}
@@ -753,8 +769,8 @@ export const MenuBrowser = memo(function MenuBrowser() {
                   Load More Items
                 </>
               )}
-            </button>
-          </div>
+                            </button>
+                          </div>
         )}
 
         {/* Pagination Info */}

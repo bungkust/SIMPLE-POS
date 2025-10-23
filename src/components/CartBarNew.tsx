@@ -35,6 +35,11 @@ function CartBarComponent() {
     updateQuantity, 
     clearCart 
   } = useCart();
+  
+  // Debug cart state (remove in production)
+  // console.log('🔍 CartBar: items:', items);
+  // console.log('🔍 CartBar: totalItems:', totalItems);
+  // console.log('🔍 CartBar: totalAmount:', totalAmount);
   const [showCartSheet, setShowCartSheet] = useState(false);
   
   // Get auth context safely
@@ -75,6 +80,12 @@ function CartBarComponent() {
   }, [currentTenant]);
 
   const handleCheckoutClick = useCallback(() => {
+    if (totalItems === 0) {
+      // If cart is empty, just open the cart sheet
+      setShowCartSheet(true);
+      return;
+    }
+    
     // Handle both currentTenant structure (slug) and fallback structure (tenant_slug)
     const tenantSlug = tenantInfo.slug || tenantInfo.tenant_slug;
     console.log('🔍 CartBar: handleCheckoutClick called');
@@ -82,7 +93,7 @@ function CartBarComponent() {
     console.log('🔍 CartBar: tenantSlug:', tenantSlug);
     console.log('🔍 CartBar: navigating to:', `/${tenantSlug}/checkout`);
     navigate(`/${tenantSlug}/checkout`);
-  }, [tenantInfo, navigate]);
+  }, [tenantInfo, navigate, totalItems]);
 
   const handleQuantityChange = useCallback((itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -108,6 +119,7 @@ function CartBarComponent() {
     setShowCartSheet(prev => !prev);
   }, []);
 
+  // Hide cart button when cart is empty
   if (totalItems === 0) return null;
 
   return (
@@ -149,16 +161,16 @@ function CartBarComponent() {
             </div>
             
             {/* Right Side - Checkout Arrow */}
-            {totalItems > 0 && (
-              <div className="flex items-center">
-                <div className="text-sm font-medium opacity-90 mr-2">Checkout</div>
-                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
+            <div className="flex items-center">
+              <div className="text-sm font-medium opacity-90 mr-2">
+                {totalItems > 0 ? 'Checkout' : 'View Cart'}
               </div>
-            )}
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
           </div>
         </Button>
         </div>
@@ -168,8 +180,8 @@ function CartBarComponent() {
       <Sheet open={showCartSheet} onOpenChange={handleToggleCartSheet}>
         <SheetContent className="w-full sm:max-w-md p-0 bg-gradient-to-br from-slate-50 to-slate-100">
           <div className="flex flex-col h-full">
-            {/* Header */}
-            <SheetHeader className="p-4 pb-0">
+            {/* Header - Fixed */}
+            <SheetHeader className="p-4 pb-0 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <SheetTitle className={cn(typography.h3)}>Your Cart</SheetTitle>
                 <Button
@@ -186,8 +198,8 @@ function CartBarComponent() {
               </SheetDescription>
             </SheetHeader>
 
-            <div className="flex-1 overflow-y-auto">
-              <div className="space-y-6 p-4">
+            {/* Cart Items - Scrollable Area */}
+            <div className="flex-1 overflow-y-auto p-4">
             {/* Cart Items */}
             {items.length === 0 ? (
               <div className="text-center py-8 sm:py-12">
@@ -200,7 +212,7 @@ function CartBarComponent() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4 max-h-80 sm:max-h-96 overflow-y-auto">
+              <div className="space-y-4 flex-1 overflow-y-auto">
                 {items.map((item) => (
                   <Card key={item.id} className={cn(components.card, components.cardHover)}>
                     <CardContent className={sizes.card.md}>
@@ -260,29 +272,26 @@ function CartBarComponent() {
                 ))}
               </div>
             )}
+            </div>
 
-            {/* Cart Summary */}
+            {/* Cart Summary - Fixed at Bottom */}
             {items.length > 0 && (
-              <>
+              <div className="border-t bg-white p-4 space-y-4 flex-shrink-0">
+                <div className={cn("flex justify-between", typography.body.medium, colors.text.secondary)}>
+                  <span>Subtotal ({totalItems} items)</span>
+                  <span className="font-medium">{formatCurrency(totalAmount)}</span>
+                </div>
+                
+                <div className={cn("flex justify-between", typography.body.medium, colors.text.secondary)}>
+                  <span>Tax</span>
+                  <span className="font-medium">{formatCurrency(0)}</span>
+                </div>
+                
                 <Separator />
                 
-                <div className="space-y-4">
-                  <div className={cn("flex justify-between", typography.body.medium, colors.text.secondary)}>
-                    <span>Subtotal ({totalItems} items)</span>
-                    <span className="font-medium">{formatCurrency(totalAmount)}</span>
-                  </div>
-                  
-                  <div className={cn("flex justify-between", typography.body.medium, colors.text.secondary)}>
-                    <span>Tax</span>
-                    <span className="font-medium">{formatCurrency(0)}</span>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className={cn("flex justify-between", typography.price.large)}>
-                    <span>Total</span>
-                    <span>{formatCurrency(totalAmount)}</span>
-                  </div>
+                <div className={cn("flex justify-between", typography.price.large)}>
+                  <span>Total</span>
+                  <span>{formatCurrency(totalAmount)}</span>
                 </div>
 
                 <Alert className={cn(components.alert, colors.status.success.bg, colors.status.success.border)}>
@@ -311,10 +320,8 @@ function CartBarComponent() {
                     Clear Cart
                   </Button>
                 </div>
-              </>
-            )}
               </div>
-            </div>
+            )}
           </div>
         </SheetContent>
       </Sheet>

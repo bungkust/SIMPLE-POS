@@ -37,15 +37,7 @@ export function SuperAdminDashboard({ onBack }: SuperAdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Get auth context safely
-  let authContext = { signOut: async () => {}, user: null, isSuperAdmin: false, loading: false };
-  try {
-    authContext = useAuth();
-  } catch (error) {
-    console.warn('Auth context not available:', error);
-  }
-  
-  const { signOut, user, isSuperAdmin, loading } = authContext;
+  const { signOut, user, isSuperAdmin, loading } = useAuth();
 
   // Debug logging
   useEffect(() => {

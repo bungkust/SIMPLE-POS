@@ -21,17 +21,20 @@ export function calculateOrderTotals(
   subtotal: number,
   config: AppConfig
 ): OrderCalculation {
-  const minimumOrderAmount = config.minimumOrderAmount || 0;
-  const deliveryFee = config.deliveryFee || 0;
-  const freeDeliveryThreshold = config.freeDeliveryThreshold || 0;
+  // Ensure subtotal is a valid number
+  const safeSubtotal = Number(subtotal) || 0;
   
-  const minimumOrderMet = subtotal >= minimumOrderAmount;
-  const isFreeDelivery = subtotal >= freeDeliveryThreshold;
+  const minimumOrderAmount = Number(config.minimumOrderAmount) || 0;
+  const deliveryFee = Number(config.deliveryFee) || 0;
+  const freeDeliveryThreshold = Number(config.freeDeliveryThreshold) || 0;
+  
+  const minimumOrderMet = safeSubtotal >= minimumOrderAmount;
+  const isFreeDelivery = safeSubtotal >= freeDeliveryThreshold;
   const finalDeliveryFee = isFreeDelivery ? 0 : deliveryFee;
-  const total = subtotal + finalDeliveryFee;
+  const total = safeSubtotal + finalDeliveryFee;
 
   return {
-    subtotal,
+    subtotal: safeSubtotal,
     deliveryFee: finalDeliveryFee,
     freeDeliveryThreshold,
     isFreeDelivery,
@@ -48,9 +51,10 @@ export function validateOrderRequirements(
   subtotal: number,
   config: AppConfig
 ): { isValid: boolean; errorMessage?: string } {
-  const minimumOrderAmount = config.minimumOrderAmount || 0;
+  const safeSubtotal = Number(subtotal) || 0;
+  const minimumOrderAmount = Number(config.minimumOrderAmount) || 0;
   
-  if (minimumOrderAmount > 0 && subtotal < minimumOrderAmount) {
+  if (minimumOrderAmount > 0 && safeSubtotal < minimumOrderAmount) {
     return {
       isValid: false,
       errorMessage: `Minimum order amount is Rp ${minimumOrderAmount.toLocaleString('id-ID')}. Please add more items to your cart.`

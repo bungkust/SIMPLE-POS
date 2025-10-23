@@ -23,20 +23,53 @@ export default defineConfig({
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
   },
   build: {
-    // Minimal build config to avoid React chunking issues
+    // Optimized build config for better performance
     rollupOptions: {
       output: {
-        manualChunks: undefined // Let Vite handle chunking automatically
+        manualChunks: (id) => {
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor';
+            }
+            if (id.includes('lucide-react') || id.includes('@radix-ui')) {
+              return 'ui-vendor';
+            }
+            if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) {
+              return 'form-vendor';
+            }
+            if (id.includes('@supabase')) {
+              return 'supabase-vendor';
+            }
+            return 'vendor';
+          }
+          
+          // App chunks
+          if (id.includes('src/pages/AdminDashboardNew') || id.includes('src/pages/SuperAdminDashboardNew')) {
+            return 'admin-pages';
+          }
+          if (id.includes('src/pages/CheckoutPageNew') || id.includes('src/pages/OrderSuccessPageNew')) {
+            return 'checkout-pages';
+          }
+          if (id.includes('src/components/admin/')) {
+            return 'admin-components';
+          }
+        }
       }
     },
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 1000,
     sourcemap: false,
     minify: 'terser',
     terserOptions: {
       compress: {
         drop_console: true,
-        drop_debugger: true
-      }
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug'],
+        passes: 2,
+      },
+      mangle: {
+        toplevel: true,
+      },
     },
     target: 'es2020'
   },
