@@ -9,6 +9,12 @@ if (typeof window !== 'undefined' && typeof (window as any).__WS_TOKEN__ === 'un
   (window as any).__WS_TOKEN__ = undefined;
 }
 
+// Fix for React useLayoutEffect in production builds
+import React from 'react';
+if (typeof window !== 'undefined') {
+  (window as any).React = React;
+}
+
 // Verify environment variables on app initialization
 verifyEnvironment();
 

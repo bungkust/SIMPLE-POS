@@ -16,6 +16,8 @@ export default defineConfig({
   define: {
     // Fix for __WS_TOKEN__ undefined error (common in dev environments)
     __WS_TOKEN__: 'undefined',
+    // Fix for React useLayoutEffect in SSR
+    global: 'globalThis',
   },
   build: {
     // Simplified build config for Netlify compatibility
