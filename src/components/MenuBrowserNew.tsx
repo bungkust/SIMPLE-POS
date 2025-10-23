@@ -21,7 +21,7 @@ import {
   createSecureCacheKey,
   RateLimiter 
 } from '../lib/security-utils';
-import { getThumbnailUrl, getMediumImageUrl, getResponsiveImageSize } from '../lib/image-utils';
+import { getThumbnailUrl, getMediumImageUrl, getResponsiveImageSize, getResponsiveImageSizeForDisplay } from '../lib/image-utils';
 import { useImagePreloader } from '../hooks/use-image-preloader';
 // import { ThumbnailImage, MediumImage } from '@/components/ui/lazy-image';
 
@@ -616,7 +616,7 @@ export const MenuBrowser = memo(function MenuBrowser() {
                     <div className="aspect-square w-full overflow-hidden rounded-t-lg">
                       {item.photo_url ? (
                       <img
-                        src={getMediumImageUrl(item.photo_url, getResponsiveImageSize())}
+                        src={getMediumImageUrl(item.photo_url, getResponsiveImageSizeForDisplay(96, 96))}
                         alt={item.name}
                         className="w-full h-full object-cover"
                         loading={index < 6 ? "eager" : "lazy"}

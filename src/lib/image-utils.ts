@@ -82,7 +82,7 @@ export function getThumbnailUrl(
 ): string {
   return getOptimizedImageUrl(originalUrl, {
     ...size,
-    quality: 60, // Reduced from 75 for better performance
+    quality: 50, // Further reduced for better compression
     format: 'webp',
     fit: 'cover'
   });
@@ -100,7 +100,7 @@ export function getMediumImageUrl(
 ): string {
   return getOptimizedImageUrl(originalUrl, {
     ...size,
-    quality: 70, // Reduced from 85 for better performance
+    quality: 60, // Further reduced for better compression
     format: 'webp',
     fit: 'cover'
   });
@@ -118,7 +118,7 @@ export function getLargeImageUrl(
 ): string {
   return getOptimizedImageUrl(originalUrl, {
     ...size,
-    quality: 80, // Reduced from 90 for better performance
+    quality: 70, // Further reduced for better compression
     format: 'webp',
     fit: 'cover'
   });
@@ -163,12 +163,20 @@ export function getResponsiveImageUrls(originalUrl: string) {
  * @returns Object with width and height for current screen size
  */
 export function getResponsiveImageSize(): { width: number; height: number } {
-  if (typeof window === 'undefined') return { width: 400, height: 300 };
+  if (typeof window === 'undefined') return { width: 200, height: 200 };
   
   const screenWidth = window.innerWidth;
-  if (screenWidth < 640) return { width: 200, height: 200 }; // Mobile
-  if (screenWidth < 1024) return { width: 300, height: 300 }; // Tablet
-  return { width: 400, height: 300 }; // Desktop
+  if (screenWidth < 640) return { width: 96, height: 96 }; // Mobile - match display size
+  if (screenWidth < 1024) return { width: 128, height: 128 }; // Tablet
+  return { width: 200, height: 200 }; // Desktop
+}
+
+export function getResponsiveImageSizeForDisplay(displayWidth: number, displayHeight: number): { width: number; height: number } {
+  // Return exact display dimensions to avoid oversized images
+  return { 
+    width: Math.min(displayWidth * 2, 400), // Max 2x for retina, cap at 400px
+    height: Math.min(displayHeight * 2, 400) 
+  };
 }
 
 /**

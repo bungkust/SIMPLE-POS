@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getThumbnailUrl, getResponsiveImageSizeForDisplay } from '../lib/image-utils';
 
 const iconMap = {
   Coffee,
@@ -100,7 +101,7 @@ export function Header() {
           >
             {config.storeLogoUrl ? (
               <img
-                src={config.storeLogoUrl}
+                src={getThumbnailUrl(config.storeLogoUrl, getResponsiveImageSizeForDisplay(48, 48))}
                 alt="Store Logo"
                 className="h-12 w-12 rounded-lg object-cover flex-shrink-0"
                 onError={(e) => {
