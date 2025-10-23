@@ -43,23 +43,38 @@ self.addEventListener('activate', (event) => {
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
+  
+  try {
+    const url = new URL(request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
+    // Skip non-GET requests
+    if (request.method !== 'GET') {
+      return;
+    }
+
+    // Skip chrome-extension and other unsupported schemes
+    if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') {
+      return;
+    }
+
+    // Handle different types of requests
+    if (url.pathname.startsWith('/assets/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+      // Static assets - cache first
+      event.respondWith(cacheFirst(request));
+    } else if (url.hostname.includes('supabase.co')) {
+      // Supabase API - network first with cache fallback
+      event.respondWith(networkFirst(request));
+    } else if (url.hostname.includes('fonts.gstatic.com') || url.hostname.includes('fonts.googleapis.com')) {
+      // Font requests - network first, no caching to avoid CSP issues
+      event.respondWith(networkOnly(request));
+    } else {
+      // Other requests - network first
+      event.respondWith(networkFirst(request));
+    }
+  } catch (error) {
+    console.log('Service Worker fetch error:', error);
+    // Let the browser handle the request normally
     return;
-  }
-
-  // Handle different types of requests
-  if (url.pathname.startsWith('/assets/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
-    // Static assets - cache first
-    event.respondWith(cacheFirst(request));
-  } else if (url.hostname.includes('supabase.co')) {
-    // Supabase API - network first with cache fallback
-    event.respondWith(networkFirst(request));
-  } else {
-    // Other requests - network first
-    event.respondWith(networkFirst(request));
   }
 });
 
@@ -87,9 +102,15 @@ async function cacheFirst(request) {
 async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      const cache = await caches.open(DYNAMIC_CACHE);
-      cache.put(request, networkResponse.clone());
+    if (networkResponse.ok && networkResponse.status !== 206) {
+      // Only cache complete responses (not partial/206)
+      try {
+        const cache = await caches.open(DYNAMIC_CACHE);
+        await cache.put(request, networkResponse.clone());
+      } catch (cacheError) {
+        console.log('Cache put failed:', cacheError);
+        // Continue without caching
+      }
     }
     return networkResponse;
   } catch (error) {
@@ -99,5 +120,15 @@ async function networkFirst(request) {
       return cachedResponse;
     }
     return new Response('Offline', { status: 503 });
+  }
+}
+
+// Network only strategy (for fonts to avoid CSP issues)
+async function networkOnly(request) {
+  try {
+    return await fetch(request);
+  } catch (error) {
+    console.log('Network only failed:', error);
+    return new Response('Network error', { status: 503 });
   }
 }
