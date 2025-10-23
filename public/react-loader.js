@@ -43,6 +43,12 @@
   function ensureReact() {
     if (typeof window === 'undefined') return;
     
+    // Check if React polyfill is already ready
+    if (window.__REACT_POLYFILL_READY__) {
+      console.log('React polyfill already ready');
+      return;
+    }
+    
     // Check for circular dependency prevention flag
     if (window.__PREVENT_CIRCULAR_DEPS__) {
       console.log('Circular dependency prevention active');
@@ -82,6 +88,9 @@
   
   // Initialize immediately
   ensureReact();
+  
+  // Expose ensureReact globally for external use
+  window.ensureReact = ensureReact;
   
   // Also initialize when DOM is ready
   if (document.readyState === 'loading') {
