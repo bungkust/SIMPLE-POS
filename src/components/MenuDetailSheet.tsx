@@ -11,6 +11,7 @@ import { useCart } from '../contexts/CartContext';
 import { formatCurrency } from '@/lib/form-utils';
 import { supabase } from '@/lib/supabase';
 import { colors, typography, components, sizes, cn } from '@/lib/design-system';
+import { getLargeImageUrl, getResponsiveImageSize } from '@/lib/image-utils';
 
 interface MenuItem {
   id: string;
@@ -193,7 +194,7 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
               <div className="relative h-64 sm:h-80 lg:h-96 bg-muted">
                 {item.photo_url ? (
                   <img
-                    src={item.photo_url}
+                    src={getLargeImageUrl(item.photo_url, getResponsiveImageSize())}
                     alt={item.name}
                     className="w-full h-full object-cover"
                   />

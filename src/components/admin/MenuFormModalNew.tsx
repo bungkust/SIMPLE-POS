@@ -18,6 +18,7 @@ import { formatCurrency } from '@/lib/form-utils';
 import { Database } from '@/lib/database.types';
 import { uploadFile, uploadConfigs } from '@/lib/storage-utils';
 import { logger } from '@/lib/logger';
+import { colors, typography, components, sizes, spacing, cn } from '@/lib/design-system';
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 
@@ -34,6 +35,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
   const [uploading, setUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { currentTenant } = useAuth();
 
@@ -64,6 +66,10 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     console.log('🔍 handleFileUpload called:', { file: file?.name, size: file?.size, type: file?.type });
+    
+    // Clear previous upload success message
+    setUploadSuccess(false);
+    
     if (!file) {
       console.log('🔍 No file selected');
       return;
@@ -80,13 +86,11 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
       if (result.success && result.url) {
         setValue('image_url', result.url);
         setHasUnsavedChanges(true);
+        setUploadSuccess(true);
         logger.log('✅ Menu item image uploaded successfully:', result.url);
-        // Show success message to user
-        onSuccess({
-          title: 'Upload Berhasil',
-          message: 'Gambar berhasil diupload. Jangan lupa klik "Save" untuk menyimpan perubahan.',
-          type: 'success'
-        });
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setUploadSuccess(false), 3000);
       } else {
         onError({
           title: 'Upload Gagal',
@@ -181,13 +185,13 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
 
   return (
     <Sheet open={true} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Tag className="h-5 w-5" />
+      <SheetContent className={cn(components.sheet, "w-full sm:max-w-2xl overflow-y-auto")}>
+        <SheetHeader className={components.sheetHeader}>
+          <SheetTitle className={cn(typography.h3, "flex items-center gap-2")}>
+            <Tag className={sizes.icon.md} />
             {item ? 'Edit Menu Item' : 'Add New Menu Item'}
           </SheetTitle>
-          <SheetDescription>
+          <SheetDescription className={typography.body.medium}>
             {item 
               ? 'Update the menu item information'
               : 'Create a new menu item for your restaurant'
@@ -195,16 +199,16 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
+        <form onSubmit={handleSubmit(onSubmit)} className={cn(spacing.lg, "mt-6")}>
           {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-4 w-4" />
+          <Card className={components.card}>
+            <CardHeader className={components.sheetHeader}>
+              <CardTitle className={cn(typography.h4, "flex items-center gap-2")}>
+                <FileText className={sizes.icon.sm} />
                 Basic Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className={cn(components.sheetContent, spacing.md)}>
               <FormInput
                 {...register('name')}
                 label="Item Name"
@@ -223,7 +227,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
                 rows={3}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={cn(components.grid.cols2, "gap-4")}>
                 <FormInput
                   {...register('price', { valueAsNumber: true })}
                   label="Price"
@@ -264,18 +268,18 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
           </Card>
 
           {/* Image Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Image className="h-4 w-4" />
+          <Card className={components.card}>
+            <CardHeader className={components.sheetHeader}>
+              <CardTitle className={cn(typography.h4, "flex items-center gap-2")}>
+                <Image className={sizes.icon.sm} />
                 Item Image
               </CardTitle>
-              <CardDescription>
+              <CardDescription className={typography.body.small}>
                 Upload an image for this menu item (optional)
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className={cn(components.sheetContent, spacing.md)}>
+              <div className={spacing.sm}>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -305,31 +309,42 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
                       }
                     }}
                     disabled={uploading || loading}
-                    className="w-full cursor-pointer"
+                    className={cn(components.buttonOutline, "w-full cursor-pointer")}
                   >
                     {uploading ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                        <div className={cn("animate-spin rounded-full h-4 w-4 border-b-2 mr-2", colors.primary.DEFAULT)}></div>
                         Uploading...
                       </>
                     ) : (
                       <>
-                        <Upload className="h-4 w-4 mr-2" />
+                        <Upload className={cn(sizes.icon.md, "mr-2")} />
                         Choose Image
                       </>
                     )}
                   </Button>
                 </label>
-                <p className="text-xs text-muted-foreground">
+                <p className={cn(typography.body.small, colors.text.muted)}>
                   Maximum file size: 5MB. Supported formats: JPG, PNG, GIF
                 </p>
+                {uploadSuccess && (
+                  <div className={cn(typography.body.small, colors.status.info.text, "font-medium")}>
+                    ✅ Image uploaded successfully! Don't forget to save the form.
+                  </div>
+                )}
               </div>
 
               {imageUrl && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Badge variant={hasUnsavedChanges ? "default" : "outline"} className="text-xs">
-                      {hasUnsavedChanges ? "💾 Image uploaded (unsaved)" : "Image uploaded"}
+                <div className={spacing.sm}>
+                  <div className={cn(components.flex.between)}>
+                    <Badge 
+                      variant={hasUnsavedChanges ? "default" : "outline"} 
+                      className={cn(
+                        typography.body.medium,
+                        hasUnsavedChanges ? cn(colors.status.info.bg, colors.status.info.text, colors.status.info.border) : ""
+                      )}
+                    >
+                      {hasUnsavedChanges ? "Image uploaded" : "Image uploaded"}
                     </Badge>
                     <Button
                       type="button"
@@ -339,12 +354,12 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
                     >
                       {showPreview ? (
                         <>
-                          <EyeOff className="h-4 w-4 mr-1" />
+                          <EyeOff className={cn(sizes.icon.sm, "mr-1")} />
                           Hide
                         </>
                       ) : (
                         <>
-                          <Eye className="h-4 w-4 mr-1" />
+                          <Eye className={cn(sizes.icon.sm, "mr-1")} />
                           Preview
                         </>
                       )}
@@ -352,7 +367,7 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
                   </div>
                   
                   {showPreview && (
-                    <div className="border rounded-lg p-4 bg-muted/20">
+                    <div className={cn(components.card, "p-4", colors.background.muted)}>
                       <img
                         src={imageUrl}
                         alt="Menu item preview"
@@ -367,12 +382,12 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
 
           {/* Price Preview */}
           {price > 0 && (
-            <Alert>
-              <DollarSign className="h-4 w-4" />
-              <AlertDescription>
+            <Alert className={cn(colors.status.info.bg, colors.status.info.border, "border")}>
+              <DollarSign className={cn(sizes.icon.sm, colors.status.info.icon)} />
+              <AlertDescription className={colors.status.info.text}>
                 <strong>Price Preview:</strong> {formatCurrency(price)}
                 {price < 10000 && (
-                  <span className="text-amber-600 ml-2">
+                  <span className={cn(colors.text.yellow, "ml-2")}>
                     (Consider increasing price for better margins)
                   </span>
                 )}
@@ -383,30 +398,33 @@ export function MenuFormModal({ item, categories, onClose, onSuccess, onError }:
           <Separator />
 
           {/* Action Buttons */}
-          <div className="flex justify-end space-x-3">
+          <div className={cn(components.flex.end, "space-x-3")}>
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
+              className={cn(components.buttonOutline, sizes.button.md)}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading || uploading}
-              className={hasUnsavedChanges ? 'bg-orange-500 hover:bg-orange-600' : ''}
+              className={cn(
+                hasUnsavedChanges ? 'bg-blue-500 hover:bg-blue-600 text-white font-semibold shadow-md' : components.buttonPrimary,
+                sizes.button.md
+              )}
             >
               {loading ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className={cn("animate-spin rounded-full h-4 w-4 border-b-2 mr-2", colors.primary.foreground)}></div>
                   {item ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
                 <>
-                  <Tag className="h-4 w-4 mr-2" />
-                  {hasUnsavedChanges ? '💾 ' : ''}{item ? 'Update Item' : 'Create Item'}
-                  {hasUnsavedChanges ? ' (Unsaved Changes)' : ''}
+                  <Tag className={cn(sizes.icon.sm, "mr-2")} />
+                  {item ? 'Update Item' : 'Create Item'}
                 </>
               )}
             </Button>

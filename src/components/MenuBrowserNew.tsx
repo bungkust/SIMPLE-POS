@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { 
@@ -21,6 +21,8 @@ import {
   createSecureCacheKey,
   RateLimiter 
 } from '../lib/security-utils';
+import { getThumbnailUrl, getMediumImageUrl, getResponsiveImageSize } from '../lib/image-utils';
+import { useImagePreloader } from '../hooks/use-image-preloader';
 // import { ThumbnailImage, MediumImage } from '@/components/ui/lazy-image';
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row'] & {
@@ -28,9 +30,10 @@ type MenuItem = Database['public']['Tables']['menu_items']['Row'] & {
 };
 type Category = Database['public']['Tables']['categories']['Row'];
 
-export function MenuBrowser() {
+export const MenuBrowser = memo(function MenuBrowser() {
   const { addItem, removeItem, getItemQuantity } = useCart();
   const { currentTenant } = useAuth();
+  const { preloadCriticalImages } = useImagePreloader();
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -41,8 +44,15 @@ export function MenuBrowser() {
   const [tenantInfo, setTenantInfo] = useState<any>(null);
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
   
-  // Rate limiter for API calls
-  const rateLimiter = useMemo(() => new RateLimiter(10, 60000), []);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const ITEMS_PER_PAGE = 12; // Load 12 items per page
+  
+  // Rate limiter for API calls - increased limit
+  const rateLimiter = useMemo(() => new RateLimiter(30, 60000), []);
 
   // Debounce search query
   useEffect(() => {
@@ -62,6 +72,81 @@ export function MenuBrowser() {
   const isCacheValid = useCallback((timestamp: number) => {
     return Date.now() - timestamp < 5 * 60 * 1000; // 5 minutes
   }, []);
+
+  // Load menu items with pagination
+  const loadMenuItems = useCallback(async (tenantId: string, page: number = 1, reset: boolean = true) => {
+    try {
+      if (reset) {
+        setLoadingMore(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const from = (page - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      console.log(`MenuBrowser: Loading menu items page ${page} (${from}-${to}) for tenant:`, tenantId);
+
+      // Build query with filters
+      let query = supabase
+        .from('menu_items')
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true);
+
+      // Add category filter if selected
+      if (selectedCategory) {
+        const category = categories.find(c => c.name === selectedCategory);
+        if (category) {
+          query = query.eq('category_id', category.id);
+        }
+      }
+
+      // Add search filter if query exists
+      if (debouncedSearchQuery.trim()) {
+        const sanitizedQuery = sanitizeSearchQuery(debouncedSearchQuery);
+        query = query.textSearch('search_text', sanitizedQuery);
+      }
+
+      // Add pagination and ordering
+      query = query
+        .order('name', { ascending: true })
+        .range(from, to);
+
+      const { data: menuData, error: menuError, count } = await query;
+
+      if (menuError) {
+        console.error('Error loading menu items:', menuError);
+        return;
+      }
+
+      console.log(`MenuBrowser: Loaded ${menuData?.length || 0} menu items (page ${page})`);
+      console.log(`MenuBrowser: Total items: ${count}`);
+
+      if (reset) {
+        setMenuItems(menuData || []);
+        setCurrentPage(1);
+      } else {
+        setMenuItems(prev => [...prev, ...(menuData || [])]);
+      }
+
+      setTotalItems(count || 0);
+      setHasMore((menuData?.length || 0) === ITEMS_PER_PAGE);
+      setCurrentPage(page);
+
+    } catch (error) {
+      console.error('Error in loadMenuItems:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [selectedCategory, categories, debouncedSearchQuery, ITEMS_PER_PAGE]);
+
+  // Load more items (infinite scroll)
+  const loadMoreItems = useCallback(() => {
+    if (!loadingMore && hasMore && tenantInfo?.tenant_id) {
+      loadMenuItems(tenantInfo.tenant_id, currentPage + 1, false);
+    }
+  }, [loadingMore, hasMore, currentPage, tenantInfo?.tenant_id, loadMenuItems]);
 
 
   useEffect(() => {
@@ -180,29 +265,9 @@ export function MenuBrowser() {
           }
         }
 
-        // Load menu items if not cached or cache expired
-        if (!cachedMenuItems || !isCacheValid(JSON.parse(cachedMenuItems).timestamp) || !validateCacheData(JSON.parse(cachedMenuItems).data, 'menuItems')) {
-        console.log('MenuBrowser: Loading menu items for tenant ID:', tenantId);
-        const { data: menuData, error: menuError } = await supabase
-          .from('menu_items')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .eq('is_active', true)
-          .order('name', { ascending: true });
-
-        if (menuError) {
-          console.error('Error loading menu items:', menuError);
-        } else {
-          console.log('MenuBrowser: Loaded menu items:', menuData);
-          setMenuItems(menuData || []);
-            
-            // Cache menu items
-            localStorage.setItem(menuItemsCacheKey, JSON.stringify({
-              data: menuData || [],
-              timestamp: Date.now()
-            }));
-          }
-        }
+        // Load menu items with pagination (always load fresh for pagination)
+        console.log('MenuBrowser: Loading menu items with pagination for tenant ID:', tenantId);
+        await loadMenuItems(tenantId, 1, true);
 
       } catch (error) {
         console.error('Error loading data:', error);
@@ -212,29 +277,64 @@ export function MenuBrowser() {
     };
 
     loadData();
-  }, [getCacheKey, isCacheValid, currentTenant]);
+  }, [getCacheKey, isCacheValid, currentTenant]); // Removed loadMenuItems from deps
 
+  // Reload menu items when filters change
+  useEffect(() => {
+    if (tenantInfo?.tenant_id && (selectedCategory || debouncedSearchQuery)) {
+      console.log('MenuBrowser: Filters changed, reloading menu items');
+      loadMenuItems(tenantInfo.tenant_id, 1, true);
+    }
+  }, [selectedCategory, debouncedSearchQuery, tenantInfo?.tenant_id]); // Removed loadMenuItems from deps
 
-  // Memoized filtered items with debounced search
-  const filteredItems = useMemo(() => {
-    const sanitizedQuery = sanitizeSearchQuery(debouncedSearchQuery);
-    
-    return menuItems.filter(item => {
-      const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
-      const matchesSearch = !sanitizedQuery || 
-        item.name.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
-        (item.description && item.description.toLowerCase().includes(sanitizedQuery.toLowerCase()));
+  // Preload critical images when menu items are loaded
+  useEffect(() => {
+    if (menuItems.length > 0) {
+      const criticalImageUrls = menuItems
+        .slice(0, 6) // First 6 images
+        .map(item => item.photo_url)
+        .filter(Boolean) as string[];
       
-      return matchesCategory && matchesSearch;
-    });
-  }, [menuItems, selectedCategory, debouncedSearchQuery, sanitizeSearchQuery]);
+      if (criticalImageUrls.length > 0) {
+        preloadCriticalImages(criticalImageUrls);
+      }
+    }
+  }, [menuItems, preloadCriticalImages]);
 
-  // Debug logging
-  console.log('MenuBrowser: Categories:', categories);
-  console.log('MenuBrowser: Categories length:', categories.length);
-  console.log('MenuBrowser: Menu items:', menuItems);
-  console.log('MenuBrowser: Filtered items:', filteredItems);
-  console.log('MenuBrowser: Selected category:', selectedCategory);
+  // Infinite scroll with Intersection Observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && hasMore && !loadingMore) {
+          loadMoreItems();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const loadMoreButton = document.getElementById('load-more-trigger');
+    if (loadMoreButton) {
+      observer.observe(loadMoreButton);
+    }
+
+    return () => {
+      if (loadMoreButton) {
+        observer.unobserve(loadMoreButton);
+      }
+    };
+  }, [hasMore, loadingMore, loadMoreItems]);
+
+  // Filter menu items (now handled by server-side filtering)
+  const filteredItems = useMemo(() => {
+    // Since filtering is now done server-side, we just return the current menu items
+    return menuItems;
+  }, [menuItems]);
+
+  // Debug logging (reduced for performance)
+  if (import.meta.env.DEV && menuItems.length > 0) {
+    console.log('MenuBrowser: Loaded', menuItems.length, 'items,', categories.length, 'categories');
+  }
 
   const handleItemClick = (item: MenuItem) => {
     setSelectedItem(item);
@@ -243,11 +343,36 @@ export function MenuBrowser() {
 
   if (loading || !tenantInfo) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p className={cn(typography.body.medium, colors.text.secondary)}>Loading menu...</p>
+      <div className="container mx-auto p-4 pt-20 max-w-4xl">
+        <div className="mb-6">
+          <h1 className={cn(typography.h2, "mb-4 text-center")}>Our Menu</h1>
+          
+          {/* Search and Category Filter Skeleton */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative flex-grow">
+              <div className="loading-skeleton h-10 rounded-lg"></div>
+            </div>
+            <div className="w-full sm:w-auto">
+              <div className="loading-skeleton h-10 rounded-lg"></div>
+            </div>
+          </div>
+
+          {/* Menu Items Grid Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="card overflow-hidden">
+                <div className="loading-skeleton h-48 w-full"></div>
+                <div className="p-4">
+                  <div className="loading-skeleton h-6 w-3/4 mb-2"></div>
+                  <div className="loading-skeleton h-4 w-full mb-2"></div>
+                  <div className="loading-skeleton h-4 w-2/3 mb-4"></div>
+                  <div className="flex items-center justify-between">
+                    <div className="loading-skeleton h-6 w-16"></div>
+                    <div className="loading-skeleton h-8 w-8 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -336,7 +461,7 @@ export function MenuBrowser() {
             {/* Menu Items - Mobile Layout */}
             <div className="space-y-2 md:hidden">
               {/* Mobile: List Layout */}
-              {filteredItems.map((item) => {
+              {filteredItems.map((item, index) => {
                 const discount = item.base_price && item.base_price > item.price 
                   ? item.base_price - item.price 
                   : 0;
@@ -353,7 +478,7 @@ export function MenuBrowser() {
                         <div className="flex-shrink-0">
                           {item.photo_url ? (
                             <img
-                              src={item.photo_url}
+                              src={getThumbnailUrl(item.photo_url, { width: 96, height: 96 })}
                               alt={item.name}
                               className={cn("w-24 h-24 rounded-xl object-cover", shadows.sm)}
                               loading="lazy"
@@ -476,7 +601,7 @@ export function MenuBrowser() {
 
             {/* Desktop: Grid Layout */}
             <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
-              {filteredItems.map((item) => {
+              {filteredItems.map((item, index) => {
                 const discount = item.base_price && item.base_price > item.price 
                   ? item.base_price - item.price 
                   : 0;
@@ -490,15 +615,16 @@ export function MenuBrowser() {
                     {/* Food Image */}
                     <div className="aspect-square w-full overflow-hidden rounded-t-lg">
                       {item.photo_url ? (
-                        <img
-                          src={item.photo_url}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.src = '/placeholder-image.png';
-                          }}
-                        />
+                      <img
+                        src={getMediumImageUrl(item.photo_url, getResponsiveImageSize())}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        loading={index < 6 ? "eager" : "lazy"}
+                        fetchpriority={index < 3 ? "high" : "auto"}
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-image.png';
+                        }}
+                      />
                       ) : (
                         <div className="w-full h-full bg-muted flex items-center justify-center">
                           <Package className="h-10 w-10 xl:h-12 xl:w-12 text-muted-foreground" />
@@ -592,6 +718,44 @@ export function MenuBrowser() {
             </div>
           </div>
         )}
+
+        {/* Load More Button */}
+        {hasMore && (
+          <div className="flex justify-center mt-8">
+            <button
+              id="load-more-trigger"
+              onClick={loadMoreItems}
+              disabled={loadingMore}
+              className={cn(
+                "px-6 py-3 rounded-lg font-medium transition-colors",
+                "bg-primary hover:bg-primary/90 text-primary-foreground",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "flex items-center gap-2"
+              )}
+            >
+              {loadingMore ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading more...
+                </>
+              ) : (
+                <>
+                  <Package className="h-4 w-4" />
+                  Load More Items
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Pagination Info */}
+        {totalItems > 0 && (
+          <div className="text-center mt-4">
+            <p className={cn(typography.body.small, colors.text.muted)}>
+              Showing {menuItems.length} of {totalItems} items
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Menu Detail Sheet */}
@@ -616,4 +780,4 @@ export function MenuBrowser() {
       />
     </div>
   );
-}
+});

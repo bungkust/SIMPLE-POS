@@ -38,12 +38,6 @@ export function getOptimizedImageUrl(
     return originalUrl;
   }
 
-  // For now, return original URL to avoid transform issues
-  // TODO: Enable Supabase Storage Transform when properly configured
-  return originalUrl;
-
-  // Commented out transform logic until Supabase Storage Transform is properly configured
-  /*
   const {
     width,
     height,
@@ -68,13 +62,12 @@ export function getOptimizedImageUrl(
   if (sharpen) params.append('sharpen', sharpen.toString());
 
   // Add cache busting for development
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     params.append('t', Date.now().toString());
   }
 
   const separator = originalUrl.includes('?') ? '&' : '?';
   return `${originalUrl}${separator}${params.toString()}`;
-  */
 }
 
 /**
@@ -89,7 +82,7 @@ export function getThumbnailUrl(
 ): string {
   return getOptimizedImageUrl(originalUrl, {
     ...size,
-    quality: 75,
+    quality: 60, // Reduced from 75 for better performance
     format: 'webp',
     fit: 'cover'
   });
@@ -103,11 +96,11 @@ export function getThumbnailUrl(
  */
 export function getMediumImageUrl(
   originalUrl: string,
-  size: { width: number; height: number } = { width: 800, height: 600 }
+  size: { width: number; height: number } = { width: 400, height: 300 }
 ): string {
   return getOptimizedImageUrl(originalUrl, {
     ...size,
-    quality: 85,
+    quality: 70, // Reduced from 85 for better performance
     format: 'webp',
     fit: 'cover'
   });
@@ -121,11 +114,11 @@ export function getMediumImageUrl(
  */
 export function getLargeImageUrl(
   originalUrl: string,
-  size: { width: number; height: number } = { width: 1200, height: 900 }
+  size: { width: number; height: number } = { width: 800, height: 600 }
 ): string {
   return getOptimizedImageUrl(originalUrl, {
     ...size,
-    quality: 90,
+    quality: 80, // Reduced from 90 for better performance
     format: 'webp',
     fit: 'cover'
   });
@@ -158,11 +151,24 @@ export function getProgressivePlaceholder(
 export function getResponsiveImageUrls(originalUrl: string) {
   return {
     thumbnail: getThumbnailUrl(originalUrl, { width: 200, height: 200 }),
-    small: getOptimizedImageUrl(originalUrl, { width: 400, height: 300, quality: 75 }),
-    medium: getMediumImageUrl(originalUrl, { width: 800, height: 600 }),
-    large: getLargeImageUrl(originalUrl, { width: 1200, height: 900 }),
+    small: getOptimizedImageUrl(originalUrl, { width: 300, height: 300, quality: 65 }),
+    medium: getMediumImageUrl(originalUrl, { width: 400, height: 300 }),
+    large: getLargeImageUrl(originalUrl, { width: 800, height: 600 }),
     placeholder: getProgressivePlaceholder(originalUrl, { width: 200, height: 200 })
   };
+}
+
+/**
+ * Get responsive image size based on screen width
+ * @returns Object with width and height for current screen size
+ */
+export function getResponsiveImageSize(): { width: number; height: number } {
+  if (typeof window === 'undefined') return { width: 400, height: 300 };
+  
+  const screenWidth = window.innerWidth;
+  if (screenWidth < 640) return { width: 200, height: 200 }; // Mobile
+  if (screenWidth < 1024) return { width: 300, height: 300 }; // Tablet
+  return { width: 400, height: 300 }; // Desktop
 }
 
 /**

@@ -42,12 +42,6 @@ export function MenuTab() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<{ id: string; name: string } | null>(null);
 
-  useEffect(() => {
-    if (currentTenant) {
-      loadData();
-    }
-  }, [currentTenant, loadData]);
-
   const loadData = useCallback(async () => {
     if (!currentTenant) {
       setLoading(false);
@@ -80,6 +74,12 @@ export function MenuTab() {
       setLoading(false);
     }
   }, [currentTenant, showError]);
+
+  useEffect(() => {
+    if (currentTenant) {
+      loadData();
+    }
+  }, [currentTenant, loadData]);
 
   const toggleActive = async (itemId: string, currentState: boolean) => {
     console.log('🔄 MenuTab: Toggling active state for item:', itemId);

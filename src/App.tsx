@@ -1,9 +1,15 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { Header } from './components/HeaderNew';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { CartProvider } from './contexts/CartContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { handleOAuthError } from './lib/auth-utils';
+import { ToastProvider } from './components/ui/toast-provider';
+import { Loader2 } from 'lucide-react';
+
+// Import critical components normally for stability
+import { Header } from './components/HeaderNew';
 import { LandingPage } from './components/LandingPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { CheckoutPage } from './pages/CheckoutPageNew';
@@ -17,10 +23,26 @@ import { AdminDashboard } from './pages/AdminDashboardNew';
 import { SuperAdminLoginPage } from './pages/SuperAdminLoginPageNew';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboardNew';
 import { TenantSetupPage } from './pages/TenantSetupPageNew';
-import { AuthProvider } from './contexts/AuthContext';
-import { handleOAuthError } from './lib/auth-utils';
 import AuthCallback from './pages/AuthCallback';
-import { ToastProvider } from './components/ui/toast-provider';
+
+// Lazy load only heavy admin components
+const AdminDashboardLazy = lazy(() => import('./pages/AdminDashboardNew'));
+const SuperAdminDashboardLazy = lazy(() => import('./pages/SuperAdminDashboardNew'));
+
+// Loading component
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="text-center">
+      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+      <p className="text-gray-600">Loading...</p>
+    </div>
+  </div>
+);
+
+// Import test utilities in development
+if (import.meta.env.DEV) {
+  import('./utils/test-image-optimization');
+}
 
 // Helper function to get current tenant slug from URL
 const getCurrentTenantSlug = (): string => {
@@ -140,17 +162,21 @@ function AdminLoginPageWrapper() {
 function SuperAdminDashboardWrapper() {
   const navigate = useNavigate();
   return (
-    <ProtectedRoute requireSuperAdmin={true}>
-      <SuperAdminDashboard onBack={() => navigate('/super-admin/login')} />
-    </ProtectedRoute>
+    <Suspense fallback={<LoadingSpinner />}>
+      <ProtectedRoute requireSuperAdmin={true}>
+        <SuperAdminDashboardLazy onBack={() => navigate('/super-admin/login')} />
+      </ProtectedRoute>
+    </Suspense>
   );
 }
 
 function AdminDashboardWrapper() {
   return (
-    <ProtectedRoute requireAdmin={true}>
-      <AdminDashboard />
-    </ProtectedRoute>
+    <Suspense fallback={<LoadingSpinner />}>
+      <ProtectedRoute requireAdmin={true}>
+        <AdminDashboardLazy />
+      </ProtectedRoute>
+    </Suspense>
   );
 }
 
@@ -190,6 +216,7 @@ function App() {
                 <Route path="/super-admin/dashboard" element={<SuperAdminDashboardWrapper />} />
                 <Route path="/:tenantSlug/admin/dashboard" element={<AdminDashboardWrapper />} />
                 <Route path="/:tenantSlug/admin/setup" element={<TenantSetupPage />} />
+
 
                 {/* Catch all - redirect to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />

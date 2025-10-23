@@ -60,6 +60,15 @@ export function useNetworkQuality(): NetworkInfo {
 
     const quality = determineNetworkQuality(connection);
     
+    // Show console alert for slow connections
+    if (quality === 'slow') {
+      console.warn('🐌 Slow connection detected! Images will be optimized for better performance.');
+    } else if (quality === 'offline') {
+      console.warn('📴 Offline mode detected! Using cached images.');
+    } else if (quality === 'fast') {
+      console.log('🚀 Fast connection detected! Loading high-quality images.');
+    }
+    
     setNetworkInfo({
       quality,
       effectiveType: connection?.effectiveType,

@@ -12,6 +12,19 @@ if (typeof window !== 'undefined' && typeof (window as any).__WS_TOKEN__ === 'un
 // Verify environment variables on app initialization
 verifyEnvironment();
 
+// Register Service Worker for caching
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('Service Worker registered:', registration);
+      })
+      .catch((error) => {
+        console.log('Service Worker registration failed:', error);
+      });
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <ToastProvider>
     <App />

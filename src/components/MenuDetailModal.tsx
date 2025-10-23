@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
 import { formatRupiah } from '../lib/utils';
 import { useCart } from '../contexts/CartContext';
+import { getLargeImageUrl, getResponsiveImageSize } from '../lib/image-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -413,7 +414,7 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
           {item.photo_url && (
             <div className="aspect-[4/3] rounded-xl overflow-hidden mb-4">
               <img
-                src={item.photo_url}
+                src={getLargeImageUrl(item.photo_url, getResponsiveImageSize())}
                 alt={item.name}
                 className="w-full h-full object-cover"
               />
