@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    include: ['react', 'react-dom'],
     exclude: ['lucide-react'],
   },
   define: {
@@ -22,41 +23,13 @@ export default defineConfig({
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
   },
   build: {
-    // Simplified build config for Netlify compatibility
+    // Minimal build config to avoid React chunking issues
     rollupOptions: {
-      external: (id) => {
-        // Don't externalize React in production builds
-        return false;
-      },
       output: {
-        manualChunks: (id) => {
-          // Better chunking strategy for React compatibility
-          if (id.includes('node_modules')) {
-            if (id.includes('react/') || id.includes('react-dom/')) {
-              return 'react-core';
-            }
-            if (id.includes('react-router')) {
-              return 'react-router';
-            }
-            if (id.includes('@supabase')) {
-              return 'supabase-vendor';
-            }
-            if (id.includes('@radix-ui')) {
-              return 'radix-ui';
-            }
-            if (id.includes('lucide-react')) {
-              return 'lucide';
-            }
-            return 'vendor';
-          }
-        },
-        globals: {
-          'react': 'React',
-          'react-dom': 'ReactDOM'
-        }
+        manualChunks: undefined // Let Vite handle chunking automatically
       }
     },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
     sourcemap: false,
     minify: 'terser',
     terserOptions: {
