@@ -4,7 +4,8 @@
   functions = "netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
 
 # ----- Security headers (aman) -----
 [[headers]]
