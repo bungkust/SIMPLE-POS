@@ -131,6 +131,9 @@
           };
           console.log('React polyfill created immediately');
         }
+        
+        // Prevent circular dependency issues
+        window.__PREVENT_CIRCULAR_DEPS__ = true;
       })();
     </script>
     <script src="/react-loader.js"></script>

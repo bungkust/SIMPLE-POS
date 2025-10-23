@@ -43,6 +43,11 @@
   function ensureReact() {
     if (typeof window === 'undefined') return;
     
+    // Check for circular dependency prevention flag
+    if (window.__PREVENT_CIRCULAR_DEPS__) {
+      console.log('Circular dependency prevention active');
+    }
+    
     // If React is not available, create a mock
     if (!window.React) {
       console.log('React not found, creating mock React');

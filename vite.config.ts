@@ -35,34 +35,40 @@ export default defineConfig({
         return false;
       },
       output: {
+        // Ensure proper chunk loading order
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+          return `assets/[name]-[hash].js`;
+        },
         manualChunks: (id) => {
-          // Vendor chunks
+          // Vendor chunks - simplified to avoid circular dependencies
           if (id.includes('node_modules')) {
-            // Keep React in main vendor chunk to ensure availability
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'vendor';
+            // Core React libraries
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-core';
             }
+            // UI libraries
             if (id.includes('lucide-react') || id.includes('@radix-ui')) {
-              return 'ui-vendor';
+              return 'ui-libs';
             }
+            // Form libraries
             if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) {
-              return 'form-vendor';
+              return 'form-libs';
             }
+            // Supabase
             if (id.includes('@supabase')) {
-              return 'supabase-vendor';
+              return 'supabase-lib';
             }
+            // Everything else goes to vendor
             return 'vendor';
           }
           
-          // App chunks
-          if (id.includes('src/pages/AdminDashboardNew') || id.includes('src/pages/SuperAdminDashboardNew')) {
-            return 'admin-pages';
+          // App chunks - simplified to avoid circular dependencies
+          if (id.includes('src/pages/')) {
+            return 'pages';
           }
-          if (id.includes('src/pages/CheckoutPageNew') || id.includes('src/pages/OrderSuccessPageNew')) {
-            return 'checkout-pages';
-          }
-          if (id.includes('src/components/admin/')) {
-            return 'admin-components';
+          if (id.includes('src/components/')) {
+            return 'components';
           }
         }
       }
@@ -76,9 +82,14 @@ export default defineConfig({
         drop_debugger: true,
         pure_funcs: ['console.log', 'console.info', 'console.debug'],
         passes: 2,
+        // Avoid hoisting issues
+        hoist_funs: false,
+        hoist_vars: false,
       },
       mangle: {
         toplevel: true,
+        // Avoid mangling that could cause initialization issues
+        keep_fnames: true,
       },
     },
     target: 'es2020'
