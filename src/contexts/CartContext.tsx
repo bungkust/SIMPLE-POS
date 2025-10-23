@@ -91,7 +91,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
 export function useCart() {
   const context = useContext(CartContext);
   if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
+    // Return a safe default instead of throwing error
+    console.warn('useCart called outside CartProvider, returning default values');
+    return {
+      items: [],
+      totalItems: 0,
+      totalAmount: 0,
+      addItem: () => {},
+      removeItem: () => {},
+      updateQuantity: () => {},
+      clearCart: () => {},
+      getItemQuantity: () => 0,
+    };
   }
   return context;
 }

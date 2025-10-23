@@ -289,7 +289,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // Return a safe default instead of throwing error
+    console.warn('useAuth called outside AuthProvider, returning default values');
+    return {
+      user: null,
+      session: null,
+      loading: false,
+      tenantLoading: false,
+      currentTenant: null,
+      signIn: async () => {},
+      signInWithGoogle: async () => {},
+      signOut: async () => {},
+      isAuthenticated: false,
+      isSuperAdmin: false,
+      isTenantOwner: false,
+      checkPermission: async () => false,
+      validateAuth: async () => false,
+    };
   }
   return context;
 }

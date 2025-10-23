@@ -27,15 +27,14 @@ function HeaderComponent() {
   const navigate = useNavigate();
   const { config } = useConfig();
   
-  
-  
   // Get auth context safely
   let currentTenant = null;
   try {
-    const { currentTenant: authTenant } = useAuth();
-    currentTenant = authTenant;
+    const authContext = useAuth();
+    currentTenant = authContext?.currentTenant || null;
   } catch (error) {
     // AuthContext not available, will use URL fallback
+    console.log('AuthContext not available, using URL fallback');
   }
   
   // Get tenant info - use currentTenant if available (authenticated), otherwise use URL

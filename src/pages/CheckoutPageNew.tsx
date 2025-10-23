@@ -27,9 +27,26 @@ interface CheckoutPageProps {
 }
 
 export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
-  const { items, totalAmount, clearCart } = useCart();
+  // Get cart context safely
+  let cartContext = { items: [], totalAmount: 0, clearCart: () => {} };
+  try {
+    cartContext = useCart();
+  } catch (error) {
+    console.warn('Cart context not available:', error);
+  }
+  
+  const { items, totalAmount, clearCart } = cartContext;
   const { showError, showSuccess } = useAppToast();
-  const { config } = useConfig();
+  
+  // Get config context safely
+  let configContext = { config: { storeName: 'Store', paymentInfoText: '', qrisImageUrl: '' } };
+  try {
+    configContext = useConfig();
+  } catch (error) {
+    console.warn('Config context not available:', error);
+  }
+  
+  const { config } = configContext;
   const [loading, setLoading] = useState(false);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);

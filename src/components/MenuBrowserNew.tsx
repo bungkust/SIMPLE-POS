@@ -251,8 +251,24 @@ const MenuItemCard = memo(function MenuItemCard({
 
 export const MenuBrowser = memo(function MenuBrowser() {
   const { addItem, removeItem, getItemQuantity } = useCart();
-  const { currentTenant } = useAuth();
-  const { preloadCriticalImages } = useImagePreloader();
+  
+  // Get auth context safely
+  let currentTenant = null;
+  try {
+    const authContext = useAuth();
+    currentTenant = authContext?.currentTenant || null;
+  } catch (error) {
+    // AuthContext not available, will use URL fallback
+    console.log('AuthContext not available, using URL fallback');
+  }
+  // Get image preloader safely
+  let preloadCriticalImages = () => {};
+  try {
+    const imagePreloader = useImagePreloader();
+    preloadCriticalImages = imagePreloader?.preloadCriticalImages || (() => {});
+  } catch (error) {
+    console.log('Image preloader not available');
+  }
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');

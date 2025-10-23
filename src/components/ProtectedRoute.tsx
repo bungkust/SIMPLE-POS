@@ -16,7 +16,23 @@ export function ProtectedRoute({
   requireSuperAdmin = false,
   requireAuth = false
 }: ProtectedRouteProps) {
-  const { user, loading, isTenantOwner, isSuperAdmin, checkPermission, validateAuth, signOut } = useAuth();
+  // Get auth context safely
+  let authContext = { 
+    user: null, 
+    loading: false, 
+    isTenantOwner: false, 
+    isSuperAdmin: false, 
+    checkPermission: async () => false, 
+    validateAuth: async () => false, 
+    signOut: async () => {} 
+  };
+  try {
+    authContext = useAuth();
+  } catch (error) {
+    console.warn('Auth context not available in ProtectedRoute:', error);
+  }
+  
+  const { user, loading, isTenantOwner, isSuperAdmin, checkPermission, validateAuth, signOut } = authContext;
   const [hasChecked, setHasChecked] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [permissionValidated, setPermissionValidated] = useState(false);

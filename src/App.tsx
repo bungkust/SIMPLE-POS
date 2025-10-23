@@ -16,16 +16,16 @@ import { MenuBrowser } from './components/MenuBrowserNew';
 import { CartBar } from './components/CartBarNew';
 import AuthCallback from './pages/AuthCallback';
 
-// Lazy load all other components to reduce initial bundle size
-const CheckoutPage = lazy(() => import('./pages/CheckoutPageNew'));
-const InvoicePage = lazy(() => import('./pages/InvoicePageNew'));
-const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPageNew'));
-const OrderSuccessPage = lazy(() => import('./pages/OrderSuccessPageNew'));
-const AdminLoginPage = lazy(() => import('./pages/AdminLoginPageNew'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboardNew'));
-const SuperAdminLoginPage = lazy(() => import('./pages/SuperAdminLoginPageNew'));
-const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboardNew'));
-const TenantSetupPage = lazy(() => import('./pages/TenantSetupPageNew'));
+// Temporarily disable lazy loading to fix React error #306
+import { CheckoutPage } from './pages/CheckoutPageNew';
+import { InvoicePage } from './pages/InvoicePageNew';
+import { OrderHistoryPage } from './pages/OrderHistoryPageNew';
+import { OrderSuccessPage } from './pages/OrderSuccessPageNew';
+import { AdminLoginPage } from './pages/AdminLoginPageNew';
+import { AdminDashboard } from './pages/AdminDashboardNew';
+import { SuperAdminLoginPage } from './pages/SuperAdminLoginPageNew';
+import { SuperAdminDashboard } from './pages/SuperAdminDashboardNew';
+import { TenantSetupPage } from './pages/TenantSetupPageNew';
 
 // Loading component
 const LoadingSpinner = () => (

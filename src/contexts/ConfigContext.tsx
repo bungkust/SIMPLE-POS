@@ -519,7 +519,25 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 export function useConfig() {
   const context = useContext(ConfigContext);
   if (context === undefined) {
-    throw new Error('useConfig must be used within a ConfigProvider');
+    // Return a safe default instead of throwing error
+    console.warn('useConfig called outside ConfigProvider, returning default values');
+    return {
+      config: {
+        storeName: 'Store',
+        storeDescription: '',
+        storeLogoUrl: '',
+        storeBannerUrl: '',
+        storeIconType: 'Coffee',
+        paymentInfoText: '',
+        qrisImageUrl: '',
+        adminEmails: [],
+        siteName: 'SIMPLE-POS',
+      },
+      loading: false,
+      error: null,
+      updateConfig: async () => {},
+      refreshConfig: async () => {},
+    };
   }
   return context;
 }

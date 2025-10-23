@@ -427,6 +427,11 @@ export const components = {
   cardHover: 'hover:shadow-md transition-shadow',
   
   // Button
+  button: {
+    sm: `${colors.button.primary} ${sizes.button.sm} ${borderRadius.lg} font-medium transition-colors`,
+    md: `${colors.button.primary} ${sizes.button.md} ${borderRadius.lg} font-medium transition-colors`,
+    lg: `${colors.button.primary} ${sizes.button.lg} ${borderRadius.lg} font-medium transition-colors`,
+  },
   buttonPrimary: `${colors.button.primary} ${sizes.button.md} ${borderRadius.lg} font-medium transition-colors`,
   buttonSecondary: `${colors.button.secondary} ${sizes.button.md} ${borderRadius.lg} font-medium transition-colors`,
   buttonOutline: `${colors.button.outline} ${sizes.button.md} ${borderRadius.lg} font-medium transition-colors border`,
