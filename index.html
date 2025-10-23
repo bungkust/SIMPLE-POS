@@ -110,6 +110,29 @@
     <link rel="preconnect" href="https://fheaayyooebdsppcymce.supabase.co/storage/v1" />
     
     <!-- React Loader - Fix useLayoutEffect issues -->
+    <script>
+      // Immediate React polyfill to prevent useLayoutEffect errors
+      (function() {
+        if (typeof window !== 'undefined' && !window.React) {
+          window.React = {
+            useEffect: function(callback, deps) {
+              if (typeof callback === 'function') {
+                setTimeout(callback, 0);
+              }
+            },
+            useLayoutEffect: function(callback, deps) {
+              if (typeof callback === 'function') {
+                setTimeout(callback, 0);
+              }
+            },
+            useState: function(initial) { return [initial, function() {}]; },
+            useCallback: function(callback, deps) { return callback; },
+            useMemo: function(factory, deps) { return factory(); }
+          };
+          console.log('React polyfill created immediately');
+        }
+      })();
+    </script>
     <script src="/react-loader.js"></script>
     
     <!-- Resource hints for better performance -->

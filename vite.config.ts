@@ -38,8 +38,9 @@ export default defineConfig({
         manualChunks: (id) => {
           // Vendor chunks
           if (id.includes('node_modules')) {
+            // Keep React in main vendor chunk to ensure availability
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'react-vendor';
+              return 'vendor';
             }
             if (id.includes('lucide-react') || id.includes('@radix-ui')) {
               return 'ui-vendor';
