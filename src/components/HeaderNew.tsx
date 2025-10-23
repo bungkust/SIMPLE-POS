@@ -154,9 +154,11 @@ export function Header() {
       {config.storeBannerUrl && (
         <div className="w-full h-32 sm:h-40 overflow-hidden mt-4">
           <img 
-            src={config.storeBannerUrl} 
+            src={getThumbnailUrl(config.storeBannerUrl, getResponsiveImageSizeForDisplay(800, 160))} 
             alt="Store Banner" 
             className="w-full h-full object-cover"
+            loading="eager"
+            fetchpriority="high"
             onError={(e) => {
               console.log('🔧 Store banner failed to load:', config.storeBannerUrl);
               e.currentTarget.style.display = 'none';

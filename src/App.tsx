@@ -8,26 +8,24 @@ import { handleOAuthError } from './lib/auth-utils';
 import { ToastProvider } from './components/ui/toast-provider';
 import { Loader2 } from 'lucide-react';
 
-// Import critical components normally for stability
+// Import only critical components for initial load
 import { Header } from './components/HeaderNew';
 import { LandingPage } from './components/LandingPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { CheckoutPage } from './pages/CheckoutPageNew';
-import { InvoicePage } from './pages/InvoicePageNew';
-import { OrderHistoryPage } from './pages/OrderHistoryPageNew';
-import { OrderSuccessPage } from './pages/OrderSuccessPageNew';
 import { MenuBrowser } from './components/MenuBrowserNew';
 import { CartBar } from './components/CartBarNew';
-import { AdminLoginPage } from './pages/AdminLoginPageNew';
-import { AdminDashboard } from './pages/AdminDashboardNew';
-import { SuperAdminLoginPage } from './pages/SuperAdminLoginPageNew';
-import { SuperAdminDashboard } from './pages/SuperAdminDashboardNew';
-import { TenantSetupPage } from './pages/TenantSetupPageNew';
 import AuthCallback from './pages/AuthCallback';
 
-// Lazy load only heavy admin components
-const AdminDashboardLazy = lazy(() => import('./pages/AdminDashboardNew'));
-const SuperAdminDashboardLazy = lazy(() => import('./pages/SuperAdminDashboardNew'));
+// Lazy load all other components to reduce initial bundle size
+const CheckoutPage = lazy(() => import('./pages/CheckoutPageNew'));
+const InvoicePage = lazy(() => import('./pages/InvoicePageNew'));
+const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPageNew'));
+const OrderSuccessPage = lazy(() => import('./pages/OrderSuccessPageNew'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPageNew'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboardNew'));
+const SuperAdminLoginPage = lazy(() => import('./pages/SuperAdminLoginPageNew'));
+const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboardNew'));
+const TenantSetupPage = lazy(() => import('./pages/TenantSetupPageNew'));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -88,22 +86,32 @@ function MenuPageWrapper() {
 function CheckoutPageWrapper() {
   const navigate = useNavigate();
   return (
-    <CheckoutPage
-      onBack={() => navigate(`/${getCurrentTenantSlug()}`)}
-      onSuccess={(orderCode: string) => navigate(`/${getCurrentTenantSlug()}/success/${orderCode}`)}
-    />
+    <Suspense fallback={<LoadingSpinner />}>
+      <CheckoutPage
+        onBack={() => navigate(`/${getCurrentTenantSlug()}`)}
+        onSuccess={(orderCode: string) => navigate(`/${getCurrentTenantSlug()}/success/${orderCode}`)}
+      />
+    </Suspense>
   );
 }
 
 function OrderHistoryPageWrapper() {
   const navigate = useNavigate();
-  return <OrderHistoryPage onBack={() => navigate(`/${getCurrentTenantSlug()}`)} onViewInvoice={(orderCode: string) => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)} />;
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <OrderHistoryPage onBack={() => navigate(`/${getCurrentTenantSlug()}`)} onViewInvoice={(orderCode: string) => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)} />
+    </Suspense>
+  );
 }
 
 function InvoicePageWrapper() {
   const { orderCode } = useParams<{ orderCode: string }>();
   const navigate = useNavigate();
-  return <InvoicePage orderCode={orderCode || ''} onBack={() => navigate(`/${getCurrentTenantSlug()}`)} />;
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <InvoicePage orderCode={orderCode || ''} onBack={() => navigate(`/${getCurrentTenantSlug()}`)} />
+    </Suspense>
+  );
 }
 
 function OrderSuccessPageWrapper() {
@@ -130,33 +138,45 @@ function OrderSuccessPageWrapper() {
     } : 'No referrer'
   });
   
-  return <OrderSuccessPage
-    orderCode={orderCode || ''}
-    isFromAdmin={isFromAdmin}
-    onViewInvoice={() => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)}
-    onBackToMenu={() => {
-      console.log('🔍 OrderSuccess: onBackToMenu called, isFromAdmin:', isFromAdmin);
-      if (isFromAdmin) {
-        console.log('🔍 OrderSuccess: Navigating to admin dashboard (kasir)');
-        navigate(`/${getCurrentTenantSlug()}/admin/dashboard`, { 
-          state: { activeTab: 'kasir' } 
-        });
-      } else {
-        console.log('🔍 OrderSuccess: Navigating to menu browser');
-        navigate(`/${getCurrentTenantSlug()}`);
-      }
-    }}
-  />;
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <OrderSuccessPage
+        orderCode={orderCode || ''}
+        isFromAdmin={isFromAdmin}
+        onViewInvoice={() => navigate(`/${getCurrentTenantSlug()}/invoice/${orderCode}`)}
+        onBackToMenu={() => {
+          console.log('🔍 OrderSuccess: onBackToMenu called, isFromAdmin:', isFromAdmin);
+          if (isFromAdmin) {
+            console.log('🔍 OrderSuccess: Navigating to admin dashboard (kasir)');
+            navigate(`/${getCurrentTenantSlug()}/admin/dashboard`, { 
+              state: { activeTab: 'kasir' } 
+            });
+          } else {
+            console.log('🔍 OrderSuccess: Navigating to menu browser');
+            navigate(`/${getCurrentTenantSlug()}`);
+          }
+        }}
+      />
+    </Suspense>
+  );
 }
 
 function SuperAdminLoginPageWrapper() {
   const navigate = useNavigate();
-  return <SuperAdminLoginPage onBack={() => navigate('/')} />;
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <SuperAdminLoginPage onBack={() => navigate('/')} />
+    </Suspense>
+  );
 }
 
 function AdminLoginPageWrapper() {
   const navigate = useNavigate();
-  return <AdminLoginPage onBack={() => navigate('/')} />;
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <AdminLoginPage onBack={() => navigate('/')} />
+    </Suspense>
+  );
 }
 
 function SuperAdminDashboardWrapper() {
@@ -164,7 +184,7 @@ function SuperAdminDashboardWrapper() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <ProtectedRoute requireSuperAdmin={true}>
-        <SuperAdminDashboardLazy onBack={() => navigate('/super-admin/login')} />
+        <SuperAdminDashboard onBack={() => navigate('/super-admin/login')} />
       </ProtectedRoute>
     </Suspense>
   );
@@ -174,7 +194,7 @@ function AdminDashboardWrapper() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <ProtectedRoute requireAdmin={true}>
-        <AdminDashboardLazy />
+        <AdminDashboard />
       </ProtectedRoute>
     </Suspense>
   );
@@ -215,7 +235,11 @@ function App() {
                 <Route path="/super-admin/login" element={<SuperAdminLoginPageWrapper />} />
                 <Route path="/super-admin/dashboard" element={<SuperAdminDashboardWrapper />} />
                 <Route path="/:tenantSlug/admin/dashboard" element={<AdminDashboardWrapper />} />
-                <Route path="/:tenantSlug/admin/setup" element={<TenantSetupPage />} />
+                <Route path="/:tenantSlug/admin/setup" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <TenantSetupPage />
+                  </Suspense>
+                } />
 
 
                 {/* Catch all - redirect to home */}
