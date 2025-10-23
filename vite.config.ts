@@ -30,6 +30,10 @@ export default defineConfig({
   build: {
     // Optimized build config for better performance
     rollupOptions: {
+      external: (id) => {
+        // Don't externalize React in production builds
+        return false;
+      },
       output: {
         manualChunks: (id) => {
           // Vendor chunks

@@ -3,22 +3,33 @@
  * Fixes useLayoutEffect and other SSR-related issues
  */
 
-import { useEffect, useLayoutEffect } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 
-// Polyfill useLayoutEffect for SSR environments
-if (typeof window === 'undefined') {
-  // Server-side: use useEffect instead of useLayoutEffect
-  (global as any).React = (global as any).React || {};
-  (global as any).React.useLayoutEffect = useEffect;
+// Create a safe useLayoutEffect that works in all environments
+const safeUseLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
+// Polyfill React hooks globally
+if (typeof globalThis !== 'undefined') {
+  // Ensure React is available globally
+  (globalThis as any).React = React;
+  
+  // Polyfill useLayoutEffect
+  if (!React.useLayoutEffect) {
+    React.useLayoutEffect = safeUseLayoutEffect;
+  }
+  
+  // Ensure all hooks are available
+  React.useEffect = React.useEffect || useEffect;
+  React.useLayoutEffect = React.useLayoutEffect || safeUseLayoutEffect;
 }
 
-// Ensure React hooks are available globally
+// Also set on window for browser environments
 if (typeof window !== 'undefined') {
-  // Client-side: ensure hooks are available
-  (window as any).React = (window as any).React || {};
-  (window as any).React.useLayoutEffect = useLayoutEffect;
+  (window as any).React = React;
+  (window as any).React.useLayoutEffect = safeUseLayoutEffect;
   (window as any).React.useEffect = useEffect;
 }
 
-// Export for use in other files
-export { useEffect, useLayoutEffect };
+// Export the safe version
+export { useEffect };
+export { safeUseLayoutEffect as useLayoutEffect };
