@@ -258,7 +258,7 @@ export function MenuTab() {
   }
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-hidden px-2 sm:px-0">
+    <div className="space-y-6 w-full max-w-full overflow-hidden px-1 sm:px-0">
 
 
       {/* Menu Table */}
@@ -316,7 +316,7 @@ export function MenuTab() {
             )}
           </div>
         </CardHeader>
-        <CardContent className="overflow-hidden w-full max-w-full">
+        <CardContent className="overflow-hidden w-full max-w-full px-1 sm:px-6">
           {menuItems.length === 0 ? (
             <div className="text-center py-12">
               <Coffee className="w-12 h-12 text-slate-400 mx-auto mb-4" />

@@ -75,7 +75,7 @@ export function MobileCard({
   return (
     <Card 
       className={cn(
-        "transition-all duration-200 hover:shadow-md max-w-full overflow-hidden",
+        "transition-all duration-200 hover:shadow-md max-w-full overflow-hidden mx-1 sm:mx-0",
         onClick && "cursor-pointer hover:bg-muted/50",
         swipeState.isSwiping && "transform-gpu",
         className

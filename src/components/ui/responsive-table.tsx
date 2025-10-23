@@ -159,7 +159,7 @@ export function ResponsiveTable<TData, TValue>({
   } = mobileCardConfig;
 
   return (
-    <div className={cn("space-y-3 max-w-full overflow-hidden", className)}>
+    <div className={cn("space-y-3 max-w-full overflow-hidden px-1 sm:px-0", className)}>
       {/* Search bar for mobile */}
       {showSearch && searchKey && (
         <div className="relative">
@@ -178,7 +178,7 @@ export function ResponsiveTable<TData, TValue>({
         </div>
       )}
 
-      <div className="space-y-2 w-full max-w-full overflow-hidden">
+      <div className="space-y-2 w-full max-w-full overflow-hidden px-1 sm:px-0">
         {filteredData.map((item, index) => {
           const itemId = `item-${index}`;
           const isExpanded = expandedItems.has(itemId);

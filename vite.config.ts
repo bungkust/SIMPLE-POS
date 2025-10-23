@@ -14,6 +14,11 @@ export default defineConfig({
     include: ['react', 'react-dom'],
     exclude: ['lucide-react'],
   },
+  esbuild: {
+    define: {
+      global: 'globalThis',
+    },
+  },
   define: {
     // Fix for __WS_TOKEN__ undefined error (common in dev environments)
     __WS_TOKEN__: 'undefined',

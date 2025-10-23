@@ -1,7 +1,7 @@
 // Service Worker for aggressive caching
-const CACHE_NAME = 'simple-pos-v1';
-const STATIC_CACHE = 'static-v1';
-const DYNAMIC_CACHE = 'dynamic-v1';
+const CACHE_NAME = 'simple-pos-v2';
+const STATIC_CACHE = 'static-v2';
+const DYNAMIC_CACHE = 'dynamic-v2';
 
 // Assets to cache immediately
 const STATIC_ASSETS = [
@@ -30,12 +30,25 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
+          // Delete old caches and development caches
           if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
             console.log('Service Worker: Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      // Clear all development-related caches
+      return caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName.includes('vite') || cacheName.includes('dev') || cacheName.includes('localhost')) {
+              console.log('Service Worker: Deleting development cache:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      });
     }).then(() => self.clients.claim())
   );
 });
@@ -54,6 +67,18 @@ self.addEventListener('fetch', (event) => {
 
     // Skip chrome-extension and other unsupported schemes
     if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') {
+      return;
+    }
+
+    // Skip development server requests
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.port === '5173') {
+      console.log('Service Worker: Skipping development request:', url.href);
+      return;
+    }
+
+    // Skip Vite development assets
+    if (url.pathname.includes('@vite') || url.pathname.includes('@react-refresh') || url.pathname.includes('src/main.tsx')) {
+      console.log('Service Worker: Skipping Vite development asset:', url.href);
       return;
     }
 
