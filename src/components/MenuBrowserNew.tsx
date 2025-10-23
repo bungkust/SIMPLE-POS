@@ -30,6 +30,7 @@ type Category = Database['public']['Tables']['categories']['Row'];
 
 export function MenuBrowser() {
   const { addItem, removeItem, getItemQuantity } = useCart();
+  const { currentTenant } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -67,14 +68,15 @@ export function MenuBrowser() {
     const loadData = async () => {
       try {
         // Get tenant info - use currentTenant if available (authenticated), otherwise use URL
-        let resolvedTenantInfo;
-        try {
-          const { currentTenant } = useAuth();
-          if (currentTenant) {
-            resolvedTenantInfo = currentTenant;
-          }
-        } catch (error) {
-          // Not authenticated, use URL-based tenant detection
+        let resolvedTenantInfo: any = null;
+        if (currentTenant) {
+          resolvedTenantInfo = {
+            tenant_id: (currentTenant as any).id,
+            tenant_slug: (currentTenant as any).slug,
+            tenant_name: (currentTenant as any).name,
+            phone: (currentTenant as any).phone ?? null,
+            address: (currentTenant as any).address ?? null,
+          };
         }
         
         if (!resolvedTenantInfo) {
@@ -210,7 +212,7 @@ export function MenuBrowser() {
     };
 
     loadData();
-  }, [getCacheKey, isCacheValid]);
+  }, [getCacheKey, isCacheValid, currentTenant]);
 
 
   // Memoized filtered items with debounced search
@@ -268,7 +270,7 @@ export function MenuBrowser() {
             >
               Semua Menu
             </button>
-            {categories.map((category) => (
+            {categories?.map((category) => (
               <button 
                 key={category.id}
                 className={`font-medium border-b-2 whitespace-nowrap text-sm sm:text-base px-3 py-2 transition-all duration-200 ${

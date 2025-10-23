@@ -395,7 +395,7 @@ export function CashierTab() {
                 >
                   Semua Item
                 </Button>
-                {categories.map((category) => (
+                {categories?.map((category) => (
                   <Button
                     key={category.id}
                     variant={selectedCategory === category.id ? 'default' : 'outline'}
@@ -409,7 +409,7 @@ export function CashierTab() {
               </div>
 
               <div className={cn(`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`)}>
-                {filteredMenuItems.map((item) => (
+                {filteredMenuItems?.map((item) => (
                   <Card key={item.id} className={cn(components.card, "hover:shadow-md transition-shadow cursor-pointer")}>
                     <CardContent className={cn(sizes.card.md)}>
                       <div className={cn(spacing.sm)}>
@@ -484,7 +484,7 @@ export function CashierTab() {
               ) : (
                 <div className={cn(spacing.md)}>
                   <div className={cn("space-y-2 max-h-64 overflow-y-auto")}>
-                    {cart.map((item) => (
+                    {cart?.map((item) => (
                       <div key={item.id} className={cn("flex items-center justify-between p-2 border rounded-lg")}>
                         <div className="flex-1 min-w-0">
                           <h5 className={cn(typography.label.medium, "truncate")}>{item.name}</h5>

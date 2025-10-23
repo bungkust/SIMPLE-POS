@@ -781,7 +781,10 @@ export function SettingsTab() {
                   <CardContent className="space-y-4">
                     <FormInput
                       {...register('minimumOrderAmount', {
-                        setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                        setValueAs: (v) => {
+                          const num = Number(v);
+                          return isNaN(num) ? 0 : num;
+                        }
                       })}
                       label="Minimum Order Amount"
                       type="number"
@@ -794,7 +797,10 @@ export function SettingsTab() {
 
                     <FormInput
                       {...register('deliveryFee', {
-                        setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                        setValueAs: (v) => {
+                          const num = Number(v);
+                          return isNaN(num) ? 0 : num;
+                        }
                       })}
                       label="Delivery Fee"
                       type="number"
@@ -1311,7 +1317,10 @@ export function SettingsTab() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormInput
                           {...register('minimumOrderAmount', {
-                            setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                            setValueAs: (v) => {
+                          const num = Number(v);
+                          return isNaN(num) ? 0 : num;
+                        }
                           })}
                         label="Minimum Order Amount"
                         type="number"
@@ -1323,7 +1332,10 @@ export function SettingsTab() {
 
                       <FormInput
                         {...register('deliveryFee', {
-                          setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                          setValueAs: (v) => {
+                          const num = Number(v);
+                          return isNaN(num) ? 0 : num;
+                        }
                         })}
                         label="Delivery Fee"
                         type="number"
@@ -1335,7 +1347,10 @@ export function SettingsTab() {
 
                       <FormInput
                         {...register('freeDeliveryThreshold', {
-                          setValueAs: (v) => (v === '' || v == null ? 0 : Number(v))
+                          setValueAs: (v) => {
+                          const num = Number(v);
+                          return isNaN(num) ? 0 : num;
+                        }
                         })}
                         label="Free Delivery Threshold"
                         type="number"

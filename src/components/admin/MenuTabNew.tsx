@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResponsiveTable, createMobileCardConfig } from '@/components/ui/responsive-table';
@@ -46,9 +46,9 @@ export function MenuTab() {
     if (currentTenant) {
       loadData();
     }
-  }, [currentTenant]);
+  }, [currentTenant, loadData]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!currentTenant) {
       setLoading(false);
       return;
@@ -79,7 +79,7 @@ export function MenuTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentTenant, showError]);
 
   const toggleActive = async (itemId: string, currentState: boolean) => {
     console.log('🔄 MenuTab: Toggling active state for item:', itemId);
@@ -829,7 +829,10 @@ function OptionsManagerModal({
                     min="0"
                     step="500"
                     value={newItemPrice}
-                    onChange={(e) => setNewItemPrice(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const num = parseInt(e.target.value);
+                      setNewItemPrice(isNaN(num) ? 0 : num);
+                    }}
                     placeholder="0"
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
@@ -932,7 +935,10 @@ function OptionsManagerModal({
                       type="number"
                       min="1"
                       value={newOptionMaxSelections}
-                      onChange={(e) => setNewOptionMaxSelections(parseInt(e.target.value) || 1)}
+                      onChange={(e) => {
+                        const num = parseInt(e.target.value);
+                        setNewOptionMaxSelections(isNaN(num) ? 1 : num);
+                      }}
                       className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     />
                   </div>
@@ -972,7 +978,7 @@ function OptionsManagerModal({
             </div>
           ) : (
             <div className="space-y-4">
-              {options.map((option) => {
+              {options?.map((option) => {
                 const items = getOptionItems(option.id);
 
                 return (
@@ -1026,7 +1032,7 @@ function OptionsManagerModal({
                       </div>
 
                         <div className="space-y-2">
-                        {items.length > 0 && items.map((item) => (
+                        {items?.length > 0 && items?.map((item) => (
                             <div key={item.id} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
                               <div className="flex items-center gap-3">
                               {item.is_available ? (

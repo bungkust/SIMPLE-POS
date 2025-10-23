@@ -442,7 +442,14 @@ export function OrdersTab() {
     link.href = imageDataUrl;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    
+    // Clean up with error handling
+    try {
+      document.body.removeChild(link);
+    } catch (error) {
+      // Link might have been removed elsewhere, ignore error
+      console.warn('Could not remove download link:', error);
+    }
 
     // Simple WhatsApp message without redundant info
     const receiptMessage = `Terima kasih atas pesanannya!
@@ -1010,7 +1017,7 @@ Terima kasih dan selamat menikmati!`;
               <div>
                 <h4 className="font-medium mb-2">Items</h4>
                 <div className="space-y-2">
-                  {getOrderItems(selectedOrder.id).map((item) => (
+                  {getOrderItems(selectedOrder.id)?.map((item) => (
                     <div key={item.id} className="p-3 border rounded-lg">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
@@ -1050,7 +1057,7 @@ Terima kasih dan selamat menikmati!`;
                                         <>
                                           <p className="text-xs font-medium text-muted-foreground mb-1">Selected Options:</p>
                                           <div className="text-sm text-foreground">
-                                            {Object.entries(resolvedOptions).map(([key, value]) => (
+                                            {Object.entries(resolvedOptions || {})?.map(([key, value]) => (
                                               <div key={key} className="flex justify-between">
                                                 <span className="text-muted-foreground">{key}:</span>
                                                 <span>{value}</span>
@@ -1071,7 +1078,7 @@ Terima kasih dan selamat menikmati!`;
                                 <>
                                   <p className="text-xs font-medium text-muted-foreground mb-1">Selected Options:</p>
                                   <div className="text-sm text-foreground">
-                                    {optionsText.split(';').map((option, index) => (
+                                    {optionsText?.split(';')?.map((option, index) => (
                                       <div key={index} className="text-sm">
                                         {option.trim()}
                                       </div>
@@ -1133,7 +1140,7 @@ Terima kasih dan selamat menikmati!`;
                                         <p className="text-xs font-medium text-muted-foreground mb-1">Selected Options:</p>
                                         <div className="text-sm text-foreground">
                                           {Object.keys(manualResolved).length > 0 ? (
-                                            Object.entries(manualResolved).map(([key, value]) => (
+                                            Object.entries(manualResolved || {})?.map(([key, value]) => (
                                               <div key={key} className="flex justify-between">
                                                 <span className="text-muted-foreground">{key}:</span>
                                                 <span>{value}</span>
@@ -1154,7 +1161,7 @@ Terima kasih dan selamat menikmati!`;
                                       <p className="text-xs font-medium text-muted-foreground mb-1">Selected Options:</p>
                                       <div className="text-sm text-foreground">
                                         {Object.keys(resolvedOptions).length > 0 ? (
-                                          Object.entries(resolvedOptions).map(([key, value]) => (
+                                          Object.entries(resolvedOptions || {})?.map(([key, value]) => (
                                             <div key={key} className="flex justify-between">
                                               <span className="text-muted-foreground">{key}:</span>
                                               <span>{value}</span>
@@ -1189,7 +1196,7 @@ Terima kasih dan selamat menikmati!`;
                                 <>
                                   <p className="text-xs font-medium text-muted-foreground mb-1">Selected Options:</p>
                                   <div className="text-sm text-foreground">
-                                    {notes.split(';').map((option, index) => (
+                                    {notes?.split(';')?.map((option, index) => (
                                       <div key={index} className="text-sm">
                                         {option.trim()}
                                       </div>
@@ -1229,7 +1236,7 @@ Terima kasih dan selamat menikmati!`;
                                       <>
                                         <p className="text-xs font-medium text-muted-foreground mb-1">Selected Options:</p>
                                         <div className="text-sm text-foreground">
-                                          {Object.entries(manualResolved).map(([key, value]) => (
+                                          {Object.entries(manualResolved || {})?.map(([key, value]) => (
                                             <div key={key} className="flex justify-between">
                                               <span className="text-muted-foreground">{key}:</span>
                                               <span>{value}</span>
@@ -1358,7 +1365,7 @@ Terima kasih dan selamat menikmati!`;
             ...selectedOrderForReceipt,
             order_code: selectedOrderForReceipt.order_code || '',
             notes: selectedOrderForReceipt.notes || undefined,
-            order_items: getOrderItems(selectedOrderForReceipt.id).map(item => ({
+            order_items: getOrderItems(selectedOrderForReceipt.id)?.map(item => ({
               ...item,
               notes: item.notes || undefined
             })),
