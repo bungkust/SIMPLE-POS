@@ -15,8 +15,8 @@ import React from 'react';
 // Verify environment variables on app initialization
 verifyEnvironment();
 
-// Register Service Worker for caching (temporarily disabled due to CSP issues)
-if ('serviceWorker' in navigator && import.meta.env.PROD && false) {
+// Register Service Worker for caching
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {

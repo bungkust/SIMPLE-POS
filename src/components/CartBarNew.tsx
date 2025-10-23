@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,7 +24,7 @@ import { formatCurrency } from '@/lib/form-utils';
 import { getTenantInfo } from '../lib/tenantUtils';
 import { colors, typography, components, sizes, shadows, cn } from '@/lib/design-system';
 
-export function CartBar() {
+function CartBarComponent() {
   const navigate = useNavigate();
   const { 
     items, 
@@ -73,7 +73,7 @@ export function CartBar() {
     };
   }, [currentTenant]);
 
-  const handleCheckoutClick = () => {
+  const handleCheckoutClick = useCallback(() => {
     // Handle both currentTenant structure (slug) and fallback structure (tenant_slug)
     const tenantSlug = tenantInfo.slug || tenantInfo.tenant_slug;
     console.log('🔍 CartBar: handleCheckoutClick called');
@@ -81,15 +81,31 @@ export function CartBar() {
     console.log('🔍 CartBar: tenantSlug:', tenantSlug);
     console.log('🔍 CartBar: navigating to:', `/${tenantSlug}/checkout`);
     navigate(`/${tenantSlug}/checkout`);
-  };
+  }, [tenantInfo, navigate]);
 
-  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+  const handleQuantityChange = useCallback((itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeItem(itemId);
     } else {
       updateQuantity(itemId, newQuantity);
     }
-  };
+  }, [removeItem, updateQuantity]);
+
+  const handleAddItem = useCallback((item: any) => {
+    addItem(item);
+  }, [addItem]);
+
+  const handleRemoveItem = useCallback((itemId: string) => {
+    removeItem(itemId);
+  }, [removeItem]);
+
+  const handleClearCart = useCallback(() => {
+    clearCart();
+  }, [clearCart]);
+
+  const handleToggleCartSheet = useCallback(() => {
+    setShowCartSheet(prev => !prev);
+  }, []);
 
   if (totalItems === 0) return null;
 
@@ -99,7 +115,7 @@ export function CartBar() {
       <div className="fixed bottom-4 left-4 right-4 z-50">
         <div className="max-w-5xl mx-auto">
           <Button
-            onClick={() => setShowCartSheet(true)}
+            onClick={handleToggleCartSheet}
             className={cn(
               "group relative h-16 w-full px-6 py-4 rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300",
               "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white overflow-hidden"
@@ -148,7 +164,7 @@ export function CartBar() {
       </div>
 
       {/* Cart Sheet */}
-      <Sheet open={showCartSheet} onOpenChange={setShowCartSheet}>
+      <Sheet open={showCartSheet} onOpenChange={handleToggleCartSheet}>
         <SheetContent className="w-full sm:max-w-md p-0 bg-gradient-to-br from-slate-50 to-slate-100">
           <div className="flex flex-col h-full">
             {/* Header */}
@@ -158,7 +174,7 @@ export function CartBar() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowCartSheet(false)}
+                  onClick={handleToggleCartSheet}
                   className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
                 >
                   <X className="h-4 w-4" />
@@ -287,7 +303,7 @@ export function CartBar() {
                   
                   <Button 
                     variant="outline" 
-                    onClick={clearCart}
+                    onClick={handleClearCart}
                     className={cn(components.buttonOutline, "w-full h-10", colors.button.destructiveOutline)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -304,3 +320,5 @@ export function CartBar() {
     </>
   );
 }
+
+export const CartBar = memo(CartBarComponent);

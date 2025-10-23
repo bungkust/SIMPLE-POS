@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { 
@@ -29,6 +29,225 @@ type MenuItem = Database['public']['Tables']['menu_items']['Row'] & {
   is_available?: boolean;
 };
 type Category = Database['public']['Tables']['categories']['Row'];
+
+// Optimized MenuItem component
+const MenuItemCard = memo(function MenuItemCard({ 
+  item, 
+  index, 
+  onItemClick, 
+  onAddToCart, 
+  onRemoveFromCart, 
+  getItemQuantity,
+  isMobile = false 
+}: {
+  item: MenuItem;
+  index: number;
+  onItemClick: (item: MenuItem) => void;
+  onAddToCart: (item: MenuItem) => void;
+  onRemoveFromCart: (item: MenuItem) => void;
+  getItemQuantity: (itemId: string) => number;
+  isMobile?: boolean;
+}) {
+  const discount = useMemo(() => 
+    item.base_price && item.base_price > item.price ? item.base_price - item.price : 0,
+    [item.base_price, item.price]
+  );
+
+  const quantity = useMemo(() => getItemQuantity(item.id), [getItemQuantity, item.id]);
+
+  const handleAddToCart = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAddToCart(item);
+  }, [onAddToCart, item]);
+
+  const handleRemoveFromCart = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onRemoveFromCart(item);
+  }, [onRemoveFromCart, item]);
+
+  const handleItemClick = useCallback(() => {
+    onItemClick(item);
+  }, [onItemClick, item]);
+
+  if (isMobile) {
+    return (
+      <div 
+        className={cn(components.card, components.cardHover, "cursor-pointer")}
+        onClick={handleItemClick}
+      >
+        <div className={cn(sizes.card.md)}>
+          <div className="flex items-start gap-5">
+            {/* Food Image */}
+            <div className="flex-shrink-0">
+              {item.photo_url ? (
+                <img
+                  src={getMediumImageUrl(item.photo_url, getResponsiveImageSizeForDisplay(96, 96))}
+                  alt={item.name}
+                  className={cn("w-24 h-24 rounded-xl object-cover", shadows.sm)}
+                  loading={index < 6 ? "eager" : "lazy"}
+                  fetchpriority={index < 3 ? "high" : "auto"}
+                  onError={(e) => {
+                    e.currentTarget.src = '/placeholder-image.png';
+                  }}
+                />
+              ) : (
+                <div className={cn("w-24 h-24 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center", shadows.sm)}>
+                  <Package className="h-6 w-6 text-gray-400" />
+                </div>
+              )}
+            </div>
+
+            {/* Food Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex-1">
+                <h3 className={cn(typography.h4, "mb-3 leading-tight")}>
+                  {item.name}
+                </h3>
+                <p className={cn(typography.body.small, colors.text.muted, "mb-3 line-clamp-2")}>
+                  {item.description}
+                </p>
+                
+                {/* Price and Actions */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {discount > 0 && (
+                      <span className={cn(typography.body.small, "text-gray-500 line-through")}>
+                        Rp {item.base_price?.toLocaleString()}
+                      </span>
+                    )}
+                    <span className={cn(typography.h4, colors.text.primary, "font-semibold")}>
+                      Rp {item.price.toLocaleString()}
+                    </span>
+                  </div>
+                  
+                  {/* Quantity Controls */}
+                  <div className="flex items-center gap-2">
+                    {quantity > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleRemoveFromCart}
+                          className={cn(components.button.sm, "rounded-full")}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className={cn(typography.body.small, "font-medium min-w-[20px] text-center")}>
+                          {quantity}
+                        </span>
+                        <button
+                          onClick={handleAddToCart}
+                          className={cn(components.button.sm, "rounded-full")}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleAddToCart}
+                        className={cn(components.button.sm, "rounded-full")}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop version
+  return (
+    <Card 
+      className={cn(components.card, components.cardHover, "cursor-pointer")}
+      onClick={handleItemClick}
+    >
+      <div className={cn(sizes.card.lg)}>
+        {/* Food Image */}
+        <div className="relative mb-4">
+          {item.photo_url ? (
+            <img
+              src={getMediumImageUrl(item.photo_url, getResponsiveImageSizeForDisplay(200, 200))}
+              alt={item.name}
+              className={cn("w-full h-48 rounded-lg object-cover", shadows.sm)}
+              loading={index < 6 ? "eager" : "lazy"}
+              fetchpriority={index < 3 ? "high" : "auto"}
+              onError={(e) => {
+                e.currentTarget.src = '/placeholder-image.png';
+              }}
+            />
+          ) : (
+            <div className={cn("w-full h-48 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center", shadows.sm)}>
+              <Package className="h-12 w-12 text-gray-400" />
+            </div>
+          )}
+          
+          {discount > 0 && (
+            <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-medium">
+              Diskon
+            </div>
+          )}
+        </div>
+
+        {/* Food Info */}
+        <div className="space-y-3">
+          <h3 className={cn(typography.h4, "leading-tight")}>
+            {item.name}
+          </h3>
+          <p className={cn(typography.body.small, colors.text.muted, "line-clamp-2")}>
+            {item.description}
+          </p>
+          
+          {/* Price and Actions */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {discount > 0 && (
+                <span className={cn(typography.body.small, "text-gray-500 line-through")}>
+                  Rp {item.base_price?.toLocaleString()}
+                </span>
+              )}
+              <span className={cn(typography.h4, colors.text.primary, "font-semibold")}>
+                Rp {item.price.toLocaleString()}
+              </span>
+            </div>
+            
+            {/* Quantity Controls */}
+            <div className="flex items-center gap-2">
+              {quantity > 0 ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleRemoveFromCart}
+                    className={cn(components.button.sm, "rounded-full")}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className={cn(typography.body.small, "font-medium min-w-[20px] text-center")}>
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={handleAddToCart}
+                    className={cn(components.button.sm, "rounded-full")}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleAddToCart}
+                  className={cn(components.button.sm, "rounded-full")}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+});
 
 export const MenuBrowser = memo(function MenuBrowser() {
   const { addItem, removeItem, getItemQuantity } = useCart();
@@ -461,260 +680,34 @@ export const MenuBrowser = memo(function MenuBrowser() {
             {/* Menu Items - Mobile Layout */}
             <div className="space-y-2 md:hidden">
               {/* Mobile: List Layout */}
-              {filteredItems.map((item, index) => {
-                const discount = item.base_price && item.base_price > item.price 
-                  ? item.base_price - item.price 
-                  : 0;
-
-                return (
-                  <div 
-                    key={item.id} 
-                    className={cn(components.card, components.cardHover, "cursor-pointer")}
-                    onClick={() => handleItemClick(item)}
-                  >
-                    <div className={cn(sizes.card.md)}>
-                      <div className="flex items-start gap-5">
-                        {/* Food Image */}
-                        <div className="flex-shrink-0">
-                          {item.photo_url ? (
-                            <img
-                              src={getThumbnailUrl(item.photo_url, { width: 96, height: 96 })}
-                              alt={item.name}
-                              className={cn("w-24 h-24 rounded-xl object-cover", shadows.sm)}
-                              loading="lazy"
-                              onError={(e) => {
-                                e.currentTarget.src = '/placeholder-image.png';
-                              }}
-                            />
-                          ) : (
-                            <div className={cn("w-24 h-24 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center", shadows.sm)}>
-                              <Package className="h-6 w-6 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Food Info */}
-                        <div className="flex-1 min-w-0">
-                            <div className="flex-1">
-                            <h3 className={cn(typography.h4, "mb-3 leading-tight")}>
-                                {item.name}
-                              </h3>
-                            
-                            {/* Description - Fixed 3 lines */}
-                            <div className="h-12 mb-3 flex items-start">
-                              {item.description ? (
-                                <p className={cn(typography.body.small, colors.text.secondary, "line-clamp-3 leading-relaxed")}>
-                                  {item.description}
-                                </p>
-                              ) : (
-                                <p className={cn(typography.body.small, colors.text.muted, "line-clamp-3 leading-relaxed")}>
-                                  No description available
-                                </p>
-                              )}
-                            </div>
-                            
-                            {/* Empty row for spacing */}
-                            <div className="h-4"></div>
-                              
-                              {/* Discount Badge */}
-                              {discount > 0 && (
-                              <div className="flex items-center gap-2 mb-3">
-                                <span className={cn(components.badge, "bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-full")}>
-                                    Diskon Rp{discount.toLocaleString('id-ID')}
-                                  </span>
-                                  {item.base_price && (
-                                  <span className={cn(typography.body.small, colors.text.muted, "line-through")}>
-                                      Rp{item.base_price.toLocaleString('id-ID')}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {/* Current Price */}
-                            <p className={cn(typography.price.large, "mb-4")}>
-                              Rp{(item.price || 0).toLocaleString('id-ID')}
-                            </p>
-
-                            {/* Add Button Row */}
-                            <div className="flex justify-end">
-                            {/* Quantity Selector */}
-                            <div className="flex-shrink-0">
-                            {getItemQuantity(item.id) > 0 ? (
-                              <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white h-9 shadow-sm">
-                                <button 
-                                  className="w-9 h-9 p-0 border-0 rounded-none hover:bg-gray-50 active:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors duration-150"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeItem(item.id);
-                                  }}
-                                >
-                                  <Minus className="h-4 w-4" />
-                                </button>
-                                <div className="w-9 h-9 flex items-center justify-center border-l border-r border-gray-200 bg-white">
-                                  <span className="text-sm font-semibold text-gray-900">{getItemQuantity(item.id)}</span>
-                                </div>
-                                <button 
-                                  className="w-9 h-9 p-0 border-0 rounded-none hover:bg-gray-50 active:bg-gray-100 flex items-center justify-center text-blue-600 transition-colors duration-150"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    addItem({
-                                      id: item.id,
-                                      name: item.name,
-                                      price: item.price || 0,
-                                      qty: 1,
-                                      photo_url: item.photo_url,
-                                      menu_id: item.id
-                                    });
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </button>
-                              </div>
-                            ) : (
-                              <button 
-                                className="w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 flex items-center justify-center text-white shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addItem({
-                                    id: item.id,
-                                    name: item.name,
-                                    price: item.price || 0,
-                                    qty: 1,
-                                    photo_url: item.photo_url,
-                                    menu_id: item.id
-                                  });
-                                }}
-                              >
-                                <Plus className="h-5 w-5" />
-                              </button>
-                            )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredItems.map((item, index) => (
+                <MenuItemCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  onItemClick={handleItemClick}
+                  onAddToCart={addItem}
+                  onRemoveFromCart={removeItem}
+                  getItemQuantity={getItemQuantity}
+                  isMobile={true}
+                />
+              ))}
             </div>
 
             {/* Desktop: Grid Layout */}
             <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
-              {filteredItems.map((item, index) => {
-                const discount = item.base_price && item.base_price > item.price 
-                  ? item.base_price - item.price 
-                  : 0;
-
-                return (
-                  <Card 
-                    key={item.id} 
-                    className="bg-background shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => handleItemClick(item)}
-                  >
-                    {/* Food Image */}
-                    <div className="aspect-square w-full overflow-hidden rounded-t-lg">
-                      {item.photo_url ? (
-                      <img
-                        src={getMediumImageUrl(item.photo_url, getResponsiveImageSizeForDisplay(96, 96))}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                        loading={index < 6 ? "eager" : "lazy"}
-                        fetchpriority={index < 3 ? "high" : "auto"}
-                        onError={(e) => {
-                          e.currentTarget.src = '/placeholder-image.png';
-                        }}
-                      />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center">
-                          <Package className="h-10 w-10 xl:h-12 xl:w-12 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Food Info */}
-                    <div className="p-3 xl:p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-base xl:text-lg mb-2 truncate">
-                            {item.name}
-                          </h3>
-                          
-                          {/* Discount Badge */}
-                          {discount > 0 && (
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded">
-                                Diskon Rp{discount.toLocaleString('id-ID')}
-                              </span>
-                              {item.base_price && (
-                                <span className="text-muted-foreground text-xs xl:text-sm line-through">
-                                  Rp{item.base_price.toLocaleString('id-ID')}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Current Price */}
-                          <p className="text-lg xl:text-xl font-bold">
-                            Rp{(item.price || 0).toLocaleString('id-ID')}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Quantity Selector */}
-                      <div className="flex justify-end">
-                        {getItemQuantity(item.id) > 0 ? (
-                          <div className="flex items-center gap-2">
-                            <button 
-                              className="w-7 h-7 xl:w-8 xl:h-8 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeItem(item.id);
-                              }}
-                            >
-                              <Minus className="h-3 w-3 xl:h-4 xl:w-4" />
-                            </button>
-                            <span className="w-6 xl:w-8 text-center font-medium text-sm xl:text-base">{getItemQuantity(item.id)}</span>
-                            <button 
-                              className="w-7 h-7 xl:w-8 xl:h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addItem({
-                                  id: item.id,
-                                  name: item.name,
-                                  price: item.price || 0,
-                                  qty: 1,
-                                  photo_url: item.photo_url,
-                                  menu_id: item.id
-                                });
-                              }}
-                            >
-                              <Plus className="h-3 w-3 xl:h-4 xl:w-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button 
-                            className="w-7 h-7 xl:w-8 xl:h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                                addItem({
-                                  id: item.id,
-                                  name: item.name,
-                                  price: item.price || 0,
-                                  qty: 1,
-                                  photo_url: item.photo_url,
-                                  menu_id: item.id
-                                });
-                            }}
-                          >
-                            <Plus className="h-3 w-3 xl:h-4 xl:w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
+              {filteredItems.map((item, index) => (
+                <MenuItemCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  onItemClick={handleItemClick}
+                  onAddToCart={addItem}
+                  onRemoveFromCart={removeItem}
+                  getItemQuantity={getItemQuantity}
+                  isMobile={false}
+                />
+              ))}
             </div>
           </div>
         )}

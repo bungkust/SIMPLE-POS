@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -23,7 +23,7 @@ const iconMap = {
   Utensils,
 };
 
-export function Header() {
+function HeaderComponent() {
   const navigate = useNavigate();
   const { config } = useConfig();
   
@@ -65,13 +65,12 @@ export function Header() {
     };
   }, [currentTenant]);
 
-  const handleLogoClick = () => {
+  const handleLogoClick = useCallback(() => {
     const tenantSlug = 'tenant_slug' in tenantInfo ? tenantInfo.tenant_slug : tenantInfo.slug;
     navigate(`/${tenantSlug}`);
-  };
+  }, [tenantInfo, navigate]);
 
-
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     try {
       const { signOut } = useAuth();
       await signOut();
@@ -79,15 +78,28 @@ export function Header() {
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  };
+  }, [navigate]);
 
-  const getStoreIcon = () => {
+  const getStoreIcon = useCallback(() => {
     const iconType = config.storeIconType || 'Coffee';
     const IconComponent = iconMap[iconType as keyof typeof iconMap] || Coffee;
     return <IconComponent className="h-6 w-6" />;
-  };
+  }, [config.storeIconType]);
 
-  const isAuthenticated = 'role' in tenantInfo ? tenantInfo.role !== 'public' : false;
+  const handleDashboardClick = useCallback(() => {
+    const tenantSlug = 'tenant_slug' in tenantInfo ? tenantInfo.tenant_slug : tenantInfo.slug;
+    navigate(`/${tenantSlug}/admin`);
+  }, [tenantInfo, navigate]);
+
+  const handleSettingsClick = useCallback(() => {
+    const tenantSlug = 'tenant_slug' in tenantInfo ? tenantInfo.tenant_slug : tenantInfo.slug;
+    navigate(`/${tenantSlug}/admin/settings`);
+  }, [tenantInfo, navigate]);
+
+  const isAuthenticated = useMemo(() => 
+    'role' in tenantInfo ? tenantInfo.role !== 'public' : false, 
+    [tenantInfo]
+  );
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -131,11 +143,11 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate(`/${'tenant_slug' in tenantInfo ? tenantInfo.tenant_slug : tenantInfo.slug}/admin`)}>
+                <DropdownMenuItem onClick={handleDashboardClick}>
                   <Home className="h-4 w-4 mr-2" />
                   Dashboard
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate(`/${'tenant_slug' in tenantInfo ? tenantInfo.tenant_slug : tenantInfo.slug}/admin/settings`)}>
+                <DropdownMenuItem onClick={handleSettingsClick}>
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
@@ -302,3 +314,5 @@ export function Header() {
     </header>
   );
 }
+
+export const Header = React.memo(HeaderComponent);
