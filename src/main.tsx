@@ -11,8 +11,17 @@ if (typeof window !== 'undefined' && typeof (window as any).__WS_TOKEN__ === 'un
 
 // Fix for React useLayoutEffect in production builds
 import React from 'react';
+import { createRoot } from 'react-dom/client';
+
+// Ensure React is available globally for all chunks
 if (typeof window !== 'undefined') {
   (window as any).React = React;
+  (window as any).ReactDOM = { createRoot };
+  
+  // Fix for useLayoutEffect in vendor chunks
+  if (!React.useLayoutEffect) {
+    React.useLayoutEffect = React.useEffect;
+  }
 }
 
 // Verify environment variables on app initialization
