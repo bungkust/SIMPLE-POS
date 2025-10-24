@@ -2,7 +2,7 @@
  * Order processing utilities for delivery fees and minimum order validation
  */
 
-import { AppConfig } from './database.types';
+import { AppConfig } from './tenant-types';
 
 export interface OrderCalculation {
   subtotal: number;

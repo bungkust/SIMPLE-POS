@@ -3,6 +3,9 @@ import App from './App.tsx';
 import './index.css';
 import { ToastProvider } from '@/components/ui/toast-provider';
 import { verifyEnvironment } from '@/lib/env-check';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from '@/lib/query-client';
 
 // Fix for __WS_TOKEN__ undefined error (common in dev environments)
 if (typeof window !== 'undefined' && typeof (window as any).__WS_TOKEN__ === 'undefined') {
@@ -10,7 +13,6 @@ if (typeof window !== 'undefined' && typeof (window as any).__WS_TOKEN__ === 'un
 }
 
 // Simple React setup - let Vite handle chunking
-import React from 'react';
 
 // Verify environment variables on app initialization
 verifyEnvironment();
@@ -29,7 +31,10 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 }
 
 createRoot(document.getElementById('root')!).render(
-  <ToastProvider>
-    <App />
-  </ToastProvider>
+  <QueryClientProvider client={queryClient}>
+    <ToastProvider>
+      <App />
+    </ToastProvider>
+    {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+  </QueryClientProvider>
 );

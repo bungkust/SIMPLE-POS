@@ -21,6 +21,7 @@ import {
   createSecureCacheKey,
   RateLimiter 
 } from '../lib/security-utils';
+import { useMenuItems, useCategories } from '../hooks/use-menu-queries';
 import { getThumbnailUrl, getMediumImageUrl, getResponsiveImageSize, getResponsiveImageSizeForDisplay } from '../lib/image-utils';
 import { useImagePreloader } from '../hooks/use-image-preloader';
 // import { ThumbnailImage, MediumImage } from '@/components/ui/lazy-image';

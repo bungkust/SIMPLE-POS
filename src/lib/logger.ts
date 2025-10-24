@@ -11,7 +11,7 @@
  * - Error tracking integration ready
  */
 
-interface LogContext {
+export interface LogContext {
   userId?: string;
   tenantId?: string;
   action?: string;
@@ -194,7 +194,7 @@ class ProductionLogger {
 export const logger = new ProductionLogger();
 
 // Export types for TypeScript
-export type { LogContext, LogEntry };
+export type { LogEntry };
 
 // Development helper - only available in development
 if (import.meta.env.DEV) {

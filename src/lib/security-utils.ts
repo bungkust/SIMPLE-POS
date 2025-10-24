@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { logger } from './logger';
+import { sanitizeSearchQuery as dompurifySanitize } from './dompurify-utils';
 
 /**
  * Security utilities for tenant validation and input sanitization
@@ -66,12 +67,15 @@ export function isValidTenantSlug(slug: string): boolean {
  * Sanitize search query to prevent injection attacks
  */
 export function sanitizeSearchQuery(query: string): string {
-  // Remove potentially dangerous characters and limit length
-  return query
-    .replace(/[<>'"&]/g, '') // Remove HTML/script injection characters
-    .replace(/[^\w\s\u00C0-\u017F]/g, '') // Keep only alphanumeric, spaces, and accented characters
-    .substring(0, 100) // Limit length
-    .trim();
+  if (!query) return '';
+  
+  // Use DOMPurify for better XSS protection
+  const sanitized = dompurifySanitize(query);
+  
+  // Additional validation
+  return sanitized
+    .trim()
+    .substring(0, 100); // Limit length
 }
 
 /**

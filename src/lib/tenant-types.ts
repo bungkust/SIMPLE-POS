@@ -1,5 +1,31 @@
 import { Database } from './database.types';
 
+// Re-export AppConfig from ConfigContext for consistency
+export interface AppConfig {
+  storeName: string;
+  storeIcon: string;
+  storeLogoUrl?: string;
+  storeBannerUrl?: string;
+  storeIconType: 'predefined' | 'uploaded';
+  storeDescription?: string;
+  storeAddress?: string;
+  storePhone?: string;
+  storeEmail?: string;
+  storeHours?: string;
+  autoAcceptOrders?: boolean;
+  requirePhoneVerification?: boolean;
+  allowGuestCheckout?: boolean;
+  minimumOrderAmount?: number;
+  deliveryFee?: number;
+  freeDeliveryThreshold?: number;
+  telegramBotToken?: string;
+  telegramNotifyCheckout?: boolean;
+  telegramNotifyCashier?: boolean;
+  rating?: string;
+  reviewCount?: string;
+  estimatedTime?: string;
+}
+
 // Type definitions for normalized tenant data
 export type TenantInfo = Database['public']['Tables']['tenant_info']['Row'];
 export type TenantInfoInsert = Database['public']['Tables']['tenant_info']['Insert'];
