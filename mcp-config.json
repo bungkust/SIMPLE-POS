@@ -1,0 +1,49 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "your_github_token_here"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem"],
+      "env": {
+        "ALLOWED_DIRECTORIES": "/Users/ruangguru/Documents/Bungkuss/SIMPLE-POS"
+      }
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["enhanced-postgres-mcp-server"],
+      "env": {
+        "POSTGRES_CONNECTION_STRING": "your_supabase_connection_string_here"
+      }
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["puppeteer-mcp-server"],
+      "env": {
+        "HEADLESS": "true"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp"],
+      "env": {
+        "HEADLESS": "true",
+        "BROWSER": "chromium"
+      }
+    },
+    "playwright-advanced": {
+      "command": "npx",
+      "args": ["better-playwright-mcp3"],
+      "env": {
+        "HEADLESS": "true",
+        "BROWSER": "chromium",
+        "TIMEOUT": "30000"
+      }
+    }
+  }
+}
