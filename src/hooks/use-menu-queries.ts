@@ -8,12 +8,74 @@ import { supabase } from '@/lib/supabase';
 import { queryKeys } from '@/lib/query-client';
 import { Database } from '@/lib/database.types';
 import { sanitizeSearchQuery } from '@/lib/dompurify-utils';
+import { optimizedQueries, queryPerformance } from '@/lib/query-optimization';
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 
-// Fetch menu items for a tenant
+// Fetch menu items for a tenant with pagination
 export function useMenuItems(tenantId: string, options?: {
+  categoryId?: string;
+  searchQuery?: string;
+  enabled?: boolean;
+  page?: number;
+  limit?: number;
+}) {
+  const page = options?.page || 1;
+  const limit = options?.limit || 20;
+  const offset = (page - 1) * limit;
+
+  return useQuery({
+    queryKey: options?.categoryId 
+      ? queryKeys.menuItemsByCategory(tenantId, options.categoryId)
+      : options?.searchQuery
+      ? queryKeys.menuItemsSearch(tenantId, options.searchQuery)
+      : queryKeys.menuItems(tenantId),
+    queryFn: async () => {
+      return queryPerformance.trackQuery('useMenuItems', async () => {
+        const sanitizedQuery = options?.searchQuery ? sanitizeSearchQuery(options.searchQuery) : undefined;
+        
+        let query = supabase
+          .from('menu_items')
+          .select('*', { count: 'exact' })
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        // Apply category filter
+        if (options?.categoryId) {
+          query = query.eq('category_id', options.categoryId);
+        }
+
+        // Apply search filter
+        if (sanitizedQuery?.trim()) {
+          query = query.or(`name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%`);
+        }
+
+        const { data, error, count } = await query;
+        
+        if (error) {
+          throw new Error(`Failed to fetch menu items: ${error.message}`);
+        }
+
+        return {
+          items: data as MenuItem[],
+          totalCount: count || 0,
+          page,
+          limit,
+          hasMore: (count || 0) > offset + limit
+        };
+      });
+    },
+    enabled: !!tenantId && (options?.enabled !== false),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Fetch all menu items for a tenant (for admin/backward compatibility)
+export function useAllMenuItems(tenantId: string, options?: {
   categoryId?: string;
   searchQuery?: string;
   enabled?: boolean;
@@ -59,23 +121,76 @@ export function useMenuItems(tenantId: string, options?: {
   });
 }
 
-// Fetch categories for a tenant
-export function useCategories(tenantId: string) {
+// Fetch categories for a tenant with pagination
+export function useCategories(tenantId: string, options?: {
+  page?: number;
+  limit?: number;
+  enabled?: boolean;
+}) {
+  const page = options?.page || 1;
+  const limit = options?.limit || 50; // Default 50 categories per page
+  const offset = (page - 1) * limit;
+
+  return useQuery({
+    queryKey: queryKeys.categories(tenantId, page, limit),
+    queryFn: async () => {
+      return queryPerformance.trackQuery('useCategories', async () => {
+        console.log('🔍 useCategories: Fetching categories for tenant:', tenantId, 'page:', page);
+        
+        const { data, error, count } = await supabase
+          .from('categories')
+          .select('*', { count: 'exact' })
+          .eq('tenant_id', tenantId)
+          .order('sort_order', { ascending: true })
+          .range(offset, offset + limit - 1);
+
+        console.log('🔍 useCategories: Query result:', { data, error, count });
+
+        if (error) {
+          console.error('❌ useCategories: Query failed:', error);
+          throw new Error(`Failed to fetch categories: ${error.message}`);
+        }
+
+        console.log('✅ useCategories: Successfully fetched categories:', data);
+        return {
+          items: data as Category[],
+          totalCount: count || 0,
+          page,
+          limit,
+          hasMore: (count || 0) > offset + limit
+        };
+      });
+    },
+    enabled: !!tenantId && (options?.enabled !== false),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+// Fetch all categories for a tenant (for backward compatibility)
+export function useAllCategories(tenantId: string) {
   return useQuery({
     queryKey: queryKeys.categories(tenantId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+      return queryPerformance.trackQuery('useAllCategories', async () => {
+        console.log('🔍 useAllCategories: Fetching all categories for tenant:', tenantId);
+        
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('sort_order', { ascending: true });
 
-      if (error) {
-        throw new Error(`Failed to fetch categories: ${error.message}`);
-      }
+        console.log('🔍 useAllCategories: Query result:', { data, error });
 
-      return data as Category[];
+        if (error) {
+          console.error('❌ useAllCategories: Query failed:', error);
+          throw new Error(`Failed to fetch categories: ${error.message}`);
+        }
+
+        console.log('✅ useAllCategories: Successfully fetched categories:', data);
+        return data as Category[];
+      });
     },
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000, // 5 minutes

@@ -15,8 +15,7 @@ import {
   Package,
   DollarSign,
   AlertCircle,
-  CheckCircle,
-  X
+  CheckCircle
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -52,37 +51,26 @@ function CartBarComponent() {
     console.log('AuthContext not available, using URL fallback');
   }
   
-  // Get tenant info - use currentTenant if available (authenticated), otherwise use URL
+  // Get tenant info - only use currentTenant from AuthContext (secure)
   const tenantInfo = useMemo(() => {
     if (currentTenant) {
       return currentTenant;
     }
     
-    // Fallback: get tenant slug from URL
-    const path = window.location.pathname;
-    const pathParts = path.split('/').filter(Boolean);
-    
-    if (pathParts.length >= 1 && !pathParts[0].includes('admin') && !pathParts[0].includes('login') && pathParts[0] !== 'checkout' && pathParts[0] !== 'orders' && pathParts[0] !== 'invoice' && pathParts[0] !== 'success' && pathParts[0] !== 'auth' && pathParts[0] !== 'undefined' && pathParts[0] !== 'null') {
-      return {
-        tenant_slug: pathParts[0],
-        tenant_id: null,
-        tenant_name: pathParts[0].charAt(0).toUpperCase() + pathParts[0].slice(1).replace('-', ' '),
-        role: 'public' as const
-      };
-    }
-    
-    return {
-      tenant_slug: 'kopipendekar',
-      tenant_id: null,
-      tenant_name: 'Kopi Pendekar',
-      role: 'public' as const
-    };
+    // No insecure fallback - return null if no authenticated tenant
+    return null;
   }, [currentTenant]);
 
   const handleCheckoutClick = useCallback(() => {
     if (totalItems === 0) {
       // If cart is empty, just open the cart sheet
       setShowCartSheet(true);
+      return;
+    }
+    
+    // Check if tenant info is available
+    if (!tenantInfo) {
+      console.error('No tenant information available for checkout');
       return;
     }
     
@@ -182,17 +170,7 @@ function CartBarComponent() {
           <div className="flex flex-col h-full">
             {/* Header - Fixed */}
             <SheetHeader className="p-4 pb-0 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <SheetTitle className={cn(typography.h3)}>Your Cart</SheetTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleToggleCartSheet}
-                  className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+              <SheetTitle className={cn(typography.h3)}>Your Cart</SheetTitle>
               <SheetDescription className={cn(typography.body.medium, colors.text.secondary, "mt-2")}>
                 {totalItems} {totalItems === 1 ? 'item' : 'items'} in your cart
               </SheetDescription>

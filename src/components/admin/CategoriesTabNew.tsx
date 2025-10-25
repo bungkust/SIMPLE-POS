@@ -77,7 +77,7 @@ export function CategoriesTab() {
         .from('categories')
         .select('*')
         .eq('tenant_id', currentTenant.id)
-        .order('sort_order', { ascending: true });
+        .order('name', { ascending: true });
 
       if (error) {
         console.error('Error loading categories:', error);

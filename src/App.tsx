@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { CartProvider } from './contexts/CartContext';

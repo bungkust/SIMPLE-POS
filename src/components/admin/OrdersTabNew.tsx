@@ -226,7 +226,7 @@ export function OrdersTab() {
         .select('*')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
-        .order('sort_order');
+        .order('name');
 
       if (error) {
         logger.error('Error loading payment methods:', error as any);

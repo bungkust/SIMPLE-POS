@@ -21,7 +21,7 @@ import {
   createSecureCacheKey,
   RateLimiter 
 } from '../lib/security-utils';
-import { useMenuItems, useCategories } from '../hooks/use-menu-queries';
+import { useMenuItems, useAllCategories } from '../hooks/use-menu-queries';
 import { getThumbnailUrl, getMediumImageUrl, getResponsiveImageSize, getResponsiveImageSizeForDisplay } from '../lib/image-utils';
 import { useImagePreloader } from '../hooks/use-image-preloader';
 // import { ThumbnailImage, MediumImage } from '@/components/ui/lazy-image';
@@ -251,7 +251,7 @@ const MenuItemCard = memo(function MenuItemCard({
 });
 
 export const MenuBrowser = memo(function MenuBrowser() {
-  const { addItem, removeItem, getItemQuantity } = useCart();
+  const { addItem, removeItem, updateQuantity, getItemQuantity } = useCart();
   
   // Wrapper function to convert MenuItem to CartItem
   const handleAddToCart = useCallback((item: MenuItem) => {
@@ -265,10 +265,17 @@ export const MenuBrowser = memo(function MenuBrowser() {
     });
   }, [addItem]);
   
-  // Wrapper function to remove item by ID
+  // Wrapper function to decrease quantity or remove item
   const handleRemoveFromCart = useCallback((item: MenuItem) => {
-    removeItem(item.id);
-  }, [removeItem]);
+    const currentQuantity = getItemQuantity(item.id);
+    if (currentQuantity > 1) {
+      // Decrease quantity by 1
+      updateQuantity(item.id, currentQuantity - 1);
+    } else {
+      // Remove item completely if quantity is 1
+      removeItem(item.id);
+    }
+  }, [removeItem, updateQuantity, getItemQuantity]);
   
   // Get auth context safely
   let currentTenant = null;
@@ -280,22 +287,43 @@ export const MenuBrowser = memo(function MenuBrowser() {
     console.log('AuthContext not available, using URL fallback');
   }
   const { preloadCriticalImages } = useImagePreloader();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  const [loading, setLoading] = useState(true);
   const [tenantInfo, setTenantInfo] = useState<any>(null);
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const ITEMS_PER_PAGE = 12; // Load 12 items per page
+  const ITEMS_PER_PAGE = 20;
+  
+  // Use React Query hooks for data fetching
+  const tenantId = currentTenant?.id || '';
+  console.log('🔍 MenuBrowser: Using tenant ID for queries:', tenantId);
+  
+  const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useAllCategories(tenantId);
+  const { 
+    data: menuData, 
+    isLoading: menuLoading, 
+    error: menuError 
+  } = useMenuItems(tenantId, {
+    categoryId: selectedCategory || undefined,
+    searchQuery: debouncedSearchQuery || undefined,
+    page: currentPage,
+    limit: ITEMS_PER_PAGE,
+    enabled: !!tenantId
+  });
+  
+  // Debug logging
+  console.log('🔍 MenuBrowser: Categories data:', categories);
+  console.log('🔍 MenuBrowser: Categories loading:', categoriesLoading);
+  console.log('🔍 MenuBrowser: Categories error:', categoriesError);
+  
+  const menuItems = menuData?.items || [];
+  const totalItems = menuData?.totalCount || 0;
+  const hasMore = menuData?.hasMore || false;
+  const loading = categoriesLoading || menuLoading;
   
   // Rate limiter for API calls - increased limit
   const rateLimiter = useMemo(() => new RateLimiter(30, 60000), []);
@@ -319,92 +347,23 @@ export const MenuBrowser = memo(function MenuBrowser() {
     return Date.now() - timestamp < 5 * 60 * 1000; // 5 minutes
   }, []);
 
-  // Load menu items with pagination
-  const loadMenuItems = useCallback(async (tenantId: string, page: number = 1, reset: boolean = true) => {
-    try {
-      if (reset) {
-        setLoadingMore(true);
-      } else {
-        setLoadingMore(true);
-      }
-
-      const from = (page - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-
-      console.log(`MenuBrowser: Loading menu items page ${page} (${from}-${to}) for tenant:`, tenantId);
-
-      // Build query with filters
-      let query = supabase
-        .from('menu_items')
-        .select('*', { count: 'exact' })
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
-
-      // Add category filter if selected
-      if (selectedCategory) {
-        query = query.eq('category_id', selectedCategory);
-      }
-
-      // Add search filter if query exists
-      if (debouncedSearchQuery.trim()) {
-        const sanitizedQuery = sanitizeSearchQuery(debouncedSearchQuery);
-        console.log('🔍 MenuBrowser: Searching for:', sanitizedQuery);
-        // Use or() to search in both name and description fields
-        query = query.or(`name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%`);
-      }
-
-      // Add pagination and ordering
-      query = query
-        .order('name', { ascending: true })
-        .range(from, to);
-
-      const { data: menuData, error: menuError, count } = await query;
-
-      if (menuError) {
-        console.error('Error loading menu items:', menuError);
-        return;
-      }
-
-      console.log('🔍 MenuBrowser: Query results:', { 
-        count, 
-        itemsFound: menuData?.length || 0, 
-        searchQuery: debouncedSearchQuery,
-        selectedCategory 
-      });
-
-      console.log(`MenuBrowser: Loaded ${menuData?.length || 0} menu items (page ${page})`);
-      console.log(`MenuBrowser: Total items: ${count}`);
-
-      if (reset) {
-        setMenuItems(menuData || []);
-        setCurrentPage(1);
-      } else {
-        setMenuItems(prev => [...prev, ...(menuData || [])]);
-      }
-
-      setTotalItems(count || 0);
-      setHasMore((menuData?.length || 0) === ITEMS_PER_PAGE);
-      setCurrentPage(page);
-
-    } catch (error) {
-      console.error('Error in loadMenuItems:', error);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [selectedCategory, categories, debouncedSearchQuery, ITEMS_PER_PAGE]);
-
-  // Load more items (infinite scroll)
+  // Load more items (pagination)
   const loadMoreItems = useCallback(() => {
-    if (!loadingMore && hasMore && tenantInfo?.tenant_id) {
-      loadMenuItems(tenantInfo.tenant_id, currentPage + 1, false);
+    if (hasMore && !loading) {
+      setCurrentPage(prev => prev + 1);
     }
-  }, [loadingMore, hasMore, currentPage, tenantInfo?.tenant_id, loadMenuItems]);
+  }, [hasMore, loading]);
 
 
+  // Reset pagination when filters change
   useEffect(() => {
-    const loadData = async () => {
+    setCurrentPage(1);
+  }, [selectedCategory, debouncedSearchQuery]);
+
+  // Load tenant info
+  useEffect(() => {
+    const loadTenantInfo = async () => {
       try {
-        // Get tenant info - use currentTenant if available (authenticated), otherwise use URL
         let resolvedTenantInfo: any = null;
         if (currentTenant) {
           resolvedTenantInfo = {
@@ -422,7 +381,6 @@ export const MenuBrowser = memo(function MenuBrowser() {
         
         if (!resolvedTenantInfo) {
           console.error('No tenant info available - redirecting to landing page');
-          // Redirect to landing page if no tenant info
           if (typeof window !== 'undefined') {
             window.location.href = '/';
           }
@@ -431,113 +389,13 @@ export const MenuBrowser = memo(function MenuBrowser() {
         
         setTenantInfo(resolvedTenantInfo);
         console.log('MenuBrowser: Got tenant info:', resolvedTenantInfo);
-        const tenantId = (resolvedTenantInfo as any).tenant_id;
-        console.log('MenuBrowser: Got tenant ID:', tenantId);
-        
-        if (!tenantId) {
-          console.error('No tenant ID found for tenant:', resolvedTenantInfo);
-          console.log('Invalid tenant or tenant not found - will show empty menu');
-          setCategories([]);
-          setMenuItems([]);
-          setLoading(false);
-          return;
-        }
-
-        // Validate tenant access with rate limiting
-        const rateLimitKey = `tenant_${tenantId}`;
-        if (!rateLimiter.isAllowed(rateLimitKey)) {
-          console.warn('Rate limit exceeded for tenant:', tenantId);
-          setLoading(false);
-          return;
-        }
-
-
-        // Check cache for categories
-        const categoriesCacheKey = getCacheKey(tenantId, 'categories');
-        const cachedCategories = localStorage.getItem(categoriesCacheKey);
-        
-        if (cachedCategories) {
-          try {
-            const { data, timestamp } = JSON.parse(cachedCategories);
-            if (isCacheValid(timestamp) && validateCacheData(data, 'categories')) {
-              console.log('MenuBrowser: Using validated cached categories');
-              setCategories(data);
-            } else {
-              console.log('MenuBrowser: Categories cache expired or invalid, fetching fresh data');
-            }
-          } catch (error) {
-            console.warn('MenuBrowser: Failed to parse cached categories:', error);
-          }
-        }
-
-        // Load categories if not cached or cache expired
-        if (!cachedCategories || !isCacheValid(JSON.parse(cachedCategories).timestamp) || !validateCacheData(JSON.parse(cachedCategories).data, 'categories')) {
-        console.log('MenuBrowser: Loading categories for tenant ID:', tenantId);
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .order('sort_order', { ascending: true });
-
-        if (categoriesError) {
-          console.error('Error loading categories:', categoriesError);
-          console.error('Categories error details:', categoriesError.message, categoriesError.details);
-          console.error('Categories error code:', categoriesError.code);
-        } else {
-          console.log('MenuBrowser: Loaded categories:', categoriesData);
-          console.log('MenuBrowser: Categories count:', categoriesData?.length || 0);
-          if (categoriesData && categoriesData.length > 0) {
-              console.log('MenuBrowser: Category names:', categoriesData.map((c: any) => c.name));
-            }
-            setCategories(categoriesData || []);
-            
-            // Cache categories
-            localStorage.setItem(categoriesCacheKey, JSON.stringify({
-              data: categoriesData || [],
-              timestamp: Date.now()
-            }));
-          }
-        }
-
-        // Check cache for menu items
-        const menuItemsCacheKey = getCacheKey(tenantId, 'menuItems');
-        const cachedMenuItems = localStorage.getItem(menuItemsCacheKey);
-        
-        if (cachedMenuItems) {
-          try {
-            const { data, timestamp } = JSON.parse(cachedMenuItems);
-            if (isCacheValid(timestamp) && validateCacheData(data, 'menuItems')) {
-              console.log('MenuBrowser: Using validated cached menu items');
-              setMenuItems(data);
-            } else {
-              console.log('MenuBrowser: Menu items cache expired or invalid, fetching fresh data');
-            }
-          } catch (error) {
-            console.warn('MenuBrowser: Failed to parse cached menu items:', error);
-          }
-        }
-
-        // Load menu items with pagination (always load fresh for pagination)
-        console.log('MenuBrowser: Loading menu items with pagination for tenant ID:', tenantId);
-        await loadMenuItems(tenantId, 1, true);
-
       } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
+        console.error('Error loading tenant info:', error);
       }
     };
 
-    loadData();
-  }, [getCacheKey, isCacheValid, currentTenant]); // Removed loadMenuItems from deps
-
-  // Reload menu items when filters change
-  useEffect(() => {
-    if (tenantInfo?.tenant_id) {
-      console.log('MenuBrowser: Filters changed, reloading menu items', { selectedCategory, debouncedSearchQuery });
-      loadMenuItems(tenantInfo.tenant_id, 1, true);
-    }
-  }, [selectedCategory, debouncedSearchQuery, tenantInfo?.tenant_id, loadMenuItems]);
+    loadTenantInfo();
+  }, [currentTenant]);
 
   // Preload critical images when menu items are loaded
   useEffect(() => {
@@ -558,7 +416,7 @@ export const MenuBrowser = memo(function MenuBrowser() {
     const observer = new IntersectionObserver(
       (entries) => {
         const target = entries[0];
-        if (target.isIntersecting && hasMore && !loadingMore) {
+        if (target.isIntersecting && hasMore && !loading) {
           loadMoreItems();
         }
       },
@@ -575,7 +433,7 @@ export const MenuBrowser = memo(function MenuBrowser() {
         observer.unobserve(loadMoreButton);
       }
     };
-  }, [hasMore, loadingMore, loadMoreItems]);
+  }, [hasMore, loading, loadMoreItems]);
 
   // Filter menu items (now handled by server-side filtering)
   const filteredItems = useMemo(() => {
@@ -585,7 +443,7 @@ export const MenuBrowser = memo(function MenuBrowser() {
 
   // Debug logging (reduced for performance)
   if (import.meta.env.DEV && menuItems.length > 0) {
-    console.log('MenuBrowser: Loaded', menuItems.length, 'items,', categories.length, 'categories');
+    console.log('MenuBrowser: Loaded', menuItems.length, 'items,', categories?.length || 0, 'categories');
   }
 
   const handleItemClick = (item: MenuItem) => {
@@ -706,7 +564,7 @@ export const MenuBrowser = memo(function MenuBrowser() {
             <h2 className={cn(typography.h2, "mb-2")}>
               {selectedCategory === '' 
                 ? 'Semua Menu' 
-                : categories.find(c => c.id === selectedCategory)?.name || 'Menu'
+                : categories?.find(c => c.id === selectedCategory)?.name || 'Menu'
               }
             </h2>
             
@@ -748,10 +606,10 @@ export const MenuBrowser = memo(function MenuBrowser() {
         {/* Load More Button */}
         {hasMore && (
           <div className="flex justify-center mt-8">
-                            <button 
+            <button 
               id="load-more-trigger"
               onClick={loadMoreItems}
-              disabled={loadingMore}
+              disabled={loading}
               className={cn(
                 "px-6 py-3 rounded-lg font-medium transition-colors",
                 "bg-primary hover:bg-primary/90 text-primary-foreground",
@@ -759,7 +617,7 @@ export const MenuBrowser = memo(function MenuBrowser() {
                 "flex items-center gap-2"
               )}
             >
-              {loadingMore ? (
+              {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading more...
@@ -770,8 +628,8 @@ export const MenuBrowser = memo(function MenuBrowser() {
                   Load More Items
                 </>
               )}
-                            </button>
-                          </div>
+            </button>
+          </div>
         )}
 
         {/* Pagination Info */}

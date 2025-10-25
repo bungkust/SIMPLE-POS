@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormInput } from '@/components/forms/FormInput';
+import { FormDatePicker } from '@/components/forms/FormDatePicker';
 import { FormTextarea } from '@/components/forms/FormTextarea';
 import { FormRadioGroup } from '@/components/forms/FormRadioGroup';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { useAppToast } from '@/components/ui/toast-provider';
 import { checkoutFormSchema, type CheckoutFormData } from '@/lib/form-schemas';
 import { useCart } from '@/contexts/CartContext';
-import { formatCurrency, normalizePhone, generateOrderCode, getTomorrowDate } from '@/lib/form-utils';
+import { formatCurrency, normalizePhone, generateOrderCode, getTomorrowDate, getCurrentDate } from '@/lib/form-utils';
 import { getTenantInfo } from '@/lib/tenantUtils';
 import { colors, typography, components, sizes, shadows, cn } from '@/lib/design-system';
 import { useConfig } from '@/contexts/ConfigContext';
@@ -117,7 +118,7 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
         .select('payment_type, is_active, name, description')
         .eq('tenant_id', currentTenantId)
         .eq('is_active', true)
-        .order('sort_order');
+        .order('name');
 
       if (error && error.code !== 'PGRST116') {
         console.error('❌ Error loading payment methods:', error);
@@ -552,13 +553,21 @@ export function CheckoutPage({ onBack, onSuccess }: CheckoutPageProps) {
                     />
                   </div>
 
-                  <FormInput
-                    {...register('pickupDate')}
-                    label="Pickup Date"
-                    type="date"
-                    error={errors.pickupDate?.message}
-                    required
-                    disabled={loading}
+                  <Controller
+                    name="pickupDate"
+                    control={control}
+                    render={({ field }) => (
+                      <FormDatePicker
+                        label="Pickup Date"
+                        value={field.value}
+                        onChange={field.onChange}
+                        minDate={new Date()}
+                        error={errors.pickupDate?.message}
+                        required
+                        disabled={loading}
+                        placeholder="Select pickup date"
+                      />
+                    )}
                   />
 
                   <div className={cn("bg-gray-50 p-4 rounded-lg")}>

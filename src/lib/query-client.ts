@@ -41,7 +41,8 @@ export const queryKeys = {
     ['menuItems', tenantId, 'search', query] as const,
   
   // Category queries
-  categories: (tenantId: string) => ['categories', tenantId] as const,
+  categories: (tenantId: string, page?: number, limit?: number) => 
+    ['categories', tenantId, page, limit] as const,
   
   // Order queries
   orders: (tenantId: string) => ['orders', tenantId] as const,

@@ -72,7 +72,7 @@ export function OrderSuccessPage({ orderCode, onViewInvoice, onBackToMenu, isFro
         .select('*')
         .eq('tenant_id', order.tenant_id)
         .eq('is_active', true)
-        .order('sort_order');
+        .order('name');
 
       console.log('🔍 Loaded payment methods:', methods);
       if (methods) {

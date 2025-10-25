@@ -24,6 +24,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Database } from '@/lib/database.types';
 import { MenuFormModal } from './MenuFormModalNew';
 import { useAppToast } from '@/components/ui/toast-provider';
+import { sanitizeText } from '@/lib/dompurify-utils';
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -52,7 +53,7 @@ export function MenuTab() {
     try {
       const [itemsRes, categoriesRes] = await Promise.all([
         supabase.from('menu_items').select('*').eq('tenant_id', currentTenant.id).order('created_at'),
-        supabase.from('categories').select('*').eq('tenant_id', currentTenant.id).order('sort_order'),
+        supabase.from('categories').select('*').eq('tenant_id', currentTenant.id).order('name'),
       ]);
 
       if (itemsRes.error) {
@@ -144,10 +145,10 @@ export function MenuTab() {
             )}
           </div>
           <div>
-            <div className="font-medium text-slate-900">{row.original.name}</div>
+            <div className="font-medium text-slate-900">{sanitizeText(row.original.name)}</div>
             {row.original.short_description && (
               <div className="text-sm text-slate-500 line-clamp-1">
-                {row.original.short_description}
+                {sanitizeText(row.original.short_description)}
               </div>
             )}
           </div>
@@ -545,7 +546,7 @@ function OptionsManagerModal({
         .from('menu_options')
         .select('*')
         .eq('menu_item_id', menuItem.id)
-        .order('sort_order');
+        .order('name');
 
       if (optionsData) {
         setOptions(optionsData);
@@ -556,7 +557,7 @@ function OptionsManagerModal({
             .from('menu_option_items')
             .select('*')
             .in('menu_option_id', optionIds)
-            .order('sort_order');
+            .order('name');
 
           if (itemsData) setOptionItems(itemsData);
         }

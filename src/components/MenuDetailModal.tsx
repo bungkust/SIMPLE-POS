@@ -86,7 +86,7 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
         .from('menu_options')
         .select('*')
         .eq('menu_item_id', item.id)
-        .order('sort_order');
+        .order('name');
 
       if (process.env.NODE_ENV === 'development') {
         console.log('📊 MenuDetailModal: Options query result:', { optionsData, optionsError });
@@ -122,7 +122,7 @@ export function MenuDetailModal({ item, onClose }: MenuDetailModalProps) {
             .select('*')
             .in('menu_option_id', optionIds)
             .eq('is_available', true)
-            .order('sort_order');
+            .order('name');
 
           if (process.env.NODE_ENV === 'development') {
             console.log('📊 MenuDetailModal: Option items query result:', { itemsData, itemsError });

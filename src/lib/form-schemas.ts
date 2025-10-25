@@ -52,7 +52,17 @@ export const categoryFormSchema = z.object({
 export const checkoutFormSchema = z.object({
   customerName: z.string().min(1, "Nama customer harus diisi").max(100, "Nama terlalu panjang"),
   phone: z.string().min(1, "Nomor telepon harus diisi").max(20, "Nomor telepon terlalu panjang"),
-  pickupDate: z.string().min(1, "Tanggal pickup harus diisi"),
+  pickupDate: z.string().min(1, "Tanggal pickup harus diisi").refine(
+    (date) => {
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+      return selectedDate >= today;
+    },
+    {
+      message: "Tanggal pickup tidak boleh di masa lalu"
+    }
+  ),
   notes: z.string().max(500, "Catatan terlalu panjang").optional(),
   paymentMethod: z.string({
     required_error: "Metode pembayaran harus dipilih",

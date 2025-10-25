@@ -33,6 +33,7 @@ import { getActiveSubscribers } from '@/lib/telegram-webhook';
 
 import { logger } from '@/lib/logger';
 import { colors, typography, components, sizes, spacing, cn } from '@/lib/design-system';
+import { sanitizeText } from '@/lib/dompurify-utils';
 type MenuItem = Database['public']['Tables']['menu_items']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 type CartItem = {
@@ -90,7 +91,7 @@ export function CashierTab() {
         .from('categories')
         .select('*')
         .eq('tenant_id', currentTenant.id)
-        .order('sort_order', { ascending: true });
+        .order('name', { ascending: true });
 
       if (categoriesError) throw categoriesError;
       setCategories(categoriesData || []);
@@ -112,7 +113,7 @@ export function CashierTab() {
         .select('*')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+        .order('name', { ascending: true });
 
       if (paymentError) {
         logger.error('Error loading payment methods:', paymentError);
@@ -413,9 +414,9 @@ export function CashierTab() {
                   <Card key={item.id} className={cn(components.card, "hover:shadow-md transition-shadow cursor-pointer")}>
                     <CardContent className={cn(sizes.card.md)}>
                       <div className={cn(spacing.sm)}>
-                        <h4 className={cn(typography.label.medium)}>{item.name}</h4>
+                        <h4 className={cn(typography.label.medium)}>{sanitizeText(item.name)}</h4>
                         <p className={cn(typography.body.small, colors.text.muted, "line-clamp-2")}>
-                          {item.description}
+                          {sanitizeText(item.description)}
                         </p>
                         <div className="flex items-center justify-between">
                           <span className={cn(typography.price.small)}>

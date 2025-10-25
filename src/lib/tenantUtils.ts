@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { Database } from './database.types';
+import { optimizedQueries, queryPerformance } from './query-optimization';
 
 type Tenant = Database['public']['Tables']['tenants']['Row'];
 
@@ -68,15 +69,14 @@ export async function getTenantFromSlug(tenantSlug: string) {
     try {
       console.log('🔍 getTenantFromSlug: Fetching tenant from database:', sanitizedSlug);
       
-      // Try to get tenant info from database
-      const { data: tenant, error } = await supabase
-        .from('tenants')
-        .select('id, name, slug')
-        .eq('slug', sanitizedSlug)
-        .single() as { data: Tenant | null; error: any };
+      // Try to get tenant info from database using optimized query
+      const tenant = await queryPerformance.trackQuery('getTenantFromSlug', async () => {
+        const data = await optimizedQueries.getTenantInfo(sanitizedSlug);
+        return data?.[0] || null;
+      });
 
-      if (error || !tenant) {
-        console.warn(`❌ getTenantFromSlug: Could not find tenant with slug: ${sanitizedSlug}`, error);
+      if (!tenant) {
+        console.warn(`❌ getTenantFromSlug: Could not find tenant with slug: ${sanitizedSlug}`);
         return null;
       }
 

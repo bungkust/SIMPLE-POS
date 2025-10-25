@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { 
-  X, 
   Plus, 
   Minus, 
   Package
@@ -76,7 +75,7 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
           `)
           .eq('menu_item_id', item.id)
           .eq('tenant_id', item.tenant_id)
-          .order('sort_order', { ascending: true });
+          .order('name', { ascending: true });
 
         if (error) {
           console.error('Error loading menu options:', error);
@@ -174,17 +173,7 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
         <div className="flex flex-col h-full">
           {/* Header */}
           <SheetHeader className="p-4 pb-0">
-            <div className="flex items-center justify-between">
-              <SheetTitle className={cn(typography.h3)}>Menu Details</SheetTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <SheetTitle className={cn(typography.h3)}>Menu Details</SheetTitle>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto">

@@ -12,8 +12,14 @@ interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
-  ({ className, label, error, helperText, required, id, ...props }, ref) => {
+  ({ className, label, error, helperText, required, id, type, ...props }, ref) => {
     const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Special styling for date inputs to make them more clickable
+    const isDateInput = type === 'date';
+    const dateInputClasses = isDateInput 
+      ? "cursor-pointer hover:bg-gray-50 focus:bg-white transition-colors" 
+      : "";
 
     return (
       <div className="space-y-2">
@@ -24,7 +30,12 @@ const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
         )}
         <Input
           id={inputId}
-          className={cn(error && "border-destructive focus-visible:ring-destructive", className)}
+          type={type}
+          className={cn(
+            error && "border-destructive focus-visible:ring-destructive", 
+            dateInputClasses,
+            className
+          )}
           ref={ref}
           {...props}
         />

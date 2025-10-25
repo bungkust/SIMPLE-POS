@@ -132,7 +132,7 @@ export function PaymentTab() {
         .from('payment_methods')
         .select('*')
         .eq('tenant_id', currentTenant.id)
-        .order('sort_order', { ascending: true });
+        .order('name', { ascending: true });
 
       if (error) {
         logger.error('Error loading payment methods:', error);

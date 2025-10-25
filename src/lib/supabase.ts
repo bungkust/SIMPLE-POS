@@ -44,7 +44,17 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'X-Client-Info': 'supabase-js-web',
-      'apikey': supabaseAnonKey
+      'apikey': supabaseAnonKey,
+      'Connection': 'keep-alive', // Enable connection pooling
+      'Keep-Alive': 'timeout=30, max=1000' // Connection pooling settings
+    }
+  },
+  db: {
+    schema: 'public'
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10 // Limit realtime events for performance
     }
   }
 });
