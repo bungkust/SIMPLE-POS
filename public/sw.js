@@ -82,6 +82,15 @@ self.addEventListener('fetch', (event) => {
       return;
     }
 
+    // Let the browser handle cross-origin images (avoids connect-src CSP issues)
+    if (
+      request.destination === 'image' &&
+      url.origin !== self.location.origin &&
+      !url.hostname.includes('supabase.co')
+    ) {
+      return;
+    }
+
     // Handle different types of requests
     if (url.pathname.startsWith('/assets/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
       // Static assets - cache first
