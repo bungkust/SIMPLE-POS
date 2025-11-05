@@ -38,9 +38,16 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
 
   const loadData = async () => {
     try {
-      // Get tenant info
+      // Get tenant info FIRST - critical for public access
       const resolvedTenantInfo = await getTenantInfo();
+      if (!resolvedTenantInfo) {
+        console.error('❌ InvoicePage: Failed to resolve tenant information');
+        setLoading(false);
+        return;
+      }
+      
       setTenantInfo(resolvedTenantInfo);
+      console.log('✅ InvoicePage: Got tenant info:', resolvedTenantInfo);
 
       // Load order
       const { data: orderData, error: orderError } = await supabase
@@ -62,11 +69,11 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
       setItems(itemsData || []);
 
       // Load payment method if QRIS
-      if ((orderData as any).payment_method === 'QRIS') {
+      if ((orderData as any).payment_method === 'QRIS' && resolvedTenantInfo.tenant_id) {
         const { data: paymentData, error: paymentError } = await supabase
           .from('payment_methods')
           .select('*')
-          .eq('tenant_id', (resolvedTenantInfo as any).tenant_id)
+          .eq('tenant_id', resolvedTenantInfo.tenant_id)
           .eq('payment_type', 'QRIS')
           .eq('is_active', true)
           .single();
@@ -78,7 +85,7 @@ export function InvoicePage({ orderCode, onBack }: InvoicePageProps) {
       }
 
     } catch (error) {
-      console.error('Error loading invoice data:', error);
+      console.error('❌ InvoicePage: Error loading invoice data:', error);
     } finally {
       setLoading(false);
     }

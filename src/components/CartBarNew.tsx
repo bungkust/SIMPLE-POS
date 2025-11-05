@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, memo } from 'react';
+import React, { useMemo, useState, useCallback, memo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -40,6 +40,7 @@ function CartBarComponent() {
   // console.log('🔍 CartBar: totalItems:', totalItems);
   // console.log('🔍 CartBar: totalAmount:', totalAmount);
   const [showCartSheet, setShowCartSheet] = useState(false);
+  const [tenantInfo, setTenantInfo] = useState<any>(null);
   
   // Get auth context safely
   let currentTenant = null;
@@ -51,14 +52,33 @@ function CartBarComponent() {
     console.log('AuthContext not available, using URL fallback');
   }
   
-  // Get tenant info - only use currentTenant from AuthContext (secure)
-  const tenantInfo = useMemo(() => {
-    if (currentTenant) {
-      return currentTenant;
-    }
-    
-    // No insecure fallback - return null if no authenticated tenant
-    return null;
+  // Load tenant info from URL (same pattern as MenuBrowser) - critical for public access
+  useEffect(() => {
+    const loadTenantInfo = async () => {
+      try {
+        let resolvedTenantInfo: any = null;
+        if (currentTenant) {
+          resolvedTenantInfo = {
+            tenant_id: (currentTenant as any).id,
+            tenant_slug: (currentTenant as any).slug,
+            tenant_name: (currentTenant as any).name,
+          };
+        }
+        
+        if (!resolvedTenantInfo) {
+          resolvedTenantInfo = await getTenantInfo();
+        }
+        
+        if (resolvedTenantInfo) {
+          setTenantInfo(resolvedTenantInfo);
+          console.log('✅ CartBar: Got tenant info:', resolvedTenantInfo);
+        }
+      } catch (error) {
+        console.error('❌ CartBar: Error loading tenant info:', error);
+      }
+    };
+
+    loadTenantInfo();
   }, [currentTenant]);
 
   const handleCheckoutClick = useCallback(() => {
@@ -70,12 +90,17 @@ function CartBarComponent() {
     
     // Check if tenant info is available
     if (!tenantInfo) {
-      console.error('No tenant information available for checkout');
+      console.error('❌ CartBar: No tenant information available for checkout');
       return;
     }
     
-    // Handle both currentTenant structure (slug) and fallback structure (tenant_slug)
+    // Handle both currentTenant structure (slug) and tenantInfo structure (tenant_slug)
     const tenantSlug = tenantInfo.slug || tenantInfo.tenant_slug;
+    if (!tenantSlug) {
+      console.error('❌ CartBar: No tenant slug available');
+      return;
+    }
+    
     console.log('🔍 CartBar: handleCheckoutClick called');
     console.log('🔍 CartBar: tenantInfo:', tenantInfo);
     console.log('🔍 CartBar: tenantSlug:', tenantSlug);
