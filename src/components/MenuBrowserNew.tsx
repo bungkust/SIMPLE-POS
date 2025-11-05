@@ -298,9 +298,51 @@ export const MenuBrowser = memo(function MenuBrowser() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
   
-  // Use React Query hooks for data fetching
-  const tenantId = currentTenant?.id || '';
-  console.log('🔍 MenuBrowser: Using tenant ID for queries:', tenantId);
+  // Load tenant info FIRST - this is critical for public access (mobile users)
+  useEffect(() => {
+    const loadTenantInfo = async () => {
+      try {
+        let resolvedTenantInfo: any = null;
+        if (currentTenant) {
+          resolvedTenantInfo = {
+            tenant_id: (currentTenant as any).id,
+            tenant_slug: (currentTenant as any).slug,
+            tenant_name: (currentTenant as any).name,
+            phone: (currentTenant as any).phone ?? null,
+            address: (currentTenant as any).address ?? null,
+          };
+        }
+        
+        if (!resolvedTenantInfo) {
+          resolvedTenantInfo = await getTenantInfo();
+        }
+        
+        if (!resolvedTenantInfo) {
+          console.error('No tenant info available - redirecting to landing page');
+          if (typeof window !== 'undefined') {
+            window.location.href = '/';
+          }
+          return;
+        }
+        
+        setTenantInfo(resolvedTenantInfo);
+        console.log('✅ MenuBrowser: Got tenant info:', resolvedTenantInfo);
+      } catch (error) {
+        console.error('❌ Error loading tenant info:', error);
+      }
+    };
+
+    loadTenantInfo();
+  }, [currentTenant]);
+
+  // Use tenant ID from tenantInfo (from URL) OR currentTenant (from auth)
+  // This ensures mobile users can access menu even without login
+  const tenantId = tenantInfo?.tenant_id || currentTenant?.id || '';
+  console.log('🔍 MenuBrowser: Using tenant ID for queries:', tenantId, {
+    fromTenantInfo: !!tenantInfo?.tenant_id,
+    fromCurrentTenant: !!currentTenant?.id,
+    tenantInfoExists: !!tenantInfo
+  });
   
   const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useAllCategories(tenantId);
   const { 
@@ -359,43 +401,6 @@ export const MenuBrowser = memo(function MenuBrowser() {
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategory, debouncedSearchQuery]);
-
-  // Load tenant info
-  useEffect(() => {
-    const loadTenantInfo = async () => {
-      try {
-        let resolvedTenantInfo: any = null;
-        if (currentTenant) {
-          resolvedTenantInfo = {
-            tenant_id: (currentTenant as any).id,
-            tenant_slug: (currentTenant as any).slug,
-            tenant_name: (currentTenant as any).name,
-            phone: (currentTenant as any).phone ?? null,
-            address: (currentTenant as any).address ?? null,
-          };
-        }
-        
-        if (!resolvedTenantInfo) {
-          resolvedTenantInfo = await getTenantInfo();
-        }
-        
-        if (!resolvedTenantInfo) {
-          console.error('No tenant info available - redirecting to landing page');
-          if (typeof window !== 'undefined') {
-            window.location.href = '/';
-          }
-          return;
-        }
-        
-        setTenantInfo(resolvedTenantInfo);
-        console.log('MenuBrowser: Got tenant info:', resolvedTenantInfo);
-      } catch (error) {
-        console.error('Error loading tenant info:', error);
-      }
-    };
-
-    loadTenantInfo();
-  }, [currentTenant]);
 
   // Preload critical images when menu items are loaded
   useEffect(() => {
