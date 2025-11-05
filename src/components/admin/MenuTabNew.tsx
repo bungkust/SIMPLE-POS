@@ -818,6 +818,12 @@ function OptionsManagerModal({
     return (
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Loading Options</DialogTitle>
+            <DialogDescription className="sr-only">
+              Memuat opsi menu
+            </DialogDescription>
+          </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
           </div>
@@ -828,8 +834,14 @@ function OptionsManagerModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent 
+        className="max-w-4xl max-h-[90vh] !grid !grid-rows-[auto_1fr_auto] overflow-hidden p-0"
+        style={{ 
+          maxHeight: '90vh',
+          height: '90vh'
+        }}
+      >
+        <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 border-b">
           <DialogTitle className="text-xl font-bold text-slate-900">
             Manage Options
           </DialogTitle>
@@ -838,7 +850,14 @@ function OptionsManagerModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div 
+          className="overflow-y-auto overflow-x-hidden px-6 py-4 min-h-0"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            scrollBehavior: 'smooth',
+            overscrollBehavior: 'contain'
+          }}
+        >
           {showAddItemForm || showEditItemForm ? (
             <Card className="mb-4">
               <CardHeader>
@@ -1138,7 +1157,7 @@ function OptionsManagerModal({
           )}
         </div>
 
-        <div className="flex gap-3 pt-4 border-t">
+        <div className="flex gap-3 pt-4 pb-6 px-6 border-t flex-shrink-0 bg-background">
           <Button variant="outline" onClick={onClose} className="flex-1">
             Tutup
           </Button>

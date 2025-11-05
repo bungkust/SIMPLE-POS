@@ -57,7 +57,7 @@ function CartBarComponent() {
     const loadTenantInfo = async () => {
       try {
         let resolvedTenantInfo: any = null;
-        if (currentTenant) {
+    if (currentTenant) {
           resolvedTenantInfo = {
             tenant_id: (currentTenant as any).id,
             tenant_slug: (currentTenant as any).slug,
