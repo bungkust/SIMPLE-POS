@@ -353,55 +353,65 @@ export function MenuTab() {
                 subtitleField: 'price',
                 getSubtitle: (item) => `${formatRupiah(item.price)} • ${getCategoryName(item.category_id)}`,
                 getActions: (item) => (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setEditingItem(item);
                         setShowForm(true);
                       }}
-                      className="h-7 w-7 p-0"
+                      className="h-9 w-9 p-0 touch-manipulation"
                       title="Edit Menu"
+                      aria-label="Edit Menu"
                     >
-                      <Edit className="h-3 w-3" />
+                      <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedMenuItem(item);
                         setShowOptionsManager(true);
                       }}
-                      className="h-7 w-7 p-0"
+                      className="h-9 w-9 p-0 touch-manipulation bg-primary/10 hover:bg-primary/20"
                       title="Manage Options"
+                      aria-label="Manage Options"
                     >
-                      <Settings className="h-3 w-3" />
+                      <Settings className="h-4 w-4 text-primary" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toggleActive(item.id, item.is_active)}
-                      className="h-7 w-7 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleActive(item.id, item.is_active);
+                      }}
+                      className="h-9 w-9 p-0 touch-manipulation"
                       title={item.is_active ? "Hide Menu" : "Show Menu"}
+                      aria-label={item.is_active ? "Hide Menu" : "Show Menu"}
                     >
                       {item.is_active ? (
-                        <EyeOff className="h-3 w-3 text-orange-600" />
+                        <EyeOff className="h-4 w-4 text-orange-600" />
                       ) : (
-                        <Eye className="h-3 w-3 text-green-600" />
+                        <Eye className="h-4 w-4 text-green-600" />
                       )}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setDeleteItem({ id: item.id, name: item.name });
                         setShowDeleteConfirm(true);
                       }}
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      className="h-9 w-9 p-0 text-destructive hover:text-destructive touch-manipulation"
                       title="Delete Menu"
+                      aria-label="Delete Menu"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 )
@@ -538,32 +548,64 @@ function OptionsManagerModal({
 
   useEffect(() => {
     loadOptions();
-  }, [menuItem.id]);
+  }, [menuItem.id, currentTenant]);
 
   const loadOptions = async () => {
     try {
-      const { data: optionsData } = await supabase
+      setLoading(true);
+      
+      // Ensure we have tenant ID - use from menuItem if currentTenant not available
+      const tenantId = currentTenant?.id || menuItem.tenant_id;
+      if (!tenantId) {
+        console.error('❌ OptionsManagerModal: No tenant ID available');
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔍 OptionsManagerModal: Loading options for menu item:', menuItem.id, 'tenant:', tenantId);
+
+      const { data: optionsData, error: optionsError } = await supabase
         .from('menu_options')
         .select('*')
         .eq('menu_item_id', menuItem.id)
-        .order('name');
+        .eq('tenant_id', tenantId) // ✅ CRITICAL: Add tenant_id filter
+        .order('sort_order', { ascending: true });
+
+      if (optionsError) {
+        console.error('❌ OptionsManagerModal: Error loading options:', optionsError);
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ OptionsManagerModal: Loaded options:', optionsData?.length || 0);
 
       if (optionsData) {
         setOptions(optionsData);
 
         const optionIds = optionsData.map((opt: any) => opt.id);
         if (optionIds.length > 0) {
-          const { data: itemsData } = await supabase
+          const { data: itemsData, error: itemsError } = await supabase
             .from('menu_option_items')
             .select('*')
             .in('menu_option_id', optionIds)
-            .order('name');
+            .eq('tenant_id', tenantId) // ✅ CRITICAL: Add tenant_id filter
+            .order('sort_order', { ascending: true }); // Use sort_order instead of name
 
-          if (itemsData) setOptionItems(itemsData);
+          if (itemsError) {
+            console.error('❌ OptionsManagerModal: Error loading option items:', itemsError);
+          } else {
+            console.log('✅ OptionsManagerModal: Loaded option items:', itemsData?.length || 0);
+            if (itemsData) setOptionItems(itemsData);
+          }
+        } else {
+          setOptionItems([]);
         }
+      } else {
+        setOptions([]);
+        setOptionItems([]);
       }
     } catch (error) {
-      console.error('Error loading options:', error);
+      console.error('❌ OptionsManagerModal: Error loading options:', error);
     } finally {
       setLoading(false);
     }

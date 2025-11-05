@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, MoreHorizontal, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { ChevronRight, MoreHorizontal, AlertCircle, CheckCircle, Clock, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,9 +116,9 @@ export function MobileCard({
             </div>
           </div>
           
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
             {actions && (
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-0.5 overflow-visible">
                 {actions}
               </div>
             )}
@@ -131,7 +131,7 @@ export function MobileCard({
                   e.stopPropagation();
                   onExpand?.();
                 }}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 flex-shrink-0"
               >
                 <ChevronRight 
                   className={cn(

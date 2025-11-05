@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { 
   Plus, 
   Minus, 
@@ -75,7 +75,7 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
           `)
           .eq('menu_item_id', item.id)
           .eq('tenant_id', item.tenant_id)
-          .order('name', { ascending: true });
+          .order('sort_order', { ascending: true });
 
         if (error) {
           console.error('Error loading menu options:', error);
@@ -174,6 +174,9 @@ export function MenuDetailSheet({ item, isOpen, onClose }: MenuDetailSheetProps)
           {/* Header */}
           <SheetHeader className="p-4 pb-0">
             <SheetTitle className={cn(typography.h3)}>Menu Details</SheetTitle>
+            <SheetDescription className="sr-only">
+              Detail menu item dengan opsi dan kustomisasi
+            </SheetDescription>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto">
