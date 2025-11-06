@@ -137,7 +137,3 @@ This project is licensed under the MIT License.
 ## 📞 Support
 
 For support and questions, please refer to the documentation or create an issue in the repository.
-
----
-
-[Edit in StackBlitz next generation editor ⚡️](https://stackblitz.com/~/github.com/bungkust/SIMPLE-POS)
