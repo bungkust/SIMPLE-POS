@@ -1,0 +1,97 @@
+name: Keep Supabase Active
+
+on:
+  schedule:
+    # Run every 12 hours to prevent Supabase from pausing
+    # Cron format: minute hour day month day-of-week
+    - cron: '0 */12 * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          echo "🔄 Pinging Supabase to keep project active..."
+          
+          SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}"
+          SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+          
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "❌ Error: Missing Supabase secrets in GitHub repository"
+            echo "Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to repository secrets"
+            echo ""
+            echo "To add secrets:"
+            echo "1. Go to your GitHub repository"
+            echo "2. Settings → Secrets and variables → Actions"
+            echo "3. Click 'New repository secret'"
+            echo "4. Add VITE_SUPABASE_URL with your Supabase project URL"
+            echo "5. Add VITE_SUPABASE_ANON_KEY with your Supabase anon key"
+            exit 1
+          fi
+          
+          # Ping Supabase REST API by making a simple query
+          # Using the REST API endpoint to query a system table
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -X GET \
+            "${SUPABASE_URL}/rest/v1/" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            --max-time 30)
+          
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS/d')
+          
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
+            echo "✅ Successfully pinged Supabase REST API (HTTP $HTTP_STATUS)"
+            echo "📅 Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          else
+            echo "⚠️  Warning: Unexpected response from Supabase (HTTP $HTTP_STATUS)"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+      - name: Query Supabase Database
+        run: |
+          echo "🔄 Making a database query to keep project active..."
+          
+          SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}"
+          SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+          
+          # Query a simple table to ensure database is active
+          # Using tenants table which is a core table in the system
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -X GET \
+            "${SUPABASE_URL}/rest/v1/tenants?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            --max-time 30)
+          
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS/d')
+          
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
+            echo "✅ Successfully queried Supabase database (HTTP $HTTP_STATUS)"
+            echo "📅 Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            echo "📊 Response: $BODY"
+          else
+            echo "⚠️  Warning: Database query returned unexpected response (HTTP $HTTP_STATUS)"
+            echo "Response: $BODY"
+            # Don't fail the workflow if query fails, as long as the ping worked
+            # This handles cases where RLS might block the query
+          fi
+
+      - name: Summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ Supabase keep-alive completed successfully"
+          echo "📊 Next run: Check GitHub Actions schedule"
+          echo "🕐 Current time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
