@@ -86,7 +86,7 @@ const MenuItemCard = memo(function MenuItemCard({
                   alt={item.name}
                   className={cn("w-24 h-24 rounded-xl object-cover", shadows.sm)}
                   loading={index < 6 ? "eager" : "lazy"}
-                  fetchpriority={index < 3 ? "high" : "auto"}
+                  fetchPriority={index < 3 ? "high" : "auto"}
                   onError={(e) => {
                     e.currentTarget.src = '/placeholder-image.png';
                   }}
@@ -174,7 +174,7 @@ const MenuItemCard = memo(function MenuItemCard({
               alt={item.name}
               className={cn("w-full h-48 rounded-lg object-cover", shadows.sm)}
               loading={index < 6 ? "eager" : "lazy"}
-              fetchpriority={index < 3 ? "high" : "auto"}
+              fetchPriority={index < 3 ? "high" : "auto"}
               onError={(e) => {
                 e.currentTarget.src = '/placeholder-image.png';
               }}
@@ -667,6 +667,9 @@ export const MenuBrowser = memo(function MenuBrowser() {
           setSelectedItem(null);
         }}
       />
+      <footer className="py-8 text-center text-sm text-gray-500">
+        from Moro Studio with Love
+      </footer>
     </div>
   );
 });

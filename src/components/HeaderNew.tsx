@@ -101,7 +101,7 @@ function HeaderComponent() {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="md:sticky md:top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="px-4 py-4 space-y-2">
         {/* First Row: Logo and Store Name */}
         <div className="flex items-center justify-between">
@@ -169,7 +169,7 @@ function HeaderComponent() {
             alt="Store Banner" 
             className="w-full h-full object-cover"
             loading="eager"
-            fetchpriority="high"
+            fetchPriority="high"
             onError={(e) => {
               console.log('🔧 Store banner failed to load:', config.storeBannerUrl);
               e.currentTarget.style.display = 'none';
